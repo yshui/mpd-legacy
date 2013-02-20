@@ -243,10 +243,16 @@ watch_directory_depth(const struct watch_directory *d)
 
 static void
 mpd_inotify_callback(int wd, unsigned mask,
-		     G_GNUC_UNUSED const char *name, G_GNUC_UNUSED void *ctx)
+		     const char *name, G_GNUC_UNUSED void *ctx)
 {
 	struct watch_directory *directory;
 	char *uri_fs;
+
+	bool new_directory = false;
+	const char *root = mapper_get_music_directory_fs();
+	const char *path_fs;
+	char *allocated = NULL;
+	struct stat st;
 
 	/*g_debug("wd=%d mask=0x%x name='%s'", wd, mask, name);*/
 
@@ -256,38 +262,47 @@ mpd_inotify_callback(int wd, unsigned mask,
 
 	uri_fs = watch_directory_get_uri_fs(directory);
 
+	if (uri_fs != NULL)
+		path_fs = allocated =
+			g_strconcat(root, "/", uri_fs, NULL);
+	else
+		path_fs = root;
+
+	if ((mask & (IN_ATTRIB|IN_CREATE)) != 0) {
+		char *new_path_fs = g_strconcat(path_fs, "/", name, NULL);
+
+		int ret = stat(new_path_fs, &st);
+		if (ret < 0)
+			g_warning("Failed to stat %s: %s",
+					new_path_fs, g_strerror(errno));
+		else
+			new_directory = S_ISDIR(st.st_mode);
+
+		g_free(new_path_fs);
+	}
+
 	if ((mask & (IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
 		g_free(uri_fs);
 		remove_watch_directory(directory);
 		return;
 	}
 
-	if ((mask & (IN_ATTRIB|IN_CREATE|IN_MOVE)) != 0 &&
-	    (mask & IN_ISDIR) != 0) {
+
+	if ((mask & (IN_ATTRIB|IN_CREATE|IN_MOVE)) != 0 && new_directory)
 		/* a sub directory was changed: register those in
 		   inotify */
-		const char *root = mapper_get_music_directory_fs();
-		const char *path_fs;
-		char *allocated = NULL;
-
-		if (uri_fs != NULL)
-			path_fs = allocated =
-				g_strconcat(root, "/", uri_fs, NULL);
-		else
-			path_fs = root;
 
 		recursive_watch_subdirectories(directory, path_fs,
 					       watch_directory_depth(directory));
-		g_free(allocated);
-	}
 
 	if ((mask & (IN_CLOSE_WRITE|IN_MOVE|IN_DELETE)) != 0 ||
-	    /* at the maximum depth, we watch out for newly created
-	       directories */
-	    (watch_directory_depth(directory) == inotify_max_depth &&
-	     (mask & (IN_CREATE|IN_ISDIR)) == (IN_CREATE|IN_ISDIR))) {
+	    /* at the maximum depth, we watch out for newly created directories */
+	    (watch_directory_depth(directory) == inotify_max_depth && new_directory) ||
+	    ((mask & IN_ISDIR) == 0 && new_directory)) {
 		/* a file was changed, or a directory was
-		   moved/deleted: queue a database update */
+		   moved/deleted, or a new symbolic link to
+		   a directory was created: queue a database
+		   update */
 		char *uri_utf8 = uri_fs != NULL
 			? fs_charset_to_utf8(uri_fs)
 			: g_strdup("");
@@ -299,6 +314,7 @@ mpd_inotify_callback(int wd, unsigned mask,
 	}
 
 	g_free(uri_fs);
+	g_free(allocated);
 }
 
 void
