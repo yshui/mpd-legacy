@@ -15,3 +15,12 @@ distributed in the COPYING file.
 You should have received a copy of the GNU General Public License along with
 this program.  If not, see <http://www.gnu.org/licenses/>.
 
+Additional note for this fork:
+
+I just don't understand why the developer decided to convert the mpd code to
+C++, so I created a fork to keep the good old C version.
+
+This repo is based on mpd v0.17.4.
+
+I will keep fixing bugs, and possibly adding new features. Feel free to open
+issues.
