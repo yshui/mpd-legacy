@@ -225,6 +225,11 @@ AC_ARG_ENABLE(gme,
 		[enable Blargg's game music emulator plugin]),,
 	enable_gme=auto)
 
+AC_ARG_ENABLE(asap,
+	AS_HELP_STRING([--enable-asap],
+		[enable Another Slight Atari Player plugin]),,
+	enable_asap=auto)
+
 AC_ARG_ENABLE(httpd-output,
 	AS_HELP_STRING([--enable-httpd-output],
 		[enables the HTTP server output]),,
@@ -858,6 +863,14 @@ MPD_AUTO_PKG_LIB(gme, GME, [libgme], gme, gme_open_file, [-lgme -lstdc++], [],
 AM_CONDITIONAL(HAVE_GME, test x$enable_gme = xyes)
 if test x$enable_gme = xyes; then
 	AC_DEFINE(HAVE_GME, 1, [Define for gme support])
+fi
+
+dnl ---------------------------------- libasap ---------------------------------
+MPD_AUTO_PKG_LIB(asap, ASAP, [libasap], asap, ASAP_Load, [-lasap], [],
+	[asap decoder plugin], [libasap not found])
+AM_CONDITIONAL(HAVE_ASAP, test x$enable_asap = xyes)
+if test x$enable_asap = xyes; then
+	AC_DEFINE(HAVE_ASAP, 1, [Define for asap support])
 fi
 
 dnl ---------------------------------- libmad ---------------------------------
@@ -1550,6 +1563,7 @@ results(ffmpeg, [FFMPEG])
 results(flac, [FLAC])
 results(fluidsynth, [FluidSynth])
 results(gme, [GME])
+results(asap, [ASAP])
 results(sndfile, [libsndfile])
 printf '\n\t'
 results(mikmod, [MikMod])

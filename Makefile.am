@@ -526,6 +526,7 @@ DECODER_LIBS = \
 	$(SNDFILE_LIBS) \
 	$(AUDIOFILE_LIBS) $(LIBMIKMOD_LIBS) \
 	$(GME_LIBS) \
+	$(ASAP_LIBS) \
 	$(SIDPLAY_LIBS) \
 	$(FLUIDSYNTH_LIBS) \
 	$(WILDMIDI_LIBS) \
@@ -538,6 +539,10 @@ DECODER_LIBS = \
 	$(FAAD_LIBS)
 
 DECODER_SRC =
+
+if HAVE_ASAP
+libdecoder_plugins_a_SOURCES += src/decoder/asap_decoder_plugin.c
+endif
 
 if HAVE_MAD
 libdecoder_plugins_a_SOURCES += src/decoder/mad_decoder_plugin.c
