@@ -80,7 +80,6 @@ mpd_headers = \
 	src/decoder_plugin.h \
 	src/decoder_internal.h \
 	src/directory.h \
-	src/directory_save.h \
 	src/database.h \
 	src/encoder_plugin.h \
 	src/encoder_list.h \
@@ -161,7 +160,6 @@ mpd_headers = \
 	src/playlist_song.h \
 	src/playlist_queue.h \
 	src/playlist_vector.h \
-	src/playlist_database.h \
 	src/playlist/extm3u_playlist_plugin.h \
 	src/playlist/m3u_playlist_plugin.h \
 	src/playlist/pls_playlist_plugin.h \
@@ -184,7 +182,6 @@ mpd_headers = \
 	src/sig_handlers.h \
 	src/song.h \
 	src/song_print.h \
-	src/song_save.h \
 	src/song_sticker.h \
 	src/song_sort.c src/song_sort.h \
 	src/socket_util.h \
@@ -200,7 +197,6 @@ mpd_headers = \
 	src/tag_id3.h \
 	src/tag_rva2.h \
 	src/tag_print.h \
-	src/tag_save.h \
 	src/tokenizer.h \
 	src/strset.h \
 	src/uri.h \
@@ -248,12 +244,10 @@ src_mpd_SOURCES = \
 	src/decoder_internal.c \
 	src/decoder_print.c \
 	src/directory.c \
-	src/directory_save.c \
 	src/database.c \
 	src/db_internal.h \
 	src/db_error.h \
 	src/db_lock.c src/db_lock.h \
-	src/db_save.c src/db_save.h \
 	src/db_print.c src/db_print.h \
 	src/db_plugin.h \
 	src/db_visitor.h \
@@ -322,7 +316,6 @@ src_mpd_SOURCES = \
 	src/playlist_state.c \
 	src/playlist_queue.c \
 	src/playlist_vector.c \
-	src/playlist_database.c \
 	src/queue.c \
 	src/queue_print.c \
 	src/queue_save.c \
@@ -332,7 +325,6 @@ src_mpd_SOURCES = \
 	src/song.c \
 	src/song_update.c \
 	src/song_print.c \
-	src/song_save.c \
 	src/resolver.c src/resolver.h \
 	src/socket_util.c \
 	src/state_file.c \
@@ -340,7 +332,6 @@ src_mpd_SOURCES = \
 	src/tag.c \
 	src/tag_pool.c \
 	src/tag_print.c \
-	src/tag_save.c \
 	src/tag_handler.c src/tag_handler.h \
 	src/tag_file.c src/tag_file.h \
 	src/tokenizer.c \
