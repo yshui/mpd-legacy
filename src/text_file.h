@@ -36,4 +36,10 @@
 char *
 read_text_line(FILE *file, GString *buffer);
 
+#ifdef HAVE_ZLIB
+#include <zlib.h>
+char *
+gz_read_text_line(gzFile, GString *);
+#endif
+
 #endif

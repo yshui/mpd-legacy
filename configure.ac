@@ -171,6 +171,11 @@ AC_ARG_ENABLE(bzip2,
 		[enable bzip2 archive support (default: disabled)]),,
 	enable_bzip2=no)
 
+AC_ARG_ENABLE(compressed_db,
+	AS_HELP_STRING([--enable-compressed-db],
+		[enable simple database compression support (default: disabled)]),,
+	enable_compressed_db=no)
+
 AC_ARG_ENABLE(cdio-paranoia,
 	AS_HELP_STRING([--enable-cdio-paranoia],
 		[enable support for audio CD support]),,
@@ -647,6 +652,25 @@ if test x$enable_sqlite = xyes; then
 fi
 
 AM_CONDITIONAL(ENABLE_SQLITE, test x$enable_sqlite = xyes)
+
+
+dnl ---------------------------------------------------------------------------
+dnl Database
+dnl ---------------------------------------------------------------------------
+
+dnl ---------------------------- zlib compress --------------------------------
+if test x$enable_compressed_db = xyes; then
+	AC_CHECK_LIB(z, gzopen,
+		     [ZLIB_LIBS="-lz"],
+		[AC_MSG_ERROR([zlib not found])])
+	AC_CHECK_HEADERS(zlib.h,,
+		[AC_MSG_ERROR([zlib.h not found])])
+	AC_DEFINE([HAVE_DB_COMPRESS], 1, [enable compressed db support])
+	AC_DEFINE([HAVE_ZLIB], 1, [have zlib on the system])
+fi
+AC_SUBST(ZLIB_LIBS)
+
+AM_CONDITIONAL(HAVE_DB_COMPRESS, test x$enable_compressed_db = xyes)
 
 dnl ---------------------------------------------------------------------------
 dnl Converter Plugins
@@ -1583,6 +1607,7 @@ printf '\nOther features:\n\t'
 results(lsr, [libsamplerate])
 results(inotify, [inotify])
 results(sqlite, [SQLite])
+results(compressed_db, [Compressed Database])
 
 printf '\nMetadata support:\n\t'
 results(id3,[ID3])

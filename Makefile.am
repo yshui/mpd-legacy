@@ -37,7 +37,8 @@ src_mpd_LDADD = \
 	$(MIXER_LIBS) \
 	libutil.a \
 	$(SYSTEMD_DAEMON_LIBS) \
-	$(GLIB_LIBS)
+	$(GLIB_LIBS) \
+	$(ZLIB_LIBS)
 
 mpd_headers = \
 	src/check.h \

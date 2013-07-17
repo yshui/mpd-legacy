@@ -42,6 +42,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef HAVE_DB_COMPRESS
+#include <zlib.h>
+#endif
+
 #define DIRECTORY_INFO_BEGIN "info_begin"
 #define DIRECTORY_INFO_END "info_end"
 #define DB_FORMAT_PREFIX "format: "
@@ -71,6 +75,66 @@ enum {
 	DB_FORMAT = 1,
 };
 
+#ifdef HAVE_DB_COMPRESS
+typedef gzFile db_file;
+
+static inline db_file db_open(const char *path_fs, const char *flags){
+	return gzopen(path_fs, flags);
+}
+
+static inline int db_printf(db_file file, const char *fmt, ...){
+	char *res;
+	va_list args;
+	va_start(args, fmt);
+	vasprintf(&res, fmt, args);
+	va_end(args);
+	return gzputs(file, res);
+}
+
+static inline char *db_read_text_line(db_file file, GString *buf){
+	return gz_read_text_line(file, buf);
+}
+
+static inline int db_close(db_file file){
+	return gzclose(file);
+}
+
+static inline int db_error(db_file file){
+	int errnum;
+	gzerror(file, &errnum);
+	if(errnum == Z_ERRNO)
+		return errno;
+	return errnum;
+}
+#else
+typedef FILE *db_file;
+
+static inline db_file db_open(const char *path_fs, const char *flags){
+	return fopen(path_fs, flags);
+}
+
+static inline db_file db_printf(db_file file, const char *fmt, ...){
+	char *res;
+	va_list args;
+	va_start(args, fmt);
+	int ret = vfprintf(file, fmt, args);
+	va_end(args);
+	return ret;
+}
+
+static inline char *db_read_text_line(db_file file, GString *buf){
+	return db_read_text_line(file, buf);
+}
+
+static inline int db_close(db_file file){
+	return db_close(file);
+}
+
+static inline const int db_error(db_file file){
+	return ferror(file);
+}
+#endif
+
 G_GNUC_CONST
 static inline GQuark
 simple_db_quark(void)
@@ -79,39 +143,39 @@ simple_db_quark(void)
 }
 
 static inline void
-simple_db_tag_save(FILE *file, const struct tag *tag)
+simple_db_tag_save(db_file file, const struct tag *tag)
 {
 	if (tag->time >= 0)
-		fprintf(file, SONG_TIME "%i\n", tag->time);
+		db_printf(file, SONG_TIME "%i\n", tag->time);
 
 	if (tag->has_playlist)
-		fprintf(file, "Playlist: yes\n");
+		db_printf(file, "Playlist: yes\n");
 
 	for (unsigned i = 0; i < tag->num_items; i++)
-		fprintf(file, "%s: %s\n",
+		db_printf(file, "%s: %s\n",
 			tag_item_names[tag->items[i]->type],
 			tag->items[i]->value);
 }
 
 static inline void
-simple_db_song_save(FILE *fp, const struct song *song)
+simple_db_song_save(db_file fp, const struct song *song)
 {
-	fprintf(fp, SONG_BEGIN "%s\n", song->uri);
+	db_printf(fp, SONG_BEGIN "%s\n", song->uri);
 
 	if (song->end_ms > 0)
-		fprintf(fp, "Range: %u-%u\n", song->start_ms, song->end_ms);
+		db_printf(fp, "Range: %u-%u\n", song->start_ms, song->end_ms);
 	else if (song->start_ms > 0)
-		fprintf(fp, "Range: %u-\n", song->start_ms);
+		db_printf(fp, "Range: %u-\n", song->start_ms);
 
 	if (song->tag != NULL)
 		simple_db_tag_save(fp, song->tag);
 
-	fprintf(fp, SONG_MTIME ": %li\n", (long)song->mtime);
-	fprintf(fp, SONG_END "\n");
+	db_printf(fp, SONG_MTIME ": %li\n", (long)song->mtime);
+	db_printf(fp, SONG_END "\n");
 }
 
 static inline struct song *
-simple_db_song_load(FILE *fp, struct directory *parent, const char *uri,
+simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
 	  GString *buffer, GError **error_r)
 {
 	struct song *song = parent != NULL
@@ -121,7 +185,7 @@ simple_db_song_load(FILE *fp, struct directory *parent, const char *uri,
 	enum tag_type type;
 	const char *value;
 
-	while ((line = read_text_line(fp, buffer)) != NULL &&
+	while ((line = db_read_text_line(fp, buffer)) != NULL &&
 	       strcmp(line, SONG_END) != 0) {
 		colon = strchr(line, ':');
 		if (colon == NULL || colon == line) {
@@ -184,18 +248,18 @@ simple_db_song_load(FILE *fp, struct directory *parent, const char *uri,
 }
 
 static inline void
-simple_db_playlist_vector_save(FILE *fp, const struct list_head *pv)
+simple_db_playlist_vector_save(db_file fp, const struct list_head *pv)
 {
 	struct playlist_metadata *pm;
 	playlist_vector_for_each(pm, pv)
-		fprintf(fp, PLAYLIST_META_BEGIN "%s\n"
+		db_printf(fp, PLAYLIST_META_BEGIN "%s\n"
 			"mtime: %li\n"
 			"playlist_end\n",
 			pm->name, (long)pm->mtime);
 }
 
 static inline bool
-playlist_metadata_load(FILE *fp, struct list_head *pv, const char *name,
+playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
 		       GString *buffer, GError **error_r)
 {
 	struct playlist_metadata pm = {
@@ -204,7 +268,7 @@ playlist_metadata_load(FILE *fp, struct list_head *pv, const char *name,
 	char *line, *colon;
 	const char *value;
 
-	while ((line = read_text_line(fp, buffer)) != NULL &&
+	while ((line = db_read_text_line(fp, buffer)) != NULL &&
 	       strcmp(line, "playlist_end") != 0) {
 		colon = strchr(line, ':');
 		if (colon == NULL || colon == line) {
@@ -230,13 +294,13 @@ playlist_metadata_load(FILE *fp, struct list_head *pv, const char *name,
 }
 
 static void
-simple_db_directory_save(FILE *fp, const struct directory *directory)
+simple_db_directory_save(db_file fp, const struct directory *directory)
 {
 	if (!directory_is_root(directory)) {
-		fprintf(fp, DIRECTORY_MTIME "%lu\n",
+		db_printf(fp, DIRECTORY_MTIME "%lu\n",
 			(unsigned long)directory->mtime);
 
-		fprintf(fp, "%s%s\n", DIRECTORY_BEGIN,
+		db_printf(fp, "%s%s\n", DIRECTORY_BEGIN,
 			directory_get_path(directory));
 	}
 
@@ -244,12 +308,12 @@ simple_db_directory_save(FILE *fp, const struct directory *directory)
 	directory_for_each_child(cur, directory) {
 		char *base = g_path_get_basename(cur->path);
 
-		fprintf(fp, DIRECTORY_DIR "%s\n", base);
+		db_printf(fp, DIRECTORY_DIR "%s\n", base);
 		g_free(base);
 
 		simple_db_directory_save(fp, cur);
 
-		if (ferror(fp))
+		if (db_error(fp))
 			return;
 	}
 
@@ -260,21 +324,21 @@ simple_db_directory_save(FILE *fp, const struct directory *directory)
 	simple_db_playlist_vector_save(fp, &directory->playlists);
 
 	if (!directory_is_root(directory))
-		fprintf(fp, DIRECTORY_END "%s\n",
+		db_printf(fp, DIRECTORY_END "%s\n",
 			directory_get_path(directory));
 }
 
 static struct directory *
-simple_db_directory_load_subdir(FILE *, struct directory *, const char *, GString *, 
+simple_db_directory_load_subdir(db_file , struct directory *, const char *, GString *,
 	       GError **);
 
 static bool
-simple_db_directory_load(FILE *fp, struct directory *directory,
+simple_db_directory_load(db_file fp, struct directory *directory,
 	       GString *buffer, GError **error)
 {
 	const char *line;
 
-	while ((line = read_text_line(fp, buffer)) != NULL &&
+	while ((line = db_read_text_line(fp, buffer)) != NULL &&
 	       !g_str_has_prefix(line, DIRECTORY_END)) {
 		if (g_str_has_prefix(line, DIRECTORY_DIR)) {
 			struct directory *subdir =
@@ -323,7 +387,7 @@ simple_db_directory_load(FILE *fp, struct directory *directory,
 }
 
 static struct directory *
-simple_db_directory_load_subdir(FILE *fp, struct directory *parent, const char *name,
+simple_db_directory_load_subdir(db_file fp, struct directory *parent, const char *name,
 		      GString *buffer, GError **error_r)
 {
 	const char *line;
@@ -337,7 +401,7 @@ simple_db_directory_load_subdir(FILE *fp, struct directory *parent, const char *
 
 	struct directory *directory = directory_new_child(parent, name);
 
-	line = read_text_line(fp, buffer);
+	line = db_read_text_line(fp, buffer);
 	if (line == NULL) {
 		g_set_error(error_r, simple_db_quark(), 0,
 			    "directory: Unexpected end of file");
@@ -350,7 +414,7 @@ simple_db_directory_load_subdir(FILE *fp, struct directory *parent, const char *
 			g_ascii_strtoull(line + sizeof(DIRECTORY_MTIME) - 1,
 					 NULL, 10);
 
-		line = read_text_line(fp, buffer);
+		line = db_read_text_line(fp, buffer);
 		if (line == NULL) {
 			g_set_error(error_r, simple_db_quark(), 0,
 				    "directory: Unexpected end of file");
@@ -376,26 +440,26 @@ simple_db_directory_load_subdir(FILE *fp, struct directory *parent, const char *
 }
 
 static inline void
-simple_db_save_internal(FILE *fp, const struct directory *music_root)
+simple_db_save_internal(db_file fp, const struct directory *music_root)
 {
 	assert(music_root != NULL);
 
-	fprintf(fp, "%s\n", DIRECTORY_INFO_BEGIN);
-	fprintf(fp, DB_FORMAT_PREFIX "%u\n", DB_FORMAT);
-	fprintf(fp, "%s%s\n", DIRECTORY_MPD_VERSION, VERSION);
-	fprintf(fp, "%s%s\n", DIRECTORY_FS_CHARSET, path_get_fs_charset());
+	db_printf(fp, "%s\n", DIRECTORY_INFO_BEGIN);
+	db_printf(fp, DB_FORMAT_PREFIX "%u\n", DB_FORMAT);
+	db_printf(fp, "%s%s\n", DIRECTORY_MPD_VERSION, VERSION);
+	db_printf(fp, "%s%s\n", DIRECTORY_FS_CHARSET, path_get_fs_charset());
 
 	for (unsigned i = 0; i < TAG_NUM_OF_ITEM_TYPES; ++i)
 		if (!ignore_tag_items[i])
-			fprintf(fp, DB_TAG_PREFIX "%s\n", tag_item_names[i]);
+			db_printf(fp, DB_TAG_PREFIX "%s\n", tag_item_names[i]);
 
-	fprintf(fp, "%s\n", DIRECTORY_INFO_END);
+	db_printf(fp, "%s\n", DIRECTORY_INFO_END);
 
 	simple_db_directory_save(fp, music_root);
 }
 
 static inline bool
-simple_db_load_internal(FILE *fp, struct directory *music_root, GError **error)
+simple_db_load_internal(db_file fp, struct directory *music_root, GError **error)
 {
 	GString *buffer = g_string_sized_new(1024);
 	char *line;
@@ -407,7 +471,7 @@ simple_db_load_internal(FILE *fp, struct directory *music_root, GError **error)
 	assert(music_root != NULL);
 
 	/* get initial info */
-	line = read_text_line(fp, buffer);
+	line = db_read_text_line(fp, buffer);
 	if (line == NULL || strcmp(DIRECTORY_INFO_BEGIN, line) != 0) {
 		g_set_error(error, db_quark(), 0, "Database corrupted");
 		g_string_free(buffer, true);
@@ -416,7 +480,7 @@ simple_db_load_internal(FILE *fp, struct directory *music_root, GError **error)
 
 	memset(tags, false, sizeof(tags));
 
-	while ((line = read_text_line(fp, buffer)) != NULL &&
+	while ((line = db_read_text_line(fp, buffer)) != NULL &&
 	       strcmp(line, DIRECTORY_INFO_END) != 0) {
 		if (g_str_has_prefix(line, DB_FORMAT_PREFIX)) {
 			format = atoi(line + sizeof(DB_FORMAT_PREFIX) - 1);
@@ -624,7 +688,7 @@ simple_db_load(struct simple_db *db, GError **error_r)
 	assert(db->path != NULL);
 	assert(db->root != NULL);
 
-	FILE *fp = fopen(db->path, "r");
+	db_file fp = db_open(db->path, "r");
 	if (fp == NULL) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Failed to open database file \"%s\": %s",
@@ -633,11 +697,11 @@ simple_db_load(struct simple_db *db, GError **error_r)
 	}
 
 	if (!simple_db_load_internal(fp, db->root, error_r)) {
-		fclose(fp);
+		db_close(fp);
 		return false;
 	}
 
-	fclose(fp);
+	db_close(fp);
 
 	struct stat st;
 	if (stat(db->path, &st) == 0)
@@ -766,7 +830,7 @@ simple_db_save(struct db *_db, GError **error_r)
 
 	g_debug("writing DB");
 
-	FILE *fp = fopen(db->path, "w");
+	db_file fp = db_open(db->path, "w");
 	if (!fp) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "unable to write to db file \"%s\": %s",
@@ -776,15 +840,15 @@ simple_db_save(struct db *_db, GError **error_r)
 
 	simple_db_save_internal(fp, music_root);
 
-	if (ferror(fp)) {
+	if (db_error(fp)) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Failed to write to database file: %s",
 			    g_strerror(errno));
-		fclose(fp);
+		db_close(fp);
 		return false;
 	}
 
-	fclose(fp);
+	db_close(fp);
 
 	struct stat st;
 	if (stat(db->path, &st) == 0)

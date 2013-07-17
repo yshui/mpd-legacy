@@ -20,6 +20,10 @@
 #include "config.h"
 #include "text_file.h"
 
+#ifdef HAVE_ZLIB
+#include "zlib.h"
+#endif
+
 #include <assert.h>
 #include <string.h>
 
@@ -66,3 +70,49 @@ read_text_line(FILE *file, GString *buffer)
 	g_string_set_size(buffer, length);
 	return buffer->str;
 }
+
+#ifdef HAVE_ZLIB
+char *
+gz_read_text_line(gzFile file, GString *buffer)
+{
+	enum {
+		max_length = 512 * 1024,
+		step = 1024,
+	};
+
+	gsize length = 0, i;
+	char *p;
+
+	assert(file != NULL);
+	assert(buffer != NULL);
+
+	if (buffer->allocated_len < step)
+		g_string_set_size(buffer, step);
+
+	while (buffer->len < max_length) {
+		p = gzgets(file, buffer->str + length,
+			  buffer->allocated_len - length);
+		if (p == NULL) {
+			if (length == 0 || ferror(file))
+				return NULL;
+			break;
+		}
+
+		i = strlen(buffer->str + length);
+		length += i;
+		if (i < step - 1 || buffer->str[length - 1] == '\n')
+			break;
+
+		g_string_set_size(buffer, length + step);
+	}
+
+	/* remove the newline characters */
+	if (buffer->str[length - 1] == '\n')
+		--length;
+	if (buffer->str[length - 1] == '\r')
+		--length;
+
+	g_string_set_size(buffer, length);
+	return buffer->str;
+}
+#endif
