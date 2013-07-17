@@ -92,7 +92,7 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 
 	FILE *f = fopen(path_fs, "r");
 	unsigned char *buf = malloc(st_buf.st_size);
-	int len = fread(buf, st_buf.st_size, 1, f);
+	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
 		g_warning("Failed to read %s", tname);
@@ -134,7 +134,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	FILE *f = fopen(tname, "r");
 	unsigned char *buf = malloc(st_buf.st_size);
-	int len = fread(buf, st_buf.st_size, 1, f);
+	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
 		g_warning("Failed to read %s", tname);
@@ -226,7 +226,7 @@ asap_scan_file(const char *path_fs,
 
 	FILE *f = fopen(path_fs, "r");
 	unsigned char *buf = malloc(st_buf.st_size);
-	int len = fread(buf, st_buf.st_size, 1, f);
+	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
 		g_warning("Failed to read %s", tname);
