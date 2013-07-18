@@ -224,7 +224,7 @@ asap_scan_file(const char *path_fs,
 		return false;
 	}
 
-	FILE *f = fopen(path_fs, "r");
+	FILE *f = fopen(tname, "r");
 	unsigned char *buf = malloc(st_buf.st_size);
 	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
