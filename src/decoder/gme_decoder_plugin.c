@@ -92,18 +92,22 @@ gme_container_scan(const char *path_fs, const unsigned int tnum)
 		return NULL;
 	}
 
+	char *ret = NULL;
+
 	num_songs = gme_track_count(emu);
 	/* if it only contains a single tune, don't treat as container */
 	if (num_songs < 2)
-		return NULL;
+		goto end;
 
 	const char *subtune_suffix = uri_get_suffix(path_fs);
 	if (tnum <= num_songs){
 		char *subtune = g_strdup_printf(
 			SUBTUNE_PREFIX "%03u.%s", tnum, subtune_suffix);
-		return subtune;
-	} else
-		return NULL;
+		ret = subtune;
+	}
+end:
+	gme_delete(emu);
+	return ret;
 }
 
 static void
