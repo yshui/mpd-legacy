@@ -85,10 +85,15 @@ static inline db_file db_open(const char *path_fs, const char *flags){
 static inline int db_printf(db_file file, const char *fmt, ...){
 	char *res;
 	va_list args;
+	int ret;
+
 	va_start(args, fmt);
 	vasprintf(&res, fmt, args);
 	va_end(args);
-	return gzputs(file, res);
+
+	ret = gzputs(file, res);
+	free(res);
+	return ret;
 }
 
 static inline char *db_read_text_line(db_file file, GString *buf){
