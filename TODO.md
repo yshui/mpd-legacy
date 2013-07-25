@@ -13,9 +13,11 @@
 * Before that change it's (practically) impossible to write a different db plugin.
 
 # Long Term Goals:
-* (Possibly) get rid of GLib.
 * Loadable plugins.
 * DBus support.
+* Mutliple control protocol (like json over http)
+* Create outputs on the fly (like http streams)
+* (Possibly) get rid of GLib.
 
 # Possible alternatives to GLib functionalities
 * Multithread -> Single thread (lots of works to be done)
@@ -25,3 +27,7 @@
 
 # Rants
 * Don't split source files into less-than-two-hundred-line pieces, unless you have a VERY GOOD reason. It's nonsense.
+
+# Competitiveness
+* There are so many good music players out there, see xmms2, albertz's music player, mopidy, etc. (mopidy even supports mpd protocol). If you want to server files over network, there's also shiva. So why would anyone even using mpd?
+
