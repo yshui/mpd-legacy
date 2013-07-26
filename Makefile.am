@@ -600,7 +600,7 @@ endif
 
 if ENABLE_SIDPLAY
 libdecoder_plugins_a_SOURCES += src/decoder/sidplay_decoder_plugin.cxx
-DECODER_SRC += src/dummy.cxx
+src_mpd_LDADD += -lstdc++
 endif
 
 if ENABLE_FLUIDSYNTH
