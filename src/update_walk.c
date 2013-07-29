@@ -34,6 +34,7 @@
 #include "path.h"
 #include "playlist_list.h"
 #include "conf.h"
+#include "utils.h"
 
 #include <glib.h>
 
@@ -153,7 +154,7 @@ purge_deleted_from_directory(struct directory *directory)
 			modified = true;
 		}
 
-		g_free(path);
+		free(path);
 	}
 
 	struct playlist_metadata *pm, *np;
@@ -284,7 +285,7 @@ skip_symlink(const struct directory *directory, const char *utf8_name)
 
 	char buffer[MPD_PATH_MAX];
 	ssize_t length = readlink(path_fs, buffer, sizeof(buffer));
-	g_free(path_fs);
+	free(path_fs);
 	if (length < 0)
 		/* don't skip if this is not a symlink */
 		return errno != EINVAL;
@@ -366,11 +367,11 @@ update_directory(struct directory *directory, const struct stat *st)
 		return false;
 	}
 
-	char *exclude_path_fs  = g_build_filename(path_fs, ".mpdignore", NULL);
+	char *exclude_path_fs  = build_filename(path_fs, ".mpdignore", NULL);
 	GSList *exclude_list = exclude_list_load(exclude_path_fs);
-	g_free(exclude_path_fs);
+	free(exclude_path_fs);
 
-	g_free(path_fs);
+	free(path_fs);
 
 	if (exclude_list != NULL)
 		remove_excluded_from_directory(directory, exclude_list);

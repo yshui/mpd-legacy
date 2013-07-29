@@ -26,6 +26,7 @@
 #include "directory.h"
 #include "song.h"
 #include "path.h"
+#include "utils.h"
 
 #include <glib.h>
 
@@ -35,6 +36,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
+#include <stdlib.h>
 
 /**
  * The absolute path of the music directory encoded in UTF-8.
@@ -85,11 +87,11 @@ check_directory(const char *path)
 	}
 
 #ifndef WIN32
-	char *x = g_build_filename(path, ".", NULL);
+	char *x = build_filename(path, ".", NULL);
 	if (stat(x, &st) < 0 && errno == EACCES)
 		g_warning("No permission to traverse (\"execute\") directory: %s",
 			  path);
-	g_free(x);
+	free(x);
 #endif
 
 	DIR *dir = opendir(path);
@@ -171,8 +173,8 @@ map_uri_fs(const char *uri)
 	if (uri_fs == NULL)
 		return NULL;
 
-	path_fs = g_build_filename(music_dir_fs, uri_fs, NULL);
-	g_free(uri_fs);
+	path_fs = build_filename(music_dir_fs, uri_fs, NULL);
+	free(uri_fs);
 
 	return path_fs;
 }
@@ -208,13 +210,13 @@ map_directory_child_fs(const struct directory *directory, const char *name)
 
 	name_fs = utf8_to_fs_charset(name);
 	if (name_fs == NULL) {
-		g_free(parent_fs);
+		free(parent_fs);
 		return NULL;
 	}
 
-	path = g_build_filename(parent_fs, name_fs, NULL);
-	g_free(parent_fs);
-	g_free(name_fs);
+	path = build_filename(parent_fs, name_fs, NULL);
+	free(parent_fs);
+	free(name_fs);
 
 	return path;
 }
@@ -268,8 +270,8 @@ map_spl_utf8_to_fs(const char *name)
 	if (filename_fs == NULL)
 		return NULL;
 
-	path = g_build_filename(playlist_dir_fs, filename_fs, NULL);
-	g_free(filename_fs);
+	path = build_filename(playlist_dir_fs, filename_fs, NULL);
+	free(filename_fs);
 
 	return path;
 }

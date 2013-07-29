@@ -32,6 +32,8 @@
 
 #include <glib.h>
 
+#include <stdlib.h>
+
 void
 playlist_print_song(FILE *file, const struct song *song)
 {
@@ -39,16 +41,16 @@ playlist_print_song(FILE *file, const struct song *song)
 		char *path = map_song_fs(song);
 		if (path != NULL) {
 			fprintf(file, "%s\n", path);
-			g_free(path);
+			free(path);
 		}
 	} else {
 		char *uri = song_get_uri(song), *uri_fs;
 
 		uri_fs = utf8_to_fs_charset(uri);
-		g_free(uri);
+		free(uri);
 
 		fprintf(file, "%s\n", uri_fs);
-		g_free(uri_fs);
+		free(uri_fs);
 	}
 }
 
@@ -65,7 +67,7 @@ playlist_print_uri(FILE *file, const char *uri)
 
 	if (s != NULL) {
 		fprintf(file, "%s\n", s);
-		g_free(s);
+		free(s);
 	}
 }
 
@@ -86,12 +88,12 @@ spl_save_queue(const char *name_utf8, const struct queue *queue)
 		return PLAYLIST_RESULT_BAD_NAME;
 
 	if (g_file_test(path_fs, G_FILE_TEST_EXISTS)) {
-		g_free(path_fs);
+		free(path_fs);
 		return PLAYLIST_RESULT_LIST_EXISTS;
 	}
 
 	file = fopen(path_fs, "w");
-	g_free(path_fs);
+	free(path_fs);
 
 	if (file == NULL)
 		return PLAYLIST_RESULT_ERRNO;

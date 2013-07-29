@@ -23,8 +23,10 @@
 #include "stored_playlist.h"
 #include "mapper.h"
 #include "uri.h"
+#include "utils.h"
 
 #include <assert.h>
+#include <stdlib.h>
 
 static struct playlist_provider *
 playlist_open_path(const char *path_fs, GMutex *mutex, GCond *cond,
@@ -56,11 +58,11 @@ playlist_open_in_playlist_dir(const char *uri, GMutex *mutex, GCond *cond,
 	if (playlist_directory_fs == NULL)
 		return NULL;
 
-	path_fs = g_build_filename(playlist_directory_fs, uri, NULL);
+	path_fs = build_filename(playlist_directory_fs, uri, NULL);
 
 	struct playlist_provider *playlist =
 		playlist_open_path(path_fs, mutex, cond, is_r);
-	g_free(path_fs);
+	free(path_fs);
 
 	return playlist;
 }
@@ -82,7 +84,7 @@ playlist_open_in_music_dir(const char *uri, GMutex *mutex, GCond *cond,
 
 	struct playlist_provider *playlist =
 		playlist_open_path(path_fs, mutex, cond, is_r);
-	g_free(path_fs);
+	free(path_fs);
 
 	return playlist;
 }

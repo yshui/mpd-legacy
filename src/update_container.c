@@ -31,6 +31,8 @@
 
 #include <glib.h>
 
+#include <stdlib.h>
+
 /**
  * Create the specified directory object if it does not exist already
  * or if the #stat object indicates that it has been modified since
@@ -98,7 +100,7 @@ update_container_file(struct directory *directory,
 		song->tag = tag_new();
 		decoder_plugin_scan_file(plugin, child_path_fs,
 					 &add_tag_handler, song->tag);
-		g_free(child_path_fs);
+		free(child_path_fs);
 
 		db_lock();
 		directory_add_song(contdir, song);
@@ -111,7 +113,7 @@ update_container_file(struct directory *directory,
 		g_free(vtrack);
 	}
 
-	g_free(pathname);
+	free(pathname);
 
 	if (tnum == 1) {
 		db_lock();

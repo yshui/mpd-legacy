@@ -36,6 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 struct song *
 song_file_load(const char *path, struct directory *parent)
@@ -105,7 +106,7 @@ song_file_update(struct song *song)
 	}
 
 	if (stat(path_fs, &st) < 0 || !S_ISREG(st.st_mode)) {
-		g_free(path_fs);
+		free(path_fs);
 		return false;
 	}
 
@@ -169,7 +170,7 @@ song_file_update(struct song *song)
 	if (song->tag != NULL && tag_is_empty(song->tag))
 		tag_scan_fallback(path_fs, &full_tag_handler, song->tag);
 
-	g_free(path_fs);
+	free(path_fs);
 	return song->tag != NULL;
 }
 

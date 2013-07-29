@@ -194,7 +194,6 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 	unsigned int sample_count;
 	char *sample_buffer;
 	size_t sample_buffer_length;
-	unsigned int initial = 1;
 	float *seek_table;
 	long seek_table_end = -1;
 	bool seek_position_found = false;
@@ -337,7 +336,6 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 		sample_count = (unsigned long)(dur * audio_format.channels);
 
 		if (sample_count > 0) {
-			initial = 0;
 			bit_rate = frame_info.bytesconsumed * 8.0 *
 			    frame_info.channels * scale /
 			    frame_info.samples / 1000 + 0.5;

@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 char *
 sticker_song_get_value(const struct song *song, const char *name)
@@ -38,7 +39,7 @@ sticker_song_get_value(const struct song *song, const char *name)
 
 	uri = song_get_uri(song);
 	value = sticker_load_value("song", uri, name);
-	g_free(uri);
+	free(uri);
 
 	return value;
 }
@@ -55,7 +56,7 @@ sticker_song_set_value(const struct song *song,
 
 	uri = song_get_uri(song);
 	ret = sticker_store_value("song", uri, name, value);
-	g_free(uri);
+	free(uri);
 
 	return ret;
 }
@@ -71,7 +72,7 @@ sticker_song_delete(const struct song *song)
 
 	uri = song_get_uri(song);
 	ret = sticker_delete("song", uri);
-	g_free(uri);
+	free(uri);
 
 	return ret;
 }
@@ -87,7 +88,7 @@ sticker_song_delete_value(const struct song *song, const char *name)
 
 	uri = song_get_uri(song);
 	success = sticker_delete_value("song", uri, name);
-	g_free(uri);
+	free(uri);
 
 	return success;
 }
@@ -103,7 +104,7 @@ sticker_song_get(const struct song *song)
 
 	uri = song_get_uri(song);
 	sticker = sticker_load("song", uri);
-	g_free(uri);
+	free(uri);
 
 	return sticker;
 }

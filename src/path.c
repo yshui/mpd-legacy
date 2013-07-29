@@ -40,24 +40,32 @@ static char *fs_charset;
 char *
 fs_charset_to_utf8(const char *path_fs)
 {
-	return g_convert(path_fs, -1,
+	char *tmp = g_convert(path_fs, -1,
 			 "utf-8", fs_charset,
 			 NULL, NULL, NULL);
+	char *res = strdup(tmp);
+	g_free(tmp);
+	return res;
 }
 
 char *
 utf8_to_fs_charset(const char *path_utf8)
 {
 	gchar *p;
+	char *res;
 
 	p = g_convert(path_utf8, -1,
 		      fs_charset, "utf-8",
 		      NULL, NULL, NULL);
 	if (p == NULL)
 		/* fall back to UTF-8 */
-		p = g_strdup(path_utf8);
+		res = strdup(path_utf8);
+	else{
+		res = strdup(p);
+		g_free(p);
+	}
 
-	return p;
+	return res;
 }
 
 static void

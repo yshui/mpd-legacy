@@ -26,9 +26,11 @@
 #include "path.h"
 #include "ls.h"
 #include "tag.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 static void
 merge_song_metadata(struct song *dest, const struct song *base,
@@ -65,12 +67,12 @@ apply_song_metadata(struct song *dest, const struct song *src)
 
 		char *path_utf8 = fs_charset_to_utf8(path_fs);
 		if (path_utf8 != NULL)
-			g_free(path_fs);
+			free(path_fs);
 		else
 			path_utf8 = path_fs;
 
 		tmp = song_file_new(path_utf8, NULL);
-		g_free(path_utf8);
+		free(path_utf8);
 
 		merge_song_metadata(tmp, dest, src);
 	} else {
@@ -160,10 +162,10 @@ playlist_check_translate_song(struct song *song, const char *base_uri,
 
 	char *allocated = NULL;
 	if (base_uri != NULL)
-		uri = allocated = g_build_filename(base_uri, uri, NULL);
+		uri = allocated = build_filename(base_uri, uri, NULL);
 
 	struct song *dest = playlist_check_load_song(song, uri, secure);
 	song_free(song);
-	g_free(allocated);
+	free(allocated);
 	return dest;
 }

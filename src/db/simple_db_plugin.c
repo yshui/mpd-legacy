@@ -118,8 +118,7 @@ static inline db_file db_open(const char *path_fs, const char *flags){
 	return fopen(path_fs, flags);
 }
 
-static inline db_file db_printf(db_file file, const char *fmt, ...){
-	char *res;
+static inline int db_printf(db_file file, const char *fmt, ...){
 	va_list args;
 	va_start(args, fmt);
 	int ret = vfprintf(file, fmt, args);
@@ -135,7 +134,7 @@ static inline int db_close(db_file file){
 	return fclose(file);
 }
 
-static inline const int db_error(db_file file){
+static inline int db_error(db_file file){
 	return ferror(file);
 }
 #endif

@@ -31,6 +31,8 @@
 
 #include <glib.h>
 
+#include <stdlib.h>
+
 #include <assert.h>
 
 static const struct song *removed_song;
@@ -51,7 +53,7 @@ song_remove_event(void)
 
 	uri = song_get_uri(removed_song);
 	g_message("removing %s", uri);
-	g_free(uri);
+	free(uri);
 
 #ifdef ENABLE_SQLITE
 	/* if the song has a sticker, remove it */

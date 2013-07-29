@@ -386,7 +386,7 @@ player_check_decoder_startup(struct player *player)
 			char *uri = song_get_uri(dc->song);
 			g_warning("problems opening audio device "
 				  "while playing \"%s\"", uri);
-			g_free(uri);
+			free(uri);
 
 			return true;
 		}
@@ -840,7 +840,7 @@ player_song_border(struct player *player)
 
 	char *uri = song_get_uri(player->song);
 	g_message("played \"%s\"", uri);
-	g_free(uri);
+	free(uri);
 
 	music_pipe_free(player->pipe);
 	player->pipe = player->dc->pipe;

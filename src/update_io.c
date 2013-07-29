@@ -27,6 +27,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 int
 stat_directory(const struct directory *directory, struct stat *st)
@@ -39,7 +40,7 @@ stat_directory(const struct directory *directory, struct stat *st)
 	if (ret < 0)
 		g_warning("Failed to stat %s: %s", path_fs, g_strerror(errno));
 
-	g_free(path_fs);
+	free(path_fs);
 	return ret;
 }
 
@@ -55,7 +56,7 @@ stat_directory_child(const struct directory *parent, const char *name,
 	if (ret < 0)
 		g_warning("Failed to stat %s: %s", path_fs, g_strerror(errno));
 
-	g_free(path_fs);
+	free(path_fs);
 	return ret;
 }
 
@@ -73,7 +74,7 @@ directory_exists(const struct directory *directory)
 		: G_FILE_TEST_IS_DIR;
 
 	bool exists = g_file_test(path_fs, test);
-	g_free(path_fs);
+	free(path_fs);
 
 	return exists;
 }
@@ -88,7 +89,7 @@ directory_child_is_regular(const struct directory *directory,
 
 	struct stat st;
 	bool is_regular = stat(path_fs, &st) == 0 && S_ISREG(st.st_mode);
-	g_free(path_fs);
+	free(path_fs);
 
 	return is_regular;
 }
@@ -111,7 +112,7 @@ directory_child_access(const struct directory *directory,
 		return true;
 
 	bool success = access(path, mode) == 0 || errno != EACCES;
-	g_free(path);
+	free(path);
 	return success;
 #endif
 }

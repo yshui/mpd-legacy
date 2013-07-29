@@ -35,4 +35,6 @@
 char *
 parsePath(const char *path, GError **error_r);
 
+char *build_filename(const char *, ...);
+
 #endif

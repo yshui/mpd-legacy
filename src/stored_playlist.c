@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "utils.h"
 #include "stored_playlist.h"
 #include "playlist_save.h"
 #include "text_file.h"
@@ -37,6 +38,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 static const char PLAYLIST_COMMENT = '#';
 
@@ -150,9 +152,9 @@ load_playlist_info(const char *parent_path_fs, const char *name_fs)
 	if (!g_str_has_suffix(name_fs, PLAYLIST_FILE_SUFFIX))
 		return NULL;
 
-	path_fs = g_build_filename(parent_path_fs, name_fs, NULL);
+	path_fs = build_filename(parent_path_fs, name_fs, NULL);
 	ret = stat(path_fs, &st);
-	g_free(path_fs);
+	free(path_fs);
 	if (ret < 0 || !S_ISREG(st.st_mode))
 		return NULL;
 
@@ -228,7 +230,7 @@ spl_save(GPtrArray *list, const char *utf8path, GError **error_r)
 		return false;
 
 	file = fopen(path_fs, "w");
-	g_free(path_fs);
+	free(path_fs);
 	if (file == NULL) {
 		playlist_errno(error_r);
 		return false;
@@ -258,7 +260,7 @@ spl_load(const char *utf8path, GError **error_r)
 		return NULL;
 
 	file = fopen(path_fs, "r");
-	g_free(path_fs);
+	free(path_fs);
 	if (file == NULL) {
 		playlist_errno(error_r);
 		return NULL;
@@ -375,7 +377,7 @@ spl_clear(const char *utf8path, GError **error_r)
 		return false;
 
 	file = fopen(path_fs, "w");
-	g_free(path_fs);
+	free(path_fs);
 	if (file == NULL) {
 		playlist_errno(error_r);
 		return false;
@@ -398,7 +400,7 @@ spl_delete(const char *name_utf8, GError **error_r)
 		return false;
 
 	ret = unlink(path_fs);
-	g_free(path_fs);
+	free(path_fs);
 	if (ret < 0) {
 		playlist_errno(error_r);
 		return false;
@@ -449,7 +451,7 @@ spl_append_song(const char *utf8path, struct song *song, GError **error_r)
 		return false;
 
 	file = fopen(path_fs, "a");
-	g_free(path_fs);
+	free(path_fs);
 	if (file == NULL) {
 		playlist_errno(error_r);
 		return false;
@@ -539,14 +541,14 @@ spl_rename(const char *utf8from, const char *utf8to, GError **error_r)
 
 	char *to_path_fs = spl_map_to_fs(utf8to, error_r);
 	if (to_path_fs == NULL) {
-		g_free(from_path_fs);
+		free(from_path_fs);
 		return false;
 	}
 
 	bool success = spl_rename_internal(from_path_fs, to_path_fs, error_r);
 
-	g_free(from_path_fs);
-	g_free(to_path_fs);
+	free(from_path_fs);
+	free(to_path_fs);
 
 	return success;
 }

@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "utils.h"
 #include "cmdline.h"
 #include "path.h"
 #include "log.h"
@@ -195,7 +196,7 @@ parse_cmdline(int argc, char **argv, struct options *options,
 		char *path1;
 
 #ifdef G_OS_WIN32
-		path1 = g_build_filename(g_get_user_config_dir(),
+		path1 = build_filename(g_get_user_config_dir(),
 					CONFIG_FILE_LOCATION, NULL);
 		if (g_file_test(path1, G_FILE_TEST_IS_REGULAR))
 			ret = config_read_file(path1, error_r);
@@ -207,24 +208,24 @@ parse_cmdline(int argc, char **argv, struct options *options,
 			system_config_dirs = g_get_system_config_dirs();
 
 			while(system_config_dirs[i] != NULL) {
-				system_path = g_build_filename(system_config_dirs[i],
+				system_path = build_filename(system_config_dirs[i],
 						CONFIG_FILE_LOCATION,
 						NULL);
 				if(g_file_test(system_path,
 						G_FILE_TEST_IS_REGULAR)) {
 					ret = config_read_file(system_path,error_r);
-					g_free(system_path);
+					free(system_path);
 					break;
 				} else
-					g_free(system_path);
+					free(system_path);
 				++i;
 			}
 		}
 #else /* G_OS_WIN32 */
 		char *path2;
-		path1 = g_build_filename(g_get_home_dir(),
+		path1 = build_filename(g_get_home_dir(),
 					USER_CONFIG_FILE_LOCATION1, NULL);
-		path2 = g_build_filename(g_get_home_dir(),
+		path2 = build_filename(g_get_home_dir(),
 					USER_CONFIG_FILE_LOCATION2, NULL);
 		if (g_file_test(path1, G_FILE_TEST_IS_REGULAR))
 			ret = config_read_file(path1, error_r);
@@ -236,9 +237,9 @@ parse_cmdline(int argc, char **argv, struct options *options,
 					       error_r);
 #endif
 
-		g_free(path1);
+		free(path1);
 #ifndef G_OS_WIN32
-		g_free(path2);
+		free(path2);
 #endif
 
 		return ret;

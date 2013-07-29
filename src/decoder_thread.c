@@ -451,7 +451,7 @@ decoder_run(struct decoder_control *dc)
 	}
 
 	decoder_run_song(dc, song, uri);
-	g_free(uri);
+	free(uri);
 
 }
 

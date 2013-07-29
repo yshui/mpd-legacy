@@ -26,6 +26,7 @@
 #include <glib.h>
 
 #include <assert.h>
+#include <utils.h>
 
 static struct song *
 song_alloc(const char *uri, struct directory *parent)
@@ -88,10 +89,10 @@ song_get_uri(const struct song *song)
 	assert(*song->uri);
 
 	if (!song_in_database(song) || directory_is_root(song->parent))
-		return g_strdup(song->uri);
+		return strdup(song->uri);
 	else
-		return g_strconcat(directory_get_path(song->parent),
-				   "/", song->uri, NULL);
+		return build_filename(directory_get_path(song->parent),
+				   song->uri, NULL);
 }
 
 double

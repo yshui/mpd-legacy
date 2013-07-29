@@ -31,6 +31,7 @@
 #include <glib.h>
 
 #include <assert.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "playlist"
@@ -88,7 +89,7 @@ playlist_queue_song_order(struct playlist *playlist, struct player_control *pc,
 	song = queue_get_order(&playlist->queue, order);
 	uri = song_get_uri(song);
 	g_debug("queue song %i:\"%s\"", playlist->queued, uri);
-	g_free(uri);
+	free(uri);
 
 	pc_enqueue_song(pc, song);
 }
@@ -196,7 +197,7 @@ playlist_play_order(struct playlist *playlist, struct player_control *pc,
 
 	uri = song_get_uri(song);
 	g_debug("play %i:\"%s\"", orderNum, uri);
-	g_free(uri);
+	free(uri);
 
 	pc_play(pc, song);
 	playlist->current = orderNum;

@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 
 static void
 pc_enqueue_song_locked(struct player_control *pc, struct song *song);
@@ -274,13 +275,13 @@ pc_get_error_message(struct player_control *pc)
 	case PLAYER_ERROR_FILENOTFOUND:
 		uri = pc_errored_song_uri(pc);
 		error = g_strdup_printf("file \"%s\" does not exist or is inaccessible", uri);
-		g_free(uri);
+		free(uri);
 		return error;
 
 	case PLAYER_ERROR_FILE:
 		uri = pc_errored_song_uri(pc);
 		error = g_strdup_printf("problems decoding \"%s\"", uri);
-		g_free(uri);
+		free(uri);
 		return error;
 
 	case PLAYER_ERROR_AUDIO:
@@ -292,7 +293,7 @@ pc_get_error_message(struct player_control *pc)
 	case PLAYER_ERROR_UNKTYPE:
 		uri = pc_errored_song_uri(pc);
 		error = g_strdup_printf("file type of \"%s\" is unknown", uri);
-		g_free(uri);
+		free(uri);
 		return error;
 	}
 

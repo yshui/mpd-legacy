@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #ifndef WIN32
 #include <pwd.h>
@@ -118,4 +119,32 @@ parsePath(const char *path, G_GNUC_UNUSED GError **error_r)
 #ifndef WIN32
 	}
 #endif
+}
+
+char *
+build_filename(const char *c1, ...){
+	va_list va_args;
+	int len = strlen(c1);
+	const char *component;
+	va_start(va_args, c1);
+
+	while(component = va_arg(va_args, const char *))
+		len += strlen(component) + 1;
+
+	va_end(va_args);
+
+	char *res = malloc(len + 1);
+
+	va_start(va_args, c1);
+	strcpy(res, c1);
+	while(component = va_arg(va_args, const char *)){
+#ifndef WIN32
+		strcat(res, "/");
+#else
+		strcat(res, "\\");
+#endif
+		strcat(res, component);
+	}
+
+	return res;
 }

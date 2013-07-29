@@ -130,7 +130,7 @@ locate_tag_search(const struct song *song, enum tag_type type, const char *str)
 	if (type == LOCATE_TAG_FILE_TYPE || (int)type == LOCATE_TAG_ANY_TYPE) {
 		char *uri = song_get_uri(song);
 		char *p = g_utf8_casefold(uri, -1);
-		g_free(uri);
+		free(uri);
 
 		if (strstr(p, str))
 			ret = true;
@@ -188,7 +188,7 @@ locate_tag_match(const struct song *song, enum tag_type type, const char *str)
 	if (type == LOCATE_TAG_FILE_TYPE || (int)type == LOCATE_TAG_ANY_TYPE) {
 		char *uri = song_get_uri(song);
 		bool matches = strcmp(str, uri) == 0;
-		g_free(uri);
+		free(uri);
 
 		if (matches)
 			return true;
