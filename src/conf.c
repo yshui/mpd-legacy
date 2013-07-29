@@ -24,6 +24,7 @@
 #include "tokenizer.h"
 #include "path.h"
 #include "mpd_error.h"
+#include "macros.h"
 
 #include <glib.h>
 
@@ -126,12 +127,12 @@ get_bool(const char *value, bool *value_r)
 struct config_param *
 config_new_param(const char *value, int line)
 {
-	struct config_param *ret = g_new(struct config_param, 1);
+	struct config_param *ret = tmalloc(struct config_param, 1);
 
 	if (!value)
 		ret->value = NULL;
 	else
-		ret->value = g_strdup(value);
+		ret->value = strdup(value);
 
 	ret->line = line;
 
@@ -145,15 +146,15 @@ config_new_param(const char *value, int line)
 void
 config_param_free(struct config_param *param)
 {
-	g_free(param->value);
+	free(param->value);
 
 	for (unsigned i = 0; i < param->num_block_params; i++) {
-		g_free(param->block_params[i].name);
-		g_free(param->block_params[i].value);
+		free(param->block_params[i].name);
+		free(param->block_params[i].value);
 	}
 
 	if (param->num_block_params)
-		g_free(param->block_params);
+		free(param->block_params);
 
 	g_free(param);
 }
@@ -232,14 +233,14 @@ config_add_block_param(struct config_param * param, const char *name,
 
 	param->num_block_params++;
 
-	param->block_params = g_realloc(param->block_params,
+	param->block_params = realloc(param->block_params,
 					param->num_block_params *
 					sizeof(param->block_params[0]));
 
 	bp = &param->block_params[param->num_block_params - 1];
 
-	bp->name = g_strdup(name);
-	bp->value = g_strdup(value);
+	bp->name = strdup(name);
+	bp->value = strdup(value);
 	bp->line = line;
 	bp->used = false;
 }

@@ -106,7 +106,7 @@ uri_remove_auth(const char *uri)
 
 	/* duplicate the full URI and then delete the auth
 	   information */
-	p = g_strdup(uri);
+	p = strdup(uri);
 	memmove(p + (auth - uri), p + (at + 1 - uri),
 		strlen(at));
 

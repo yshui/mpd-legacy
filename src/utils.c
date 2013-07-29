@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef WIN32
 #include <pwd.h>
@@ -95,27 +96,29 @@ parsePath(const char *path, G_GNUC_UNUSED GError **error_r)
 
 			const char *slash = strchr(path, '/');
 			char *user = slash != NULL
-				? g_strndup(path, slash - path)
-				: g_strdup(path);
+				? strndup(path, slash - path)
+				: strdup(path);
 
 			struct passwd *passwd = getpwnam(user);
 			if (!passwd) {
 				g_set_error(error_r, parse_path_quark(), 0,
 					    "no such user: %s", user);
-				g_free(user);
+				free(user);
 				return NULL;
 			}
 
-			g_free(user);
+			free(user);
 
 			home = passwd->pw_dir;
 			path = slash;
 		}
 
-		return g_strconcat(home, path, NULL);
+		char *res = malloc(strlen(home) + strlen(path) + 1);
+		sprintf(res, "%s%s", home, path);
+		return res;
 	} else {
 #endif
-		return g_strdup(path);
+		return strdup(path);
 #ifndef WIN32
 	}
 #endif
@@ -147,4 +150,67 @@ build_filename(const char *c1, ...){
 	}
 
 	return res;
+}
+
+bool is_alpha(char c){
+	return (c>='A' && c<='Z') || (c>='a' && c<='z');
+}
+
+char *strdup_basename (const char *file_name)
+{
+	gssize base;
+	gssize last_nonslash;
+	gsize len;
+	gchar *retval;
+
+	if (file_name == NULL)
+		return NULL;
+
+
+	if (file_name[0] == '\0')
+		return strdup (".");
+
+	last_nonslash = strlen (file_name) - 1;
+
+#ifdef WIN32
+# define IS_SLASH(c) ((c) == '\\' || (c) == '/')
+# define SLASH "\\"
+#else
+# define IS_SLASH(c) ((c) == '/')
+# define SLASH "/"
+#endif
+
+	while (last_nonslash >= 0 && IS_SLASH(file_name[last_nonslash]))
+		last_nonslash--;
+
+	if (last_nonslash == -1)
+		/* string only containing slashes */
+		return strdup(SLASH);
+
+#ifdef WIN32
+	if (last_nonslash == 1 &&
+			is_alpha(file_name[0]) &&
+			file_name[1] == ':')
+		/* string only containing slashes and a drive */
+		return strdup (SLASH);
+#endif
+	base = last_nonslash;
+
+	while (base >=0 && !IS_SLASH (file_name[base]))
+		base--;
+#undef SLASH
+#undef IS_SLASH
+#ifdef WIN32
+	if (base == -1 &&
+			is_alpha(file_name[0]) &&
+			file_name[1] == ':')
+		base = 1;
+#endif
+
+	len = last_nonslash - base;
+	retval = malloc (len + 1);
+	memcpy(retval, file_name + base + 1, len);
+	retval[len] = '\0';
+
+	return retval;
 }

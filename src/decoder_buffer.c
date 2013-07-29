@@ -24,6 +24,7 @@
 #include <glib.h>
 
 #include <assert.h>
+#include <stdlib.h>
 
 struct decoder_buffer {
 	struct decoder *decoder;
@@ -48,7 +49,7 @@ decoder_buffer_new(struct decoder *decoder, struct input_stream *is,
 		   size_t size)
 {
 	struct decoder_buffer *buffer =
-		g_malloc(sizeof(*buffer) - sizeof(buffer->data) + size);
+		malloc(sizeof(*buffer) - sizeof(buffer->data) + size);
 
 	assert(is != NULL);
 	assert(size > 0);
@@ -67,7 +68,7 @@ decoder_buffer_free(struct decoder_buffer *buffer)
 {
 	assert(buffer != NULL);
 
-	g_free(buffer);
+	free(buffer);
 }
 
 bool

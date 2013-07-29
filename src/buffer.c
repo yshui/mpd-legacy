@@ -21,6 +21,7 @@
 #include "buffer.h"
 #include "chunk.h"
 #include "poison.h"
+#include "macros.h"
 
 #include <glib.h>
 
@@ -48,9 +49,9 @@ music_buffer_new(unsigned num_chunks)
 
 	assert(num_chunks > 0);
 
-	buffer = g_new(struct music_buffer, 1);
+	buffer = tmalloc(struct music_buffer, 1);
 
-	buffer->chunks = g_new(struct music_chunk, num_chunks);
+	buffer->chunks = tmalloc(struct music_chunk, num_chunks);
 	buffer->num_chunks = num_chunks;
 
 	chunk = buffer->available = buffer->chunks;

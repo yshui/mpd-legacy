@@ -82,7 +82,7 @@ path_set_fs_charset(const char *charset)
 	g_free(test);
 
 	g_free(fs_charset);
-	fs_charset = g_strdup(charset);
+	fs_charset = strdup(charset);
 
 	g_debug("path_set_fs_charset: fs charset is: %s", fs_charset);
 }
@@ -126,5 +126,5 @@ void path_global_init(void)
 
 void path_global_finish(void)
 {
-	g_free(fs_charset);
+	free(fs_charset);
 }

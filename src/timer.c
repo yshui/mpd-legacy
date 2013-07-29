@@ -21,16 +21,19 @@
 #include "timer.h"
 #include "audio_format.h"
 #include "clock.h"
+#include "macros.h"
 
 #include <glib.h>
 
 #include <assert.h>
 #include <limits.h>
 #include <stddef.h>
+#include <utils.h>
+#include <stdlib.h>
 
 struct timer *timer_new(const struct audio_format *af)
 {
-	struct timer *timer = g_new(struct timer, 1);
+	struct timer *timer = tmalloc(struct timer, 1);
 	timer->time = 0; // us
 	timer->started = 0; // false
 	timer->rate = af->sample_rate * audio_format_frame_size(af); // samples per second
@@ -40,7 +43,7 @@ struct timer *timer_new(const struct audio_format *af)
 
 void timer_free(struct timer *timer)
 {
-	g_free(timer);
+	free(timer);
 }
 
 void timer_start(struct timer *timer)

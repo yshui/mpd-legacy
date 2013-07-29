@@ -112,7 +112,7 @@ audio_output_all_init(struct player_control *pc)
 	notify_init(&audio_output_client_notify);
 
 	num_audio_outputs = audio_output_config_count();
-	audio_outputs = g_new(struct audio_output *, num_audio_outputs);
+	audio_outputs = tmalloc(struct audio_output *, num_audio_outputs);
 
 	for (i = 0; i < num_audio_outputs; i++)
 	{

@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <utils.h>
+#include <stdlib.h>
 
 static struct song *
 song_alloc(const char *uri, struct directory *parent)
@@ -37,7 +38,7 @@ song_alloc(const char *uri, struct directory *parent)
 	assert(uri);
 	uri_length = strlen(uri);
 	assert(uri_length);
-	song = g_malloc(sizeof(*song) - sizeof(song->uri) + uri_length + 1);
+	song = malloc(sizeof(*song) - sizeof(song->uri) + uri_length + 1);
 
 	song->tag = NULL;
 	memcpy(song->uri, uri, uri_length + 1);
@@ -79,7 +80,7 @@ song_free(struct song *song)
 {
 	if (song->tag)
 		tag_free(song->tag);
-	g_free(song);
+	free(song);
 }
 
 char *

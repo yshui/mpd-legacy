@@ -28,6 +28,7 @@
 #include "resolver.h"
 #include "fd_util.h"
 #include "glib_socket.h"
+#include "macros.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -85,7 +86,7 @@ server_socket_quark(void)
 struct server_socket *
 server_socket_new(server_socket_callback_t callback, void *callback_ctx)
 {
-	struct server_socket *ss = g_new(struct server_socket, 1);
+	struct server_socket *ss = tmalloc(struct server_socket, 1);
 	ss->callback = callback;
 	ss->callback_ctx = callback_ctx;
 	ss->sockets = NULL;
@@ -105,11 +106,11 @@ server_socket_free(struct server_socket *ss)
 
 		assert(s->fd < 0);
 
-		g_free(s->path);
-		g_free(s);
+		free(s->path);
+		free(s);
 	}
 
-	g_free(ss);
+	free(ss);
 }
 
 /**
@@ -120,7 +121,7 @@ one_socket_to_string(const struct one_socket *s)
 {
 	char *p = sockaddr_to_string(&s->address, s->address_length, NULL);
 	if (p == NULL)
-		p = g_strdup("[unknown]");
+		p = strdup("[unknown]");
 	return p;
 }
 
@@ -220,8 +221,8 @@ server_socket_open(struct server_socket *ss, GError **error_r)
 					  "binding to '%s' succeeded)",
 					  address_string, error->message,
 					  good_string);
-				g_free(address_string);
-				g_free(good_string);
+				free(address_string);
+				free(good_string);
 				g_error_free(error);
 			} else if (bad == NULL) {
 				bad = s;
@@ -230,7 +231,7 @@ server_socket_open(struct server_socket *ss, GError **error_r)
 				g_propagate_prefixed_error(&last_error, error,
 							   "Failed to bind to '%s': ",
 							   address_string);
-				g_free(address_string);
+				free(address_string);
 			} else
 				g_error_free(error);
 			continue;
@@ -286,7 +287,7 @@ one_socket_new(unsigned serial, const struct sockaddr *address,
 	assert(address != NULL);
 	assert(address_length > 0);
 
-	struct one_socket *s = g_malloc(sizeof(*s) - sizeof(s->address) +
+	struct one_socket *s = malloc(sizeof(*s) - sizeof(s->address) +
 					address_length);
 	s->next = NULL;
 	s->serial = serial;
@@ -468,7 +469,7 @@ server_socket_add_path(struct server_socket *ss, const char *path,
 	struct one_socket *s =
 		server_socket_add_address(ss, (const struct sockaddr *)&s_un,
 					  sizeof(s_un));
-	s->path = g_strdup(path);
+	s->path = strdup(path);
 
 	return true;
 #else /* !HAVE_UN */

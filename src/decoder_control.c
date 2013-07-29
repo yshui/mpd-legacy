@@ -20,6 +20,7 @@
 #include "config.h"
 #include "decoder_control.h"
 #include "pipe.h"
+#include "macros.h"
 
 #include <assert.h>
 
@@ -29,7 +30,7 @@
 struct decoder_control *
 dc_new(GCond *client_cond)
 {
-	struct decoder_control *dc = g_new(struct decoder_control, 1);
+	struct decoder_control *dc = tmalloc(struct decoder_control, 1);
 
 	dc->thread = NULL;
 

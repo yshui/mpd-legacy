@@ -21,6 +21,7 @@
 #include "tag_pool.h"
 
 #include <assert.h>
+#include <stdlib.h>
 
 GMutex *tag_pool_lock = NULL;
 
@@ -72,7 +73,7 @@ static struct slot *slot_alloc(struct slot *next,
 {
 	struct slot *slot;
 
-	slot = g_malloc(sizeof(*slot) - sizeof(slot->item.value) + length + 1);
+	slot = malloc(sizeof(*slot) - sizeof(slot->item.value) + length + 1);
 	slot->next = next;
 	slot->ref = 1;
 	slot->item.type = type;
@@ -157,5 +158,5 @@ void tag_pool_put_item(struct tag_item *item)
 	}
 
 	*slot_p = slot->next;
-	g_free(slot);
+	free(slot);
 }

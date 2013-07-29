@@ -24,6 +24,7 @@
 #include "database.h"
 #include "mapper.h"
 #include "path.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <sys/inotify.h>
@@ -32,6 +33,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "inotify"
@@ -129,10 +131,10 @@ watch_directory_get_uri_fs(const struct watch_directory *directory)
 
 	parent_uri = watch_directory_get_uri_fs(directory->parent);
 	if (parent_uri == NULL)
-		return g_strdup(directory->name);
+		return strdup(directory->name);
 
-	uri = g_strconcat(parent_uri, "/", directory->name, NULL);
-	g_free(parent_uri);
+	uri = build_filename(parent_uri, directory->name);
+	free(parent_uri);
 
 	return uri;
 }
@@ -178,17 +180,17 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		if (skip_path(ent->d_name))
 			continue;
 
-		child_path_fs = g_strconcat(path_fs, "/", ent->d_name, NULL);
+		child_path_fs = build_filename(path_fs, ent->d_name, NULL);
 		ret = stat(child_path_fs, &st);
 		if (ret < 0) {
 			g_warning("Failed to stat %s: %s",
 				  child_path_fs, g_strerror(errno));
-			g_free(child_path_fs);
+			free(child_path_fs);
 			continue;
 		}
 
 		if (!S_ISDIR(st.st_mode)) {
-			g_free(child_path_fs);
+			free(child_path_fs);
 			continue;
 		}
 
@@ -199,20 +201,20 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 				  child_path_fs, error->message);
 			g_error_free(error);
 			error = NULL;
-			g_free(child_path_fs);
+			free(child_path_fs);
 			continue;
 		}
 
 		child = tree_find_watch_directory(ret);
 		if (child != NULL) {
 			/* already being watched */
-			g_free(child_path_fs);
+			free(child_path_fs);
 			continue;
 		}
 
 		child = g_slice_new(struct watch_directory);
 		child->parent = directory;
-		child->name = g_strdup(ent->d_name);
+		child->name = strdup(ent->d_name);
 		child->descriptor = ret;
 		child->children = NULL;
 
@@ -222,7 +224,7 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		tree_add_watch_directory(child);
 
 		recursive_watch_subdirectories(child, child_path_fs, depth);
-		g_free(child_path_fs);
+		free(child_path_fs);
 	}
 
 	closedir(dir);
@@ -263,13 +265,12 @@ mpd_inotify_callback(int wd, unsigned mask,
 	uri_fs = watch_directory_get_uri_fs(directory);
 
 	if (uri_fs != NULL)
-		path_fs = allocated =
-			g_strconcat(root, "/", uri_fs, NULL);
+		path_fs = allocated = build_filename(root, uri_fs, NULL);
 	else
 		path_fs = root;
 
 	if ((mask & (IN_ATTRIB|IN_CREATE)) != 0) {
-		char *new_path_fs = g_strconcat(path_fs, "/", name, NULL);
+		char *new_path_fs = build_filename(path_fs, name, NULL);
 
 		int ret = stat(new_path_fs, &st);
 		if (ret < 0)
@@ -278,11 +279,11 @@ mpd_inotify_callback(int wd, unsigned mask,
 		else
 			new_directory = S_ISDIR(st.st_mode);
 
-		g_free(new_path_fs);
+		free(new_path_fs);
 	}
 
 	if ((mask & (IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
-		g_free(uri_fs);
+		free(uri_fs);
 		remove_watch_directory(directory);
 		return;
 	}
@@ -305,16 +306,18 @@ mpd_inotify_callback(int wd, unsigned mask,
 		   update */
 		char *uri_utf8 = uri_fs != NULL
 			? fs_charset_to_utf8(uri_fs)
-			: g_strdup("");
+			: strdup("");
 
 		if (uri_utf8 != NULL)
 			/* this function will take care of freeing
 			   uri_utf8 */
 			mpd_inotify_enqueue(uri_utf8);
+
+		free(uri_utf8);
 	}
 
-	g_free(uri_fs);
-	g_free(allocated);
+	free(uri_fs);
+	free(allocated);
 }
 
 void
@@ -340,7 +343,7 @@ mpd_inotify_init(unsigned max_depth)
 
 	inotify_max_depth = max_depth;
 
-	inotify_root.name = g_strdup(path);
+	inotify_root.name = strdup(path);
 	inotify_root.descriptor = mpd_inotify_source_add(inotify_source, path,
 							 IN_MASK, &error);
 	if (inotify_root.descriptor < 0) {
@@ -367,7 +370,7 @@ free_watch_directory(G_GNUC_UNUSED gpointer key, gpointer value,
 {
 	struct watch_directory *directory = value;
 
-	g_free(directory->name);
+	free(directory->name);
 	g_list_free(directory->children);
 
 	if (directory != &inotify_root)

@@ -24,7 +24,7 @@
 /**
  * Align the specified size to the next 8k boundary.
  */
-G_GNUC_CONST
+MPD_CONST
 static size_t
 align_8k(size_t size)
 {
@@ -43,10 +43,10 @@ pcm_buffer_get(struct pcm_buffer *buffer, size_t size)
 
 	if (buffer->size < size) {
 		/* free the old buffer */
-		g_free(buffer->buffer);
+		free(buffer->buffer);
 
 		buffer->size = align_8k(size);
-		buffer->buffer = g_malloc(buffer->size);
+		buffer->buffer = malloc(buffer->size);
 	} else {
 		/* discard old buffer contents */
 		poison_undefined(buffer->buffer, buffer->size);

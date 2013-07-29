@@ -110,7 +110,7 @@ update_container_file(struct directory *directory,
 
 		g_message("added %s/%s",
 			  directory_get_path(directory), vtrack);
-		g_free(vtrack);
+		free(vtrack);
 	}
 
 	free(pathname);

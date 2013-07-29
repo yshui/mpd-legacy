@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 struct ape_footer {
 	unsigned char id[8];
@@ -59,9 +60,9 @@ ape_scan_internal(FILE *fp, tag_ape_callback_t callback, void *ctx)
 	remaining -= sizeof(footer);
 	assert(remaining > 10);
 
-	char *buffer = g_malloc(remaining);
+	char *buffer = malloc(remaining);
 	if (fread(buffer, 1, remaining, fp) != remaining) {
-		g_free(buffer);
+		free(buffer);
 		return false;
 	}
 
@@ -96,7 +97,7 @@ ape_scan_internal(FILE *fp, tag_ape_callback_t callback, void *ctx)
 		remaining -= size;
 	}
 
-	g_free(buffer);
+	free(buffer);
 	return true;
 }
 

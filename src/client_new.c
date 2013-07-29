@@ -24,6 +24,7 @@
 #include "resolver.h"
 #include "permission.h"
 #include "glib_socket.h"
+#include "macros.h"
 
 #include <assert.h>
 #include <sys/types.h>
@@ -75,7 +76,7 @@ client_new(struct player_control *player_control,
 			return;
 		}
 
-		g_free(hostaddr);
+		free(hostaddr);
 	}
 #endif	/* HAVE_WRAP */
 
@@ -85,7 +86,7 @@ client_new(struct player_control *player_control,
 		return;
 	}
 
-	client = g_new0(struct client, 1);
+	client = tmalloc(struct client, 1);
 	client->player_control = player_control;
 
 	client->channel = g_io_channel_new_socket(fd);
@@ -130,7 +131,7 @@ client_new(struct player_control *player_control,
 	remote = sockaddr_to_string(sa, sa_length, NULL);
 	g_log(G_LOG_DOMAIN, LOG_LEVEL_SECURE,
 	      "[%u] opened from %s", client->num, remote);
-	g_free(remote);
+	free(remote);
 }
 
 static void

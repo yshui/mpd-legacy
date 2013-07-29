@@ -33,6 +33,7 @@
 #include <glib.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 void
 playlist_print_song(FILE *file, const struct song *song)
@@ -132,7 +133,7 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 		const char *temp = g_ptr_array_index(list, i);
 		if ((playlist_append_uri(playlist, pc, temp, NULL)) != PLAYLIST_RESULT_SUCCESS) {
 			/* for windows compatibility, convert slashes */
-			char *temp2 = g_strdup(temp);
+			char *temp2 = strdup(temp);
 			char *p = temp2;
 			while (*p) {
 				if (*p == '\\')
@@ -143,7 +144,7 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 						 NULL)) != PLAYLIST_RESULT_SUCCESS) {
 				g_warning("can't add file \"%s\"", temp2);
 			}
-			g_free(temp2);
+			free(temp2);
 		}
 	}
 

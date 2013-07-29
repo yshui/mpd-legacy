@@ -58,7 +58,7 @@ bool archive_lookup(char *pathname, char **archive, char **inpath, char **suffix
 	*inpath = NULL;
 	*suffix = NULL;
 
-	pathdupe = g_strdup(pathname);
+	pathdupe = strdup(pathname);
 	len = idx = strlen(pathname);
 
 	while (idx > 0) {
@@ -105,7 +105,7 @@ bool archive_lookup(char *pathname, char **archive, char **inpath, char **suffix
 			idx--;
 		}
 	}
-	g_free(pathdupe);
+	free(pathdupe);
 	return ret;
 }
 

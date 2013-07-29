@@ -26,6 +26,8 @@
 #include "uri.h"
 #include "mapper.h"
 
+#include <stdlib.h>
+
 void
 song_print_uri(struct client *client, struct song *song)
 {
@@ -43,7 +45,7 @@ song_print_uri(struct client *client, struct song *song)
 		client_printf(client, "%s%s\n", SONG_FILE,
 			      map_to_relative_path(uri));
 
-		g_free(allocated);
+		free(allocated);
 	}
 }
 

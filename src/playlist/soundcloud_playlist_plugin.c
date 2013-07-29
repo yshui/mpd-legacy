@@ -57,7 +57,7 @@ soundcloud_init(const struct config_param *param)
 static void
 soundcloud_finish(void)
 {
-	g_free(soundcloud_config.apikey);
+	free(soundcloud_config.apikey);
 }
 
 /**

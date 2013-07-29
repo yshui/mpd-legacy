@@ -57,7 +57,7 @@ locate_item_init(struct locate_item *item,
 	if (item->tag < 0)
 		return false;
 
-	item->needle = g_strdup(needle);
+	item->needle = strdup(needle);
 
 	return true;
 }
@@ -66,7 +66,7 @@ void
 locate_item_list_free(struct locate_item_list *list)
 {
 	for (unsigned i = 0; i < list->length; ++i)
-		g_free(list->items[i].needle);
+		free(list->items[i].needle);
 
 	g_free(list);
 }
@@ -74,9 +74,11 @@ locate_item_list_free(struct locate_item_list *list)
 struct locate_item_list *
 locate_item_list_new(unsigned length)
 {
-	struct locate_item_list *list =
-		g_malloc0(sizeof(*list) - sizeof(list->items[0]) +
-			  length * sizeof(list->items[0]));
+	struct locate_item_list *list;
+	size_t size = sizeof(*list) - sizeof(list->items[0]) +
+			  length * sizeof(list->items[0]);
+	list = malloc(size);
+	memset(list, 0, size);
 	list->length = length;
 
 	return list;

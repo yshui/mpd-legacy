@@ -36,6 +36,7 @@
 #include <glib.h>
 
 #include <assert.h>
+#include <string.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "update"
@@ -87,7 +88,7 @@ static void * update_task(void *_path)
 		g_debug("finished: %s", path);
 	else
 		g_debug("finished");
-	g_free(_path);
+	free(_path);
 
 	progress = UPDATE_PROGRESS_DONE;
 	event_pipe_emit(PIPE_EVENT_UPDATE);
@@ -104,7 +105,7 @@ spawn_update_task(const char *path)
 	progress = UPDATE_PROGRESS_RUNNING;
 	modified = false;
 
-	update_thr = g_thread_create(update_task, g_strdup(path), TRUE, &e);
+	update_thr = g_thread_create(update_task, strdup(path), TRUE, &e);
 	if (update_thr == NULL)
 		MPD_ERROR("Failed to spawn update task: %s", e->message);
 
@@ -161,7 +162,7 @@ static void update_finished_event(void)
 	if (path != NULL) {
 		/* schedule the next path */
 		spawn_update_task(path);
-		g_free(path);
+		free(path);
 	} else {
 		progress = UPDATE_PROGRESS_IDLE;
 

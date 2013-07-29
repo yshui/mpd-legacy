@@ -241,10 +241,10 @@ playlist_list_open_stream_mime(struct input_stream *is)
 		return NULL;
 
 	/* probe only the portion before the semicolon*/
-	char *mime = g_strndup(is->mime, semicolon - is->mime);
+	char *mime = strndup(is->mime, semicolon - is->mime);
 	struct playlist_provider *playlist =
 		playlist_list_open_stream_mime2(is, mime);
-	g_free(mime);
+	free(mime);
 	return playlist;
 }
 

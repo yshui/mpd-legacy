@@ -24,6 +24,9 @@
 #include "client_message.h"
 #include "command.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "client"
 
@@ -128,14 +131,14 @@ client_close(struct client *client);
 static inline void
 new_cmd_list_ptr(struct client *client, const char *s)
 {
-	client->cmd_list = g_slist_prepend(client->cmd_list, g_strdup(s));
+	client->cmd_list = g_slist_prepend(client->cmd_list, strdup(s));
 }
 
 static inline void
 free_cmd_list(GSList *list)
 {
 	for (GSList *tmp = list; tmp != NULL; tmp = g_slist_next(tmp))
-		g_free(tmp->data);
+		free(tmp->data);
 
 	g_slist_free(list);
 }

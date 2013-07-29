@@ -20,6 +20,8 @@
 #include "client_message.h"
 
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 #include <glib.h>
 
 G_GNUC_PURE
@@ -56,8 +58,8 @@ client_message_init(struct client_message *msg,
 {
 	assert(msg != NULL);
 
-	msg->channel = g_strdup(channel);
-	msg->message = g_strdup(message);
+	msg->channel = strdup(channel);
+	msg->message = strdup(message);
 }
 
 void
@@ -84,8 +86,8 @@ client_message_deinit(struct client_message *msg)
 {
 	assert(msg != NULL);
 
-	g_free(msg->channel);
-	g_free(msg->message);
+	free(msg->channel);
+	free(msg->message);
 }
 
 void

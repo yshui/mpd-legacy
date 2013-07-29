@@ -24,6 +24,8 @@
 #include "tag_handler.h"
 #include "ape.h"
 
+#include <stdlib.h>
+
 const struct tag_table ape_tags[] = {
 	{ "album artist", TAG_ALBUM_ARTIST },
 	{ "year", TAG_DATE },
@@ -72,10 +74,10 @@ tag_ape_import_item(unsigned long flags,
 
 			value = n + 1;
 		} else {
-			char *p = g_strndup(value, end - value);
+			char *p = strndup(value, end - value);
 			tag_handler_invoke_tag(handler, handler_ctx,
 					       type, p);
-			g_free(p);
+			free(p);
 			recognized = true;
 			break;
 		}

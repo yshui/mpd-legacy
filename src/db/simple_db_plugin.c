@@ -607,7 +607,7 @@ simple_db_finish(struct db *_db)
 {
 	struct simple_db *db = (struct simple_db *)_db;
 
-	g_free(db->path);
+	free(db->path);
 	g_free(db);
 }
 

@@ -22,6 +22,7 @@
 #include "fifo_buffer.h"
 #include "fd_util.h"
 #include "mpd_error.h"
+#include "macros.h"
 
 #include <sys/inotify.h>
 #include <unistd.h>
@@ -107,7 +108,7 @@ mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx,
 		       GError **error_r)
 {
 	struct mpd_inotify_source *source =
-		g_new(struct mpd_inotify_source, 1);
+		tmalloc(struct mpd_inotify_source, 1);
 
 	source->fd = inotify_init_cloexec();
 	if (source->fd < 0) {

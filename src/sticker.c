@@ -20,10 +20,12 @@
 #include "config.h"
 #include "sticker.h"
 #include "idle.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <sqlite3.h>
 #include <assert.h>
+#include <string.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "sticker"
@@ -208,7 +210,7 @@ sticker_load_value(const char *type, const char *uri, const char *name)
 
 	if (ret == SQLITE_ROW) {
 		/* record found */
-		value = g_strdup((const char*)sqlite3_column_text(stmt, 0));
+		value = strdup((const char*)sqlite3_column_text(stmt, 0));
 	} else if (ret == SQLITE_DONE) {
 		/* no record found */
 		value = NULL;
@@ -257,8 +259,8 @@ sticker_list_values(GHashTable *hash, const char *type, const char *uri)
 		ret = sqlite3_step(stmt);
 		switch (ret) {
 		case SQLITE_ROW:
-			name = g_strdup((const char*)sqlite3_column_text(stmt, 0));
-			value = g_strdup((const char*)sqlite3_column_text(stmt, 1));
+			name = strdup((const char*)sqlite3_column_text(stmt, 0));
+			value = strdup((const char*)sqlite3_column_text(stmt, 1));
 			g_hash_table_insert(hash, name, value);
 			break;
 		case SQLITE_DONE:
@@ -521,10 +523,10 @@ sticker_delete_value(const char *type, const char *uri, const char *name)
 static struct sticker *
 sticker_new(void)
 {
-	struct sticker *sticker = g_new(struct sticker, 1);
+	struct sticker *sticker = tmalloc(struct sticker, 1);
 
 	sticker->table = g_hash_table_new_full(g_str_hash, g_str_equal,
-					       g_free, g_free);
+					       free, free);
 	return sticker;
 }
 

@@ -30,6 +30,7 @@
 #include "playlist_vector.h"
 #include "tag.h"
 #include "strset.h"
+#include "macros.h"
 
 #include <glib.h>
 
@@ -292,7 +293,7 @@ printInfoForAllIn(struct client *client, const char *uri_utf8,
 static ListCommandItem *
 newListCommandItem(int tagType, const struct locate_item_list *criteria)
 {
-	ListCommandItem *item = g_new(ListCommandItem, 1);
+	ListCommandItem *item = tmalloc(ListCommandItem, 1);
 
 	item->tagType = tagType;
 	item->criteria = criteria;

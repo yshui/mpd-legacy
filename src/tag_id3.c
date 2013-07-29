@@ -25,6 +25,7 @@
 #include "riff.h"
 #include "aiff.h"
 #include "conf.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <id3tag.h>
@@ -114,7 +115,7 @@ import_id3_string(bool is_id3v1, const id3_ucs4_t *ucs4)
 		}
 	}
 
-	utf8_stripped = (id3_utf8_t *)g_strdup(g_strstrip((gchar *)utf8));
+	utf8_stripped = (id3_utf8_t *)strdup(g_strstrip((gchar *)utf8));
 	g_free(utf8);
 
 	return utf8_stripped;
@@ -168,7 +169,7 @@ tag_id3_import_text_frame(struct id3_tag *tag, const struct id3_frame *frame,
 
 		tag_handler_invoke_tag(handler, handler_ctx,
 				       type, (const char *)utf8);
-		g_free(utf8);
+		free(utf8);
 	}
 }
 
@@ -223,7 +224,7 @@ tag_id3_import_comment_frame(struct id3_tag *tag,
 		return;
 
 	tag_handler_invoke_tag(handler, handler_ctx, type, (const char *)utf8);
-	g_free(utf8);
+	free(utf8);
 }
 
 /**
@@ -336,10 +337,10 @@ tag_id3_import_ufid(struct id3_tag *id3_tag,
 		if (value == NULL || length == 0)
 			continue;
 
-		char *p = g_strndup((const char *)value, length);
+		char *p = strndup((const char *)value, length);
 		tag_handler_invoke_tag(handler, handler_ctx,
 				       TAG_MUSICBRAINZ_TRACKID, p);
-		g_free(p);
+		free(p);
 	}
 }
 
@@ -431,18 +432,18 @@ tag_id3_read(FILE *stream, long offset, int whence)
 	if (tag_size <= 0) return NULL;
 
 	/* Found a tag.  Allocate a buffer and read it in. */
-	tag_buffer = g_malloc(tag_size);
+	tag_buffer = malloc(tag_size);
 	if (!tag_buffer) return NULL;
 
 	tag_buffer_size = fill_buffer(tag_buffer, tag_size, stream, offset, whence);
 	if (tag_buffer_size < tag_size) {
-		g_free(tag_buffer);
+		free(tag_buffer);
 		return NULL;
 	}
 
 	tag = id3_tag_parse(tag_buffer, tag_buffer_size);
 
-	g_free(tag_buffer);
+	free(tag_buffer);
 
 	return tag;
 }
@@ -528,16 +529,16 @@ tag_id3_riff_aiff_load(FILE *file)
 		/* too large, don't allocate so much memory */
 		return NULL;
 
-	buffer = g_malloc(size);
+	buffer = malloc(size);
 	ret = fread(buffer, size, 1, file);
 	if (ret != 1) {
 		g_warning("Failed to read RIFF chunk");
-		g_free(buffer);
+		free(buffer);
 		return NULL;
 	}
 
 	tag = id3_tag_parse(buffer, size);
-	g_free(buffer);
+	free(buffer);
 	return tag;
 }
 

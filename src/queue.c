@@ -20,6 +20,7 @@
 #include "config.h"
 #include "queue.h"
 #include "song.h"
+#include "macros.h"
 
 #include <stdlib.h>
 
@@ -311,10 +312,10 @@ queue_init(struct queue *queue, unsigned max_length)
 	queue->single = false;
 	queue->consume = false;
 
-	queue->items = g_new(struct queue_item, max_length);
-	queue->order = g_malloc(sizeof(queue->order[0]) *
+	queue->items = tmalloc(struct queue_item, max_length);
+	queue->order = malloc(sizeof(queue->order[0]) *
 				  max_length);
-	queue->id_to_position = g_malloc(sizeof(queue->id_to_position[0]) *
+	queue->id_to_position = malloc(sizeof(queue->id_to_position[0]) *
 				       max_length * QUEUE_HASH_MULT);
 
 	for (unsigned i = 0; i < max_length * QUEUE_HASH_MULT; ++i)
@@ -329,8 +330,8 @@ queue_finish(struct queue *queue)
 	queue_clear(queue);
 
 	g_free(queue->items);
-	g_free(queue->order);
-	g_free(queue->id_to_position);
+	free(queue->order);
+	free(queue->id_to_position);
 
 	g_rand_free(queue->rand);
 }

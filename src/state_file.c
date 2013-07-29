@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "state_file"
@@ -138,7 +139,7 @@ state_file_init(const char *path, struct player_control *pc)
 	if (path == NULL)
 		return;
 
-	state_file_path = g_strdup(path);
+	state_file_path = strdup(path);
 	state_file_read(pc);
 
 	save_state_source_id = g_timeout_add_seconds(5 * 60,
@@ -158,5 +159,5 @@ state_file_finish(struct player_control *pc)
 
 	state_file_write(pc);
 
-	g_free(state_file_path);
+	free(state_file_path);
 }

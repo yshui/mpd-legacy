@@ -21,6 +21,7 @@
 #include "text_input_stream.h"
 #include "input_stream.h"
 #include "fifo_buffer.h"
+#include "macros.h"
 
 #include <glib.h>
 
@@ -38,7 +39,7 @@ struct text_input_stream {
 struct text_input_stream *
 text_input_stream_new(struct input_stream *is)
 {
-	struct text_input_stream *tis = g_new(struct text_input_stream, 1);
+	struct text_input_stream *tis = tmalloc(struct text_input_stream, 1);
 
 	tis->is = is;
 	tis->buffer = fifo_buffer_new(4096);
@@ -51,7 +52,7 @@ void
 text_input_stream_free(struct text_input_stream *tis)
 {
 	fifo_buffer_free(tis->buffer);
-	g_free(tis->line);
+	free(tis->line);
 	g_free(tis);
 }
 
@@ -105,7 +106,7 @@ text_input_stream_read(struct text_input_stream *tis)
 	while (p > src && g_ascii_isspace(p[-1]))
 		--p;
 
-	tis->line = g_strndup(src, p - src);
+	tis->line = strndup(src, p - src);
 	fifo_buffer_consume(tis->buffer, length);
 	return tis->line;
 }

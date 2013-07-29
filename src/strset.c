@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "strset.h"
+#include "macros.h"
 
 #include <assert.h>
 #include <string.h>
@@ -95,7 +96,7 @@ void strset_add(struct strset *set, const char *value)
 			return;
 
 	/* insert it into the slot chain */
-	slot = g_new(struct strset_slot, 1);
+	slot = tmalloc(struct strset_slot, 1);
 	slot->next = base_slot->next;
 	slot->value = value;
 	base_slot->next = slot;

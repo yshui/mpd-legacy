@@ -51,7 +51,7 @@ client_subscribe(struct client *client, const char *channel)
 		return CLIENT_SUBSCRIBE_FULL;
 
 	client->subscriptions = g_slist_prepend(client->subscriptions,
-						g_strdup(channel));
+						strdup(channel));
 	++client->num_subscriptions;
 
 	idle_add(IDLE_SUBSCRIPTION);
@@ -68,8 +68,10 @@ client_unsubscribe(struct client *client, const char *channel)
 
 	assert(client->num_subscriptions > 0);
 
+	void *tmp = i->data;
 	client->subscriptions = g_slist_remove(client->subscriptions, i->data);
 	--client->num_subscriptions;
+	free(tmp);
 
 	idle_add(IDLE_SUBSCRIPTION);
 
@@ -83,7 +85,7 @@ void
 client_unsubscribe_all(struct client *client)
 {
 	for (GSList *i = client->subscriptions; i != NULL; i = g_slist_next(i))
-		g_free(i->data);
+		free(i->data);
 
 	g_slist_free(client->subscriptions);
 	client->subscriptions = NULL;

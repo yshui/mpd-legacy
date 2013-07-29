@@ -25,6 +25,8 @@
 #include "pcm_dither.h"
 #include "pcm_buffer.h"
 
+#include <glib.h>
+
 struct audio_format;
 
 /**

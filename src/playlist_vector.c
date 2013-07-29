@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 #include <glib.h>
 
 static struct playlist_metadata *
@@ -31,7 +32,7 @@ playlist_metadata_new(const char *name, time_t mtime)
 	assert(name != NULL);
 
 	struct playlist_metadata *pm = g_slice_new(struct playlist_metadata);
-	pm->name = g_strdup(name);
+	pm->name = strdup(name);
 	pm->mtime = mtime;
 	return pm;
 }
@@ -42,7 +43,7 @@ playlist_metadata_free(struct playlist_metadata *pm)
 	assert(pm != NULL);
 	assert(pm->name != NULL);
 
-	g_free(pm->name);
+	free(pm->name);
 	g_slice_free(struct playlist_metadata, pm);
 }
 

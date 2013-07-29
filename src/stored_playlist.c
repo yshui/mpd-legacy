@@ -30,6 +30,7 @@
 #include "idle.h"
 #include "conf.h"
 #include "glib_compat.h"
+#include "macros.h"
 
 #include <assert.h>
 #include <sys/types.h>
@@ -158,14 +159,14 @@ load_playlist_info(const char *parent_path_fs, const char *name_fs)
 	if (ret < 0 || !S_ISREG(st.st_mode))
 		return NULL;
 
-	name = g_strndup(name_fs,
+	name = strndup(name_fs,
 			 name_length + 1 - sizeof(PLAYLIST_FILE_SUFFIX));
 	name_utf8 = fs_charset_to_utf8(name);
-	g_free(name);
+	free(name);
 	if (name_utf8 == NULL)
 		return NULL;
 
-	playlist = g_new(struct stored_playlist_info, 1);
+	playlist = tmalloc(struct stored_playlist_info, 1);
 	playlist->name = name_utf8;
 	playlist->mtime = st.st_mtime;
 	return playlist;
@@ -283,7 +284,7 @@ spl_load(const char *utf8path, GError **error_r)
 
 			s = path_utf8;
 		} else
-			s = g_strdup(s);
+			s = strdup(s);
 
 		g_ptr_array_add(list, s);
 
@@ -300,7 +301,7 @@ spl_free(GPtrArray *list)
 {
 	for (unsigned i = 0; i < list->len; ++i) {
 		char *uri = g_ptr_array_index(list, i);
-		g_free(uri);
+		free(uri);
 	}
 
 	g_ptr_array_free(list, true);

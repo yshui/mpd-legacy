@@ -26,6 +26,7 @@
 #include "util/list_sort.h"
 #include "db_visitor.h"
 #include "db_lock.h"
+#include "utils.h"
 
 #include <glib.h>
 
@@ -42,8 +43,9 @@ directory_new(const char *path, struct directory *parent)
 	assert(path != NULL);
 	assert((*path == 0) == (parent == NULL));
 
-	directory = g_malloc0(sizeof(*directory) -
-			      sizeof(directory->path) + pathlen + 1);
+	size_t size = sizeof(*directory) - sizeof(directory->path) + pathlen + 1;
+	directory = malloc(size);
+	memset(directory, 0, size);
 	INIT_LIST_HEAD(&directory->children);
 	INIT_LIST_HEAD(&directory->songs);
 	INIT_LIST_HEAD(&directory->playlists);
@@ -111,13 +113,12 @@ directory_new_child(struct directory *parent, const char *name_utf8)
 		allocated = NULL;
 		path_utf8 = name_utf8;
 	} else {
-		allocated = g_strconcat(directory_get_path(parent),
-					"/", name_utf8, NULL);
+		allocated = build_filename(directory_get_path(parent), name_utf8, NULL);
 		path_utf8 = allocated;
 	}
 
 	struct directory *directory = directory_new(path_utf8, parent);
-	g_free(allocated);
+	free(allocated);
 
 	list_add_tail(&directory->siblings, &parent->children);
 	return directory;
@@ -159,7 +160,7 @@ directory_lookup_directory(struct directory *directory, const char *uri)
 	if (isRootDirectory(uri))
 		return directory;
 
-	char *duplicated = g_strdup(uri), *name = duplicated;
+	char *duplicated = strdup(uri), *name = duplicated;
 
 	while (1) {
 		char *slash = strchr(name, '/');
@@ -178,7 +179,7 @@ directory_lookup_directory(struct directory *directory, const char *uri)
 		name = slash + 1;
 	}
 
-	g_free(duplicated);
+	free(duplicated);
 
 	return directory;
 }
@@ -233,14 +234,14 @@ directory_lookup_song(struct directory *directory, const char *uri)
 	assert(directory != NULL);
 	assert(uri != NULL);
 
-	duplicated = g_strdup(uri);
+	duplicated = strdup(uri);
 	base = strrchr(duplicated, '/');
 
 	if (base != NULL) {
 		*base++ = 0;
 		directory = directory_lookup_directory(directory, duplicated);
 		if (directory == NULL) {
-			g_free(duplicated);
+			free(duplicated);
 			return NULL;
 		}
 	} else
@@ -249,7 +250,7 @@ directory_lookup_song(struct directory *directory, const char *uri)
 	struct song *song = directory_get_song(directory, base);
 	assert(song == NULL || song->parent == directory);
 
-	g_free(duplicated);
+	free(duplicated);
 	return song;
 
 }

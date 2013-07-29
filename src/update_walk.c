@@ -107,7 +107,7 @@ remove_excluded_from_directory(struct directory *directory,
 			modified = true;
 		}
 
-		g_free(name_fs);
+		free(name_fs);
 	}
 
 	struct song *song, *ns;
@@ -120,7 +120,7 @@ remove_excluded_from_directory(struct directory *directory,
 			modified = true;
 		}
 
-		g_free(name_fs);
+		free(name_fs);
 	}
 
 	db_unlock();
@@ -363,7 +363,7 @@ update_directory(struct directory *directory, const struct stat *st)
 	if (!dir) {
 		g_warning("Failed to open directory %s: %s",
 			  path_fs, g_strerror(errno));
-		g_free(path_fs);
+		free(path_fs);
 		return false;
 	}
 
@@ -393,7 +393,7 @@ update_directory(struct directory *directory, const struct stat *st)
 
 		if (skip_symlink(directory, utf8)) {
 			modified |= delete_name_in(directory, utf8);
-			g_free(utf8);
+			free(utf8);
 			continue;
 		}
 
@@ -402,7 +402,7 @@ update_directory(struct directory *directory, const struct stat *st)
 		else
 			modified |= delete_name_in(directory, utf8);
 
-		g_free(utf8);
+		free(utf8);
 	}
 
 	exclude_list_free(exclude_list);
@@ -450,7 +450,7 @@ static struct directory *
 directory_make_uri_parent_checked(const char *uri)
 {
 	struct directory *directory = db_get_root();
-	char *duplicated = g_strdup(uri);
+	char *duplicated = strdup(uri);
 	char *name_utf8 = duplicated, *slash;
 
 	while ((slash = strchr(name_utf8, '/')) != NULL) {
@@ -466,7 +466,7 @@ directory_make_uri_parent_checked(const char *uri)
 		name_utf8 = slash + 1;
 	}
 
-	g_free(duplicated);
+	free(duplicated);
 	return directory;
 }
 
@@ -477,7 +477,7 @@ update_uri(const char *uri)
 	if (parent == NULL)
 		return;
 
-	char *name = g_path_get_basename(uri);
+	char *name = strdup_basename(uri);
 
 	struct stat st;
 	if (!skip_symlink(parent, name) &&
@@ -486,7 +486,7 @@ update_uri(const char *uri)
 	else
 		modified |= delete_name_in(parent, name);
 
-	g_free(name);
+	free(name);
 }
 
 bool

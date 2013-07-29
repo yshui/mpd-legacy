@@ -68,7 +68,7 @@ strdup_chop_slash(const char *path_fs)
 	while (length > 0 && path_fs[length - 1] == G_DIR_SEPARATOR)
 		--length;
 
-	return g_strndup(path_fs, length);
+	return strndup(path_fs, length);
 }
 
 static void
@@ -130,9 +130,9 @@ void mapper_init(const char *_music_dir, const char *_playlist_dir)
 
 void mapper_finish(void)
 {
-	g_free(music_dir_utf8);
-	g_free(music_dir_fs);
-	g_free(playlist_dir_fs);
+	free(music_dir_utf8);
+	free(music_dir_fs);
+	free(playlist_dir_fs);
 }
 
 const char *
@@ -186,7 +186,7 @@ map_directory_fs(const struct directory *directory)
 	assert(music_dir_fs != NULL);
 
 	if (directory_is_root(directory))
-		return g_strdup(music_dir_fs);
+		return strdup(music_dir_fs);
 
 	return map_uri_fs(directory_get_path(directory));
 }

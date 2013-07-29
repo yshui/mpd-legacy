@@ -76,7 +76,7 @@ void initPermissions(void)
 	const struct config_param *param;
 
 	permission_passwords = g_hash_table_new_full(g_str_hash, g_str_equal,
-						     g_free, NULL);
+						     free, NULL);
 
 	permission_default = PERMISSION_READ | PERMISSION_ADD |
 	    PERMISSION_CONTROL | PERMISSION_ADMIN;
@@ -96,7 +96,7 @@ void initPermissions(void)
 					PERMISSION_PASSWORD_CHAR,
 					param->value, param->line);
 
-			password = g_strndup(param->value,
+			password = strndup(param->value,
 					     separator - param->value);
 
 			permission = parsePermissions(separator + 1);

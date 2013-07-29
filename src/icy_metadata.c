@@ -25,6 +25,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "icy_metadata"
@@ -36,7 +37,7 @@ icy_deinit(struct icy_metadata *im)
 		return;
 
 	if (im->data_rest == 0 && im->meta_size > 0)
-		g_free(im->meta_data);
+		free(im->meta_data);
 
 	if (im->tag != NULL)
 		tag_free(im->tag);
@@ -144,7 +145,7 @@ icy_meta(struct icy_metadata *im, const void *data, size_t length)
 		/* initialize metadata reader, allocate enough
 		   memory (+1 for the null terminator) */
 		im->meta_position = 0;
-		im->meta_data = g_malloc(im->meta_size + 1);
+		im->meta_data = malloc(im->meta_size + 1);
 	}
 
 	assert(im->meta_position < im->meta_size);

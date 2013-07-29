@@ -126,7 +126,7 @@ ffado_finish(struct audio_output *ao)
 {
 	struct mpd_ffado_device *fd = (struct mpd_ffado_device *)ao;
 
-	g_free(fd->device_name);
+	free(fd->device_name);
 	ao_base_finish(&fd->base);
 	g_free(fd);
 }

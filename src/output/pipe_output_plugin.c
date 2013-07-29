@@ -66,7 +66,7 @@ pipe_output_finish(struct audio_output *ao)
 {
 	struct pipe_output *pd = (struct pipe_output *)ao;
 
-	g_free(pd->cmd);
+	free(pd->cmd);
 	ao_base_finish(&pd->base);
 	g_free(pd);
 }

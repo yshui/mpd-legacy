@@ -41,7 +41,7 @@ update_queue_push(const char *path, bool discard, unsigned base)
 	if (update_queue_length == G_N_ELEMENTS(update_queue))
 		return 0;
 
-	update_queue[update_queue_length].path = g_strdup(path);
+	update_queue[update_queue_length].path = strdup(path);
 	update_queue[update_queue_length].discard = discard;
 
 	++update_queue_length;

@@ -205,7 +205,7 @@ daemonize_init(const char *user, const char *group, const char *_pidfile)
 		user_uid = pwd->pw_uid;
 		user_gid = pwd->pw_gid;
 
-		user_name = g_strdup(user);
+		user_name = strdup(user);
 
 		/* this is needed by libs such as arts */
 		g_setenv("HOME", pwd->pw_dir, true);
@@ -220,7 +220,7 @@ daemonize_init(const char *user, const char *group, const char *_pidfile)
 	}
 
 
-	pidfile = g_strdup(_pidfile);
+	pidfile = strdup(_pidfile);
 }
 
 void
@@ -229,8 +229,8 @@ daemonize_finish(void)
 	if (pidfile != NULL)
 		unlink(pidfile);
 
-	g_free(user_name);
-	g_free(pidfile);
+	free(user_name);
+	free(pidfile);
 }
 
 #endif

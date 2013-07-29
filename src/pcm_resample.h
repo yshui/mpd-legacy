@@ -27,6 +27,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include <glib.h>
+
 #ifdef HAVE_LIBSAMPLERATE
 #include <samplerate.h>
 #endif

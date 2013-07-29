@@ -73,7 +73,7 @@ static struct fifo_data *fifo_data_new(void)
 
 static void fifo_data_free(struct fifo_data *fd)
 {
-	g_free(fd->path);
+	free(fd->path);
 	g_free(fd);
 }
 

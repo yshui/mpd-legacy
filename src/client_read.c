@@ -39,7 +39,7 @@ client_read_line(struct client *client)
 	if (newline == NULL)
 		return NULL;
 
-	line = g_strndup(p, newline - p);
+	line = strndup(p, newline - p);
 	fifo_buffer_consume(client->input, newline - p + 1);
 
 	return g_strchomp(line);
@@ -56,7 +56,7 @@ client_input_received(struct client *client, size_t bytesRead)
 
 	while ((line = client_read_line(client)) != NULL) {
 		enum command_return ret = client_process_line(client, line);
-		g_free(line);
+		free(line);
 
 		if (ret == COMMAND_RETURN_KILL ||
 		    ret == COMMAND_RETURN_CLOSE)

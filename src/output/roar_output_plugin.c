@@ -137,8 +137,8 @@ roar_finish(struct audio_output *ao)
 {
 	struct roar *self = (struct roar *)ao;
 
-	g_free(self->host);
-	g_free(self->name);
+	free(self->host);
+	free(self->name);
 	g_mutex_free(self->lock);
 
 	ao_base_finish(&self->base);

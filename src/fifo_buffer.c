@@ -35,6 +35,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 struct fifo_buffer {
 	size_t size, start, end;
@@ -48,7 +49,7 @@ fifo_buffer_new(size_t size)
 
 	assert(size > 0);
 
-	buffer = (struct fifo_buffer *)g_malloc(sizeof(*buffer) -
+	buffer = (struct fifo_buffer *)malloc(sizeof(*buffer) -
 						sizeof(buffer->buffer) + size);
 
 	buffer->size = size;
@@ -96,7 +97,7 @@ fifo_buffer_free(struct fifo_buffer *buffer)
 {
 	assert(buffer != NULL);
 
-	g_free(buffer);
+	free(buffer);
 }
 
 size_t

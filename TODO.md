@@ -24,6 +24,7 @@
 * Async io -> libeio
 * Event loop -> libev
 * Other things -> we'll see
+* Need a hash table implementation. (khash.h ?)
 
 # Rants
 * Don't split source files into less-than-two-hundred-line pieces, unless you have a VERY GOOD reason. It's nonsense.

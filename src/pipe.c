@@ -21,6 +21,7 @@
 #include "pipe.h"
 #include "buffer.h"
 #include "chunk.h"
+#include "macros.h"
 
 #include <glib.h>
 
@@ -47,7 +48,7 @@ struct music_pipe {
 struct music_pipe *
 music_pipe_new(void)
 {
-	struct music_pipe *mp = g_new(struct music_pipe, 1);
+	struct music_pipe *mp = tmalloc(struct music_pipe, 1);
 
 	mp->head = NULL;
 	mp->tail_r = &mp->head;

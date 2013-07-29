@@ -24,6 +24,7 @@
 #include "conf.h"
 #include "song.h"
 #include "mpd_error.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -126,7 +127,7 @@ void tag_lib_init(void)
 	if (0 == g_ascii_strcasecmp(value, "none"))
 		return;
 
-	temp = c = s = g_strdup(value);
+	temp = c = s = strdup(value);
 	while (!quit) {
 		if (*s == ',' || *s == '\0') {
 			if (*s == '\0')
@@ -150,12 +151,12 @@ void tag_lib_init(void)
 		s++;
 	}
 
-	g_free(temp);
+	free(temp);
 }
 
 struct tag *tag_new(void)
 {
-	struct tag *ret = g_new(struct tag, 1);
+	struct tag *ret = tmalloc(struct tag, 1);
 	ret->items = NULL;
 	ret->time = -1;
 	ret->has_playlist = false;
@@ -213,9 +214,9 @@ void tag_free(struct tag *tag)
 		bulk.busy = false;
 #endif
 	} else
-		g_free(tag->items);
+		free(tag->items);
 
-	g_free(tag);
+	free(tag);
 }
 
 struct tag *tag_dup(const struct tag *tag)
@@ -229,7 +230,7 @@ struct tag *tag_dup(const struct tag *tag)
 	ret->time = tag->time;
 	ret->has_playlist = tag->has_playlist;
 	ret->num_items = tag->num_items;
-	ret->items = ret->num_items > 0 ? g_malloc(items_size(tag)) : NULL;
+	ret->items = ret->num_items > 0 ? malloc(items_size(tag)) : NULL;
 
 	g_mutex_lock(tag_pool_lock);
 	for (unsigned i = 0; i < tag->num_items; i++)
@@ -253,7 +254,7 @@ tag_merge(const struct tag *base, const struct tag *add)
 	ret = tag_new();
 	ret->time = add->time > 0 ? add->time : base->time;
 	ret->num_items = base->num_items + add->num_items;
-	ret->items = ret->num_items > 0 ? g_malloc(items_size(ret)) : NULL;
+	ret->items = ret->num_items > 0 ? malloc(items_size(ret)) : NULL;
 
 	g_mutex_lock(tag_pool_lock);
 
@@ -351,7 +352,7 @@ patch_utf8(const char *src, size_t length, const gchar *end)
 {
 	/* duplicate the string, and replace invalid bytes in that
 	   buffer */
-	char *dest = g_strdup(src);
+	char *dest = strdup(src);
 
 	do {
 		dest[end - src] = '?';
@@ -406,7 +407,7 @@ void tag_end_add(struct tag *tag)
 		if (tag->num_items > 0) {
 			/* copy the tag items from the bulk list over
 			   to a new list (which fits exactly) */
-			tag->items = g_malloc(items_size(tag));
+			tag->items = malloc(items_size(tag));
 			memcpy(tag->items, bulk.items, items_size(tag));
 		} else
 			tag->items = NULL;
@@ -446,7 +447,7 @@ clear_non_printable(const char *p, size_t length)
 	if (first == NULL)
 		return NULL;
 
-	dest = g_strndup(p, length);
+	dest = strndup(p, length);
 
 	for (size_t i = first - p; i < length; ++i)
 		if (char_is_non_printable(dest[i]))
@@ -470,7 +471,7 @@ fix_tag_value(const char *p, size_t length)
 	if (cleared == NULL)
 		cleared = utf8;
 	else
-		g_free(utf8);
+		free(utf8);
 
 	return cleared;
 }
@@ -497,7 +498,7 @@ tag_add_item_internal(struct tag *tag, enum tag_type type,
 		/* bulk list already full - switch back to non-bulk */
 		assert(bulk.busy);
 
-		tag->items = g_malloc(items_size(tag));
+		tag->items = malloc(items_size(tag));
 		memcpy(tag->items, bulk.items,
 		       items_size(tag) - sizeof(struct tag_item *));
 	}
@@ -506,7 +507,7 @@ tag_add_item_internal(struct tag *tag, enum tag_type type,
 	tag->items[i] = tag_pool_get_item(type, value, len);
 	g_mutex_unlock(tag_pool_lock);
 
-	g_free(p);
+	free(p);
 }
 
 void tag_add_item_n(struct tag *tag, enum tag_type type,

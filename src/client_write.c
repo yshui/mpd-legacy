@@ -129,7 +129,7 @@ static void client_defer_output(struct client *client,
 		return;
 	}
 
-	buf = g_malloc(alloc);
+	buf = malloc(alloc);
 	buf->size = length;
 	memcpy(buf->data, data, length);
 
@@ -256,10 +256,10 @@ void client_vprintf(struct client *client, const char *fmt, va_list args)
 		/* wtf.. */
 		return;
 
-	buffer = g_malloc(length + 1);
+	buffer = malloc(length + 1);
 	vsnprintf(buffer, length + 1, fmt, args);
 	client_write(client, buffer, length);
-	g_free(buffer);
+	free(buffer);
 #else
 	/* On mingw32, snprintf() expects a 64 bit integer instead of
 	   a "long int" for "%li".  This is not consistent with our

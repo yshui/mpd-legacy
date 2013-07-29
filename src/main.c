@@ -111,7 +111,7 @@ glue_daemonize_init(const struct options *options, GError **error_r)
 	daemonize_init(config_get_string(CONF_USER, NULL),
 		       config_get_string(CONF_GROUP, NULL),
 		       pid_file);
-	g_free(pid_file);
+	free(pid_file);
 
 	if (options->kill)
 		daemonize_kill();
@@ -136,12 +136,12 @@ glue_mapper_init(GError **error_r)
 	}
 
 	if (music_dir == NULL)
-		music_dir = g_strdup(g_get_user_special_dir(G_USER_DIRECTORY_MUSIC));
+		music_dir = strdup(g_get_user_special_dir(G_USER_DIRECTORY_MUSIC));
 
 	mapper_init(music_dir, playlist_dir);
 
-	g_free(music_dir);
-	g_free(playlist_dir);
+	free(music_dir);
+	free(playlist_dir);
 	return true;
 }
 
@@ -195,7 +195,7 @@ glue_sticker_init(void)
 	if (!sticker_global_init(sticker_file, &error))
 		MPD_ERROR("%s", error->message);
 
-	g_free(sticker_file);
+	free(sticker_file);
 #endif
 }
 
@@ -211,7 +211,7 @@ glue_state_file_init(GError **error_r)
 	}
 
 	state_file_init(path, global_player_control);
-	g_free(path);
+	free(path);
 
 	return true;
 }

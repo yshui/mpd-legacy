@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 /**
  * Allocates a new #page object, without filling the data element.
@@ -31,7 +32,7 @@
 static struct page *
 page_new(size_t size)
 {
-	struct page *page = g_malloc(sizeof(*page) + size -
+	struct page *page = malloc(sizeof(*page) + size -
 				     sizeof(page->data));
 
 	assert(size > 0);
@@ -74,7 +75,7 @@ page_free(struct page *page)
 {
 	assert(page->ref == 0);
 
-	g_free(page);
+	free(page);
 }
 
 bool

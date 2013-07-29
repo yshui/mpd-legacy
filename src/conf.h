@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <glib.h>
+#include <string.h>
 
 #define CONF_MUSIC_DIR                  "music_directory"
 #define CONF_PLAYLIST_DIR               "playlist_directory"
@@ -191,7 +192,7 @@ static inline char *
 config_dup_block_string(const struct config_param *param, const char *name,
 			const char *default_value)
 {
-	return g_strdup(config_get_block_string(param, name, default_value));
+	return strdup(config_get_block_string(param, name, default_value));
 }
 
 /**

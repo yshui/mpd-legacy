@@ -1279,7 +1279,7 @@ handle_list(struct client *client, int argc, char *argv[])
 
 		conditionals = locate_item_list_new(1);
 		conditionals->items[0].tag = TAG_ARTIST;
-		conditionals->items[0].needle = g_strdup(argv[2]);
+		conditionals->items[0].needle = strdup(argv[2]);
 	} else {
 		conditionals =
 			locate_item_list_parse(argv + 2, argc - 2);
@@ -1698,7 +1698,7 @@ handle_sticker_song(struct client *client, int argc, char *argv[])
 		}
 
 		sticker_print_value(client, argv[4], value);
-		g_free(value);
+		free(value);
 
 		return COMMAND_RETURN_OK;
 	/* list song song_id */

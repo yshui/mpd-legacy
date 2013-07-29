@@ -180,7 +180,7 @@ alsa_finish(struct audio_output *ao)
 
 	ao_base_finish(&ad->base);
 
-	g_free(ad->device);
+	free(ad->device);
 	g_free(ad);
 
 	/* free libasound's config cache */

@@ -20,15 +20,16 @@
 #include "config.h"
 #include "resolver.h"
 
-#ifndef G_OS_WIN32
+#ifndef WIN32
 #include <sys/socket.h>
 #include <netdb.h>
-#else /* G_OS_WIN32 */
+#else
 #include <ws2tcpip.h>
 #include <winsock.h>
-#endif /* G_OS_WIN32 */
+#endif
 
 #include <string.h>
+#include <stdlib.h>
 
 char *
 sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
@@ -68,7 +69,7 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
 	if (sa->sa_family == AF_UNIX)
 		/* "serv" contains corrupt information with unix
 		   sockets */
-		return g_strdup(host);
+		return strdup(host);
 #endif
 
 #ifdef HAVE_IPV6
@@ -84,7 +85,7 @@ resolve_host_port(const char *host_port, unsigned default_port,
 		  int flags, int socktype,
 		  GError **error_r)
 {
-	char *p = g_strdup(host_port);
+	char *p = strdup(host_port);
 	const char *host = p, *port = NULL;
 
 	if (host_port[0] == '[') {
@@ -128,7 +129,7 @@ resolve_host_port(const char *host_port, unsigned default_port,
 
 	struct addrinfo *ai;
 	int ret = getaddrinfo(host, port, &hints, &ai);
-	g_free(p);
+	free(p);
 	if (ret != 0) {
 		g_set_error(error_r, resolver_quark(), ret,
 			    "Failed to look up '%s': %s",
