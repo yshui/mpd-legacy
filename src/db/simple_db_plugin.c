@@ -128,11 +128,11 @@ static inline db_file db_printf(db_file file, const char *fmt, ...){
 }
 
 static inline char *db_read_text_line(db_file file, GString *buf){
-	return db_read_text_line(file, buf);
+	return read_text_line(file, buf);
 }
 
 static inline int db_close(db_file file){
-	return db_close(file);
+	return fclose(file);
 }
 
 static inline const int db_error(db_file file){
