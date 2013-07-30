@@ -85,8 +85,8 @@ fill_wave_header(struct wave_header *header, int channels, int bits,
 }
 
 static struct encoder *
-wave_encoder_init(G_GNUC_UNUSED const struct config_param *param,
-		  G_GNUC_UNUSED GError **error)
+wave_encoder_init(const struct config_param *param,
+		  GError **error)
 {
 	struct wave_encoder *encoder;
 
@@ -106,8 +106,8 @@ wave_encoder_finish(struct encoder *_encoder)
 
 static bool
 wave_encoder_open(struct encoder *_encoder,
-		  G_GNUC_UNUSED struct audio_format *audio_format,
-		  G_GNUC_UNUSED GError **error)
+		  struct audio_format *audio_format,
+		  GError **error)
 {
 	struct wave_encoder *encoder = (struct wave_encoder *)_encoder;
 
@@ -202,7 +202,7 @@ pcm24_to_wave(uint8_t *dst8, const uint32_t *src32, size_t length)
 static bool
 wave_encoder_write(struct encoder *_encoder,
 		   const void *src, size_t length,
-		   G_GNUC_UNUSED GError **error)
+		   GError **error)
 {
 	struct wave_encoder *encoder = (struct wave_encoder *)_encoder;
 
@@ -261,7 +261,7 @@ wave_encoder_read(struct encoder *_encoder, void *dest, size_t length)
 }
 
 static const char *
-wave_encoder_get_mime_type(G_GNUC_UNUSED struct encoder *_encoder)
+wave_encoder_get_mime_type(struct encoder *_encoder)
 {
 	return "audio/wav";
 }

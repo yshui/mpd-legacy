@@ -225,7 +225,7 @@ lame_encoder_close(struct encoder *_encoder)
 static bool
 lame_encoder_write(struct encoder *_encoder,
 		   const void *data, size_t length,
-		   G_GNUC_UNUSED GError **error)
+		   GError **error)
 {
 	struct lame_encoder *encoder = (struct lame_encoder *)_encoder;
 	unsigned num_frames;
@@ -283,7 +283,7 @@ lame_encoder_read(struct encoder *_encoder, void *dest, size_t length)
 }
 
 static const char *
-lame_encoder_get_mime_type(G_GNUC_UNUSED struct encoder *_encoder)
+lame_encoder_get_mime_type(struct encoder *_encoder)
 {
 	return "audio/mpeg";
 }

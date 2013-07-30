@@ -541,7 +541,7 @@ input_curl_perform(void)
  * The GSource prepare() method implementation.
  */
 static gboolean
-input_curl_source_prepare(G_GNUC_UNUSED GSource *source, gint *timeout_r)
+input_curl_source_prepare(GSource *source, gint *timeout_r)
 {
 	curl_update_fds();
 
@@ -579,7 +579,7 @@ input_curl_source_prepare(G_GNUC_UNUSED GSource *source, gint *timeout_r)
  * The GSource check() method implementation.
  */
 static gboolean
-input_curl_source_check(G_GNUC_UNUSED GSource *source)
+input_curl_source_check(GSource *source)
 {
 #if LIBCURL_VERSION_NUM >= 0x070f04
 	if (curl.timeout) {
@@ -606,9 +606,9 @@ input_curl_source_check(G_GNUC_UNUSED GSource *source)
  * used, because we're handling all events directly.
  */
 static gboolean
-input_curl_source_dispatch(G_GNUC_UNUSED GSource *source,
-			   G_GNUC_UNUSED GSourceFunc callback,
-			   G_GNUC_UNUSED gpointer user_data)
+input_curl_source_dispatch(GSource *source,
+			   GSourceFunc callback,
+			   gpointer user_data)
 {
 	if (input_curl_perform())
 		input_curl_info_read();
@@ -634,7 +634,7 @@ static GSourceFuncs curl_source_funcs = {
 
 static bool
 input_curl_init(const struct config_param *param,
-		G_GNUC_UNUSED GError **error_r)
+		GError **error_r)
 {
 	CURLcode code = curl_global_init(CURL_GLOBAL_ALL);
 	if (code != CURLE_OK) {
@@ -675,7 +675,7 @@ input_curl_init(const struct config_param *param,
 }
 
 static gpointer
-curl_destroy_sources(G_GNUC_UNUSED gpointer data)
+curl_destroy_sources(gpointer data)
 {
 	g_source_destroy(curl.source);
 
@@ -722,7 +722,7 @@ curl_total_buffer_size(const struct input_curl *c)
 #endif
 
 static void
-buffer_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+buffer_free_callback(gpointer data, gpointer user_data)
 {
 	struct buffer *buffer = data;
 
@@ -951,7 +951,7 @@ input_curl_close(struct input_stream *is)
 }
 
 static bool
-input_curl_eof(G_GNUC_UNUSED struct input_stream *is)
+input_curl_eof(struct input_stream *is)
 {
 	struct input_curl *c = (struct input_curl *)is;
 

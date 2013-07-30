@@ -172,7 +172,7 @@ struct search_add_playlist_data {
 
 static bool
 searchaddpl_visitor_song(struct song *song, void *_data,
-			 G_GNUC_UNUSED GError **error_r)
+			 GError **error_r)
 {
 	struct search_add_playlist_data *data = _data;
 

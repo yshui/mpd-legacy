@@ -239,7 +239,7 @@ oss_output_finish(struct audio_output *ao)
 #ifdef AFMT_S24_PACKED
 
 static bool
-oss_output_enable(struct audio_output *ao, G_GNUC_UNUSED GError **error_r)
+oss_output_enable(struct audio_output *ao, GError **error_r)
 {
 	struct oss_data *od = (struct oss_data *)ao;
 

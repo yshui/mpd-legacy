@@ -37,7 +37,7 @@
 /* this code was based on flac123, from flac-tools */
 
 static FLAC__StreamDecoderReadStatus
-flac_read_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
+flac_read_cb(const FLAC__StreamDecoder *fd,
 	     FLAC__byte buf[], flac_read_status_size_t *bytes,
 	     void *fdata)
 {
@@ -60,7 +60,7 @@ flac_read_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
 }
 
 static FLAC__StreamDecoderSeekStatus
-flac_seek_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
+flac_seek_cb(const FLAC__StreamDecoder *fd,
 	     FLAC__uint64 offset, void *fdata)
 {
 	struct flac_data *data = (struct flac_data *) fdata;
@@ -76,7 +76,7 @@ flac_seek_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
 }
 
 static FLAC__StreamDecoderTellStatus
-flac_tell_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
+flac_tell_cb(const FLAC__StreamDecoder *fd,
 	     FLAC__uint64 * offset, void *fdata)
 {
 	struct flac_data *data = (struct flac_data *) fdata;
@@ -90,7 +90,7 @@ flac_tell_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
 }
 
 static FLAC__StreamDecoderLengthStatus
-flac_length_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
+flac_length_cb(const FLAC__StreamDecoder *fd,
 	       FLAC__uint64 * length, void *fdata)
 {
 	struct flac_data *data = (struct flac_data *) fdata;
@@ -104,7 +104,7 @@ flac_length_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
 }
 
 static FLAC__bool
-flac_eof_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd, void *fdata)
+flac_eof_cb(const FLAC__StreamDecoder *fd, void *fdata)
 {
 	struct flac_data *data = (struct flac_data *) fdata;
 
@@ -114,7 +114,7 @@ flac_eof_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd, void *fdata)
 }
 
 static void
-flac_error_cb(G_GNUC_UNUSED const FLAC__StreamDecoder *fd,
+flac_error_cb(const FLAC__StreamDecoder *fd,
 	      FLAC__StreamDecoderErrorStatus status, void *fdata)
 {
 	flac_error_common_cb(status, (struct flac_data *) fdata);
@@ -164,7 +164,7 @@ static void flacPrintErroredState(FLAC__StreamDecoderState state)
 }
 #endif /* FLAC_API_VERSION_CURRENT >= 7 */
 
-static void flacMetadata(G_GNUC_UNUSED const FLAC__StreamDecoder * dec,
+static void flacMetadata(const FLAC__StreamDecoder * dec,
 			 const FLAC__StreamMetadata * block, void *vdata)
 {
 	flac_metadata_common_cb(block, (struct flac_data *) vdata);
@@ -389,7 +389,7 @@ flac_decode(struct decoder * decoder, struct input_stream *input_stream)
 #ifndef HAVE_OGGFLAC
 
 static bool
-oggflac_init(G_GNUC_UNUSED const struct config_param *param)
+oggflac_init(const struct config_param *param)
 {
 #if defined(FLAC_API_VERSION_CURRENT) && FLAC_API_VERSION_CURRENT > 7
 	return !!FLAC_API_SUPPORTS_OGG_FLAC;

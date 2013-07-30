@@ -123,9 +123,9 @@ input_mms_eof(struct input_stream *is)
 }
 
 static bool
-input_mms_seek(G_GNUC_UNUSED struct input_stream *is,
-	       G_GNUC_UNUSED goffset offset, G_GNUC_UNUSED int whence,
-	       G_GNUC_UNUSED GError **error_r)
+input_mms_seek(struct input_stream *is,
+	       goffset offset, int whence,
+	       GError **error_r)
 {
 	return false;
 }

@@ -63,7 +63,7 @@ level_ffmpeg_to_glib(int level)
 }
 
 static void
-mpd_ffmpeg_log_callback(G_GNUC_UNUSED void *ptr, int level,
+mpd_ffmpeg_log_callback(void *ptr, int level,
 			const char *fmt, va_list vl)
 {
 	const AVClass * cls = NULL;
@@ -175,7 +175,7 @@ mpd_ffmpeg_stream_close(struct mpd_ffmpeg_stream *stream)
 }
 
 static bool
-ffmpeg_init(G_GNUC_UNUSED const struct config_param *param)
+ffmpeg_init(const struct config_param *param)
 {
 	av_log_set_callback(mpd_ffmpeg_log_callback);
 
@@ -215,7 +215,7 @@ align16(void *p, size_t *length_p)
 }
 #endif
 
-G_GNUC_CONST
+MPD_CONST
 static double
 time_from_ffmpeg(int64_t t, const AVRational time_base)
 {
@@ -225,7 +225,7 @@ time_from_ffmpeg(int64_t t, const AVRational time_base)
 		/ (double)1024;
 }
 
-G_GNUC_CONST
+MPD_CONST
 static int64_t
 time_to_ffmpeg(double t, const AVRational time_base)
 {
@@ -386,7 +386,7 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 #define AVSampleFormat SampleFormat
 #endif
 
-G_GNUC_CONST
+MPD_CONST
 static enum sample_format
 ffmpeg_sample_format(enum AVSampleFormat sample_fmt)
 {

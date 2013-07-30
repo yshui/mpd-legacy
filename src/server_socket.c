@@ -151,8 +151,8 @@ get_remote_uid(int fd)
 }
 
 static gboolean
-server_socket_in_event(G_GNUC_UNUSED GIOChannel *source,
-		       G_GNUC_UNUSED GIOCondition condition,
+server_socket_in_event(GIOChannel *source,
+		       GIOCondition condition,
 		       gpointer data)
 {
 	struct one_socket *s = data;

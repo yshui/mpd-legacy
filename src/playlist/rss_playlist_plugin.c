@@ -75,11 +75,11 @@ get_attribute(const gchar **attribute_names, const gchar **attribute_values,
 }
 
 static void
-rss_start_element(G_GNUC_UNUSED GMarkupParseContext *context,
+rss_start_element(GMarkupParseContext *context,
 		  const gchar *element_name,
 		  const gchar **attribute_names,
 		  const gchar **attribute_values,
-		  gpointer user_data, G_GNUC_UNUSED GError **error)
+		  gpointer user_data, GError **error)
 {
 	struct rss_parser *parser = user_data;
 
@@ -124,9 +124,9 @@ rss_start_element(G_GNUC_UNUSED GMarkupParseContext *context,
 }
 
 static void
-rss_end_element(G_GNUC_UNUSED GMarkupParseContext *context,
+rss_end_element(GMarkupParseContext *context,
 		const gchar *element_name,
-		gpointer user_data, G_GNUC_UNUSED GError **error)
+		gpointer user_data, GError **error)
 {
 	struct rss_parser *parser = user_data;
 
@@ -151,9 +151,9 @@ rss_end_element(G_GNUC_UNUSED GMarkupParseContext *context,
 }
 
 static void
-rss_text(G_GNUC_UNUSED GMarkupParseContext *context,
+rss_text(GMarkupParseContext *context,
 	 const gchar *text, gsize text_len,
-	 gpointer user_data, G_GNUC_UNUSED GError **error)
+	 gpointer user_data, GError **error)
 {
 	struct rss_parser *parser = user_data;
 
@@ -180,7 +180,7 @@ static const GMarkupParser rss_parser = {
 };
 
 static void
-song_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+song_free_callback(gpointer data, gpointer user_data)
 {
 	struct song *song = data;
 

@@ -73,8 +73,8 @@ pipe_output_finish(struct audio_output *ao)
 
 static bool
 pipe_output_open(struct audio_output *ao,
-		 G_GNUC_UNUSED struct audio_format *audio_format,
-		 G_GNUC_UNUSED GError **error)
+		 struct audio_format *audio_format,
+		 GError **error)
 {
 	struct pipe_output *pd = (struct pipe_output *)ao;
 

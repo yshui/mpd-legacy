@@ -215,7 +215,7 @@ httpd_client_add(struct httpd_output *httpd, int fd)
 
 static void
 httpd_listen_in_event(int fd, const struct sockaddr *address,
-		      size_t address_length, G_GNUC_UNUSED int uid, void *ctx)
+		      size_t address_length, int uid, void *ctx)
 {
 	struct httpd_output *httpd = ctx;
 
@@ -362,7 +362,7 @@ httpd_output_open(struct audio_output *ao, struct audio_format *audio_format,
 }
 
 static void
-httpd_client_delete(gpointer data, G_GNUC_UNUSED gpointer user_data)
+httpd_client_delete(gpointer data, gpointer user_data)
 {
 	struct httpd_client *client = data;
 
@@ -434,7 +434,7 @@ httpd_output_delay(struct audio_output *ao)
 }
 
 static void
-httpd_client_check_queue(gpointer data, G_GNUC_UNUSED gpointer user_data)
+httpd_client_check_queue(gpointer data, gpointer user_data)
 {
 	struct httpd_client *client = data;
 
@@ -590,7 +590,7 @@ httpd_output_tag(struct audio_output *ao, const struct tag *tag)
 }
 
 static void
-httpd_client_cancel_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+httpd_client_cancel_callback(gpointer data, gpointer user_data)
 {
 	struct httpd_client *client = data;
 

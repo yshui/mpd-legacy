@@ -244,7 +244,7 @@ print_spl_list(struct client *client, GPtrArray *list)
 
 static enum command_return
 handle_urlhandlers(struct client *client,
-		   G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		   int argc, char *argv[])
 {
 	if (client_is_local(client))
 		client_puts(client, "handler: file://\n");
@@ -254,7 +254,7 @@ handle_urlhandlers(struct client *client,
 
 static enum command_return
 handle_decoders(struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		int argc, char *argv[])
 {
 	decoder_list_print(client);
 	return COMMAND_RETURN_OK;
@@ -262,7 +262,7 @@ handle_decoders(struct client *client,
 
 static enum command_return
 handle_tagtypes(struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		int argc, char *argv[])
 {
 	tag_print_types(client);
 	return COMMAND_RETURN_OK;
@@ -294,8 +294,8 @@ handle_playid(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_stop(G_GNUC_UNUSED struct client *client,
-	    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_stop(struct client *client,
+	    int argc, char *argv[])
 {
 	playlist_stop(&g_playlist, client->player_control);
 	return COMMAND_RETURN_OK;
@@ -303,7 +303,7 @@ handle_stop(G_GNUC_UNUSED struct client *client,
 
 static enum command_return
 handle_currentsong(struct client *client,
-		   G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		   int argc, char *argv[])
 {
 	playlist_print_current(client, &g_playlist);
 	return COMMAND_RETURN_OK;
@@ -327,7 +327,7 @@ handle_pause(struct client *client,
 
 static enum command_return
 handle_status(struct client *client,
-	      G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	      int argc, char *argv[])
 {
 	const char *state = NULL;
 	struct player_status player_status;
@@ -427,21 +427,21 @@ handle_status(struct client *client,
 }
 
 static enum command_return
-handle_kill(G_GNUC_UNUSED struct client *client,
-	    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_kill(struct client *client,
+	    int argc, char *argv[])
 {
 	return COMMAND_RETURN_KILL;
 }
 
 static enum command_return
-handle_close(G_GNUC_UNUSED struct client *client,
-	     G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_close(struct client *client,
+	     int argc, char *argv[])
 {
 	return COMMAND_RETURN_CLOSE;
 }
 
 static enum command_return
-handle_add(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_add(struct client *client, int argc, char *argv[])
 {
 	char *uri = argv[1];
 	enum playlist_result result;
@@ -532,7 +532,7 @@ handle_addid(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_delete(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_delete(struct client *client, int argc, char *argv[])
 {
 	unsigned start, end;
 	enum playlist_result result;
@@ -546,7 +546,7 @@ handle_delete(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_deleteid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_deleteid(struct client *client, int argc, char *argv[])
 {
 	unsigned id;
 	enum playlist_result result;
@@ -560,15 +560,15 @@ handle_deleteid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 
 static enum command_return
 handle_playlist(struct client *client,
-	        G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	        int argc, char *argv[])
 {
 	playlist_print_uris(client, &g_playlist);
 	return COMMAND_RETURN_OK;
 }
 
 static enum command_return
-handle_shuffle(G_GNUC_UNUSED struct client *client,
-	       G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_shuffle(struct client *client,
+	       int argc, char *argv[])
 {
 	unsigned start = 0, end = queue_length(&g_playlist.queue);
 	if (argc == 2 && !check_range(client, &start, &end, argv[1]))
@@ -579,8 +579,8 @@ handle_shuffle(G_GNUC_UNUSED struct client *client,
 }
 
 static enum command_return
-handle_clear(G_GNUC_UNUSED struct client *client,
-	     G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_clear(struct client *client,
+	     int argc, char *argv[])
 {
 	playlist_clear(&g_playlist, client->player_control);
 	return COMMAND_RETURN_OK;
@@ -588,7 +588,7 @@ handle_clear(G_GNUC_UNUSED struct client *client,
 
 static enum command_return
 handle_save(struct client *client,
-	    G_GNUC_UNUSED int argc, char *argv[])
+	    int argc, char *argv[])
 {
 	enum playlist_result result;
 
@@ -634,7 +634,7 @@ handle_load(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_listplaylist(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_listplaylist(struct client *client, int argc, char *argv[])
 {
 	if (playlist_file_print(client, argv[1], false))
 		return COMMAND_RETURN_OK;
@@ -647,7 +647,7 @@ handle_listplaylist(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 
 static enum command_return
 handle_listplaylistinfo(struct client *client,
-			G_GNUC_UNUSED int argc, char *argv[])
+			int argc, char *argv[])
 {
 	if (playlist_file_print(client, argv[1], true))
 		return COMMAND_RETURN_OK;
@@ -708,7 +708,7 @@ handle_lsinfo(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_rm(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_rm(struct client *client, int argc, char *argv[])
 {
 	GError *error = NULL;
 	return spl_delete(argv[1], &error)
@@ -717,7 +717,7 @@ handle_rm(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_rename(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_rename(struct client *client, int argc, char *argv[])
 {
 	GError *error = NULL;
 	return spl_rename(argv[1], argv[2], &error)
@@ -726,7 +726,7 @@ handle_rename(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_plchanges(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_plchanges(struct client *client, int argc, char *argv[])
 {
 	uint32_t version;
 
@@ -738,7 +738,7 @@ handle_plchanges(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_plchangesposid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_plchangesposid(struct client *client, int argc, char *argv[])
 {
 	uint32_t version;
 
@@ -978,7 +978,7 @@ handle_playlistsearch(struct client *client, int argc, char *argv[])
 
 static enum command_return
 handle_playlistdelete(struct client *client,
-		      G_GNUC_UNUSED int argc, char *argv[]) {
+		      int argc, char *argv[]) {
 	char *playlist = argv[1];
 	unsigned from;
 
@@ -992,7 +992,7 @@ handle_playlistdelete(struct client *client,
 }
 
 static enum command_return
-handle_playlistmove(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_playlistmove(struct client *client, int argc, char *argv[])
 {
 	char *playlist = argv[1];
 	unsigned from, to;
@@ -1009,7 +1009,7 @@ handle_playlistmove(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_update(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_update(struct client *client, int argc, char *argv[])
 {
 	const char *path = NULL;
 	unsigned ret;
@@ -1040,7 +1040,7 @@ handle_update(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_rescan(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_rescan(struct client *client, int argc, char *argv[])
 {
 	const char *path = NULL;
 	unsigned ret;
@@ -1068,8 +1068,8 @@ handle_rescan(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_next(G_GNUC_UNUSED struct client *client,
-	    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_next(struct client *client,
+	    int argc, char *argv[])
 {
 	/* single mode is not considered when this is user who
 	 * wants to change song. */
@@ -1083,8 +1083,8 @@ handle_next(G_GNUC_UNUSED struct client *client,
 }
 
 static enum command_return
-handle_previous(G_GNUC_UNUSED struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_previous(struct client *client,
+		int argc, char *argv[])
 {
 	playlist_previous(&g_playlist, client->player_control);
 	return COMMAND_RETURN_OK;
@@ -1153,7 +1153,7 @@ handle_prioid(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_listall(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_listall(struct client *client, int argc, char *argv[])
 {
 	const char *directory = "";
 
@@ -1167,7 +1167,7 @@ handle_listall(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_setvol(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_setvol(struct client *client, int argc, char *argv[])
 {
 	unsigned level;
 	bool success;
@@ -1191,7 +1191,7 @@ handle_setvol(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_repeat(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_repeat(struct client *client, int argc, char *argv[])
 {
 	bool status;
 	if (!check_bool(client, &status, argv[1]))
@@ -1202,7 +1202,7 @@ handle_repeat(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_single(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_single(struct client *client, int argc, char *argv[])
 {
 	bool status;
 	if (!check_bool(client, &status, argv[1]))
@@ -1213,7 +1213,7 @@ handle_single(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_consume(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_consume(struct client *client, int argc, char *argv[])
 {
 	bool status;
 	if (!check_bool(client, &status, argv[1]))
@@ -1224,7 +1224,7 @@ handle_consume(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_random(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_random(struct client *client, int argc, char *argv[])
 {
 	bool status;
 	if (!check_bool(client, &status, argv[1]))
@@ -1236,14 +1236,14 @@ handle_random(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 
 static enum command_return
 handle_stats(struct client *client,
-	     G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	     int argc, char *argv[])
 {
 	return stats_print(client);
 }
 
 static enum command_return
-handle_clearerror(G_GNUC_UNUSED struct client *client,
-		  G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_clearerror(struct client *client,
+		  int argc, char *argv[])
 {
 	pc_clear_error(client->player_control);
 	return COMMAND_RETURN_OK;
@@ -1302,7 +1302,7 @@ handle_list(struct client *client, int argc, char *argv[])
 }
 
 static enum command_return
-handle_move(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_move(struct client *client, int argc, char *argv[])
 {
 	unsigned start, end;
 	int to;
@@ -1318,7 +1318,7 @@ handle_move(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_moveid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_moveid(struct client *client, int argc, char *argv[])
 {
 	unsigned id;
 	int to;
@@ -1334,7 +1334,7 @@ handle_moveid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_swap(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_swap(struct client *client, int argc, char *argv[])
 {
 	unsigned song1, song2;
 	enum playlist_result result;
@@ -1349,7 +1349,7 @@ handle_swap(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_swapid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_swapid(struct client *client, int argc, char *argv[])
 {
 	unsigned id1, id2;
 	enum playlist_result result;
@@ -1364,7 +1364,7 @@ handle_swapid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_seek(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_seek(struct client *client, int argc, char *argv[])
 {
 	unsigned song, seek_time;
 	enum playlist_result result;
@@ -1380,7 +1380,7 @@ handle_seek(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_seekid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_seekid(struct client *client, int argc, char *argv[])
 {
 	unsigned id, seek_time;
 	enum playlist_result result;
@@ -1396,7 +1396,7 @@ handle_seekid(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_seekcur(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_seekcur(struct client *client, int argc, char *argv[])
 {
 	const char *p = argv[1];
 	bool relative = *p == '+' || *p == '-';
@@ -1411,7 +1411,7 @@ handle_seekcur(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_listallinfo(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_listallinfo(struct client *client, int argc, char *argv[])
 {
 	const char *directory = "";
 
@@ -1425,14 +1425,14 @@ handle_listallinfo(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_ping(G_GNUC_UNUSED struct client *client,
-	    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+handle_ping(struct client *client,
+	    int argc, char *argv[])
 {
 	return COMMAND_RETURN_OK;
 }
 
 static enum command_return
-handle_password(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_password(struct client *client, int argc, char *argv[])
 {
 	unsigned permission = 0;
 
@@ -1447,7 +1447,7 @@ handle_password(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_crossfade(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_crossfade(struct client *client, int argc, char *argv[])
 {
 	unsigned xfade_time;
 
@@ -1459,7 +1459,7 @@ handle_crossfade(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_mixrampdb(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_mixrampdb(struct client *client, int argc, char *argv[])
 {
 	float db;
 
@@ -1471,7 +1471,7 @@ handle_mixrampdb(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_mixrampdelay(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_mixrampdelay(struct client *client, int argc, char *argv[])
 {
 	float delay_secs;
 
@@ -1483,7 +1483,7 @@ handle_mixrampdelay(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_enableoutput(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_enableoutput(struct client *client, int argc, char *argv[])
 {
 	unsigned device;
 	bool ret;
@@ -1502,7 +1502,7 @@ handle_enableoutput(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_disableoutput(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_disableoutput(struct client *client, int argc, char *argv[])
 {
 	unsigned device;
 	bool ret;
@@ -1522,7 +1522,7 @@ handle_disableoutput(struct client *client, G_GNUC_UNUSED int argc, char *argv[]
 
 static enum command_return
 handle_devices(struct client *client,
-	       G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	       int argc, char *argv[])
 {
 	printAudioDevices(client);
 
@@ -1532,15 +1532,15 @@ handle_devices(struct client *client,
 /* don't be fooled, this is the command handler for "commands" command */
 static enum command_return
 handle_commands(struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[]);
+		int argc, char *argv[]);
 
 static enum command_return
 handle_not_commands(struct client *client,
-		    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[]);
+		    int argc, char *argv[]);
 
 static enum command_return
 handle_config(struct client *client,
-	      G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	      int argc, char *argv[])
 {
 	if (!client_is_local(client)) {
 		command_error(client, ACK_ERROR_PERMISSION,
@@ -1556,7 +1556,7 @@ handle_config(struct client *client,
 }
 
 static enum command_return
-handle_playlistclear(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_playlistclear(struct client *client, int argc, char *argv[])
 {
 	GError *error = NULL;
 	return spl_clear(argv[1], &error)
@@ -1565,7 +1565,7 @@ handle_playlistclear(struct client *client, G_GNUC_UNUSED int argc, char *argv[]
 }
 
 static enum command_return
-handle_playlistadd(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_playlistadd(struct client *client, int argc, char *argv[])
 {
 	char *playlist = argv[1];
 	char *uri = argv[2];
@@ -1594,7 +1594,7 @@ handle_playlistadd(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 
 static enum command_return
 handle_listplaylists(struct client *client,
-		     G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		     int argc, char *argv[])
 {
 	GError *error = NULL;
 	GPtrArray *list = spl_list(&error);
@@ -1608,7 +1608,7 @@ handle_listplaylists(struct client *client,
 
 static enum command_return
 handle_replay_gain_mode(struct client *client,
-			G_GNUC_UNUSED int argc, char *argv[])
+			int argc, char *argv[])
 {
 	if (!replay_gain_set_mode_string(argv[1])) {
 		command_error(client, ACK_ERROR_ARG,
@@ -1621,7 +1621,7 @@ handle_replay_gain_mode(struct client *client,
 
 static enum command_return
 handle_replay_gain_status(struct client *client,
-			  G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+			  int argc, char *argv[])
 {
 	client_printf(client, "replay_gain_mode: %s\n",
 		      replay_gain_get_mode_string());
@@ -1630,7 +1630,7 @@ handle_replay_gain_status(struct client *client,
 
 static enum command_return
 handle_idle(struct client *client,
-	    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+	    int argc, char *argv[])
 {
         unsigned flags = 0, j;
         int i;
@@ -1820,7 +1820,7 @@ handle_sticker(struct client *client, int argc, char *argv[])
 #endif
 
 static enum command_return
-handle_subscribe(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_subscribe(struct client *client, int argc, char *argv[])
 {
 	assert(argc == 2);
 
@@ -1849,7 +1849,7 @@ handle_subscribe(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
 }
 
 static enum command_return
-handle_unsubscribe(struct client *client, G_GNUC_UNUSED int argc, char *argv[])
+handle_unsubscribe(struct client *client, int argc, char *argv[])
 {
 	assert(argc == 2);
 
@@ -1888,7 +1888,7 @@ collect_channels(gpointer data, gpointer user_data)
 }
 
 static void
-print_channel(gpointer key, G_GNUC_UNUSED gpointer value, gpointer user_data)
+print_channel(gpointer key, gpointer value, gpointer user_data)
 {
 	struct client *client = user_data;
 	const char *channel = key;
@@ -1898,7 +1898,7 @@ print_channel(gpointer key, G_GNUC_UNUSED gpointer value, gpointer user_data)
 
 static enum command_return
 handle_channels(struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		int argc, char *argv[])
 {
 	assert(argc == 1);
 
@@ -1919,7 +1919,7 @@ handle_channels(struct client *client,
 
 static enum command_return
 handle_read_messages(struct client *client,
-		     G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		     int argc, char *argv[])
 {
 	assert(argc == 1);
 
@@ -1956,7 +1956,7 @@ send_message(gpointer data, gpointer user_data)
 
 static enum command_return
 handle_send_message(struct client *client,
-		    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		    int argc, char *argv[])
 {
 	assert(argc == 3);
 
@@ -2085,7 +2085,7 @@ static const struct command commands[] = {
 static const unsigned num_commands = sizeof(commands) / sizeof(commands[0]);
 
 static bool
-command_available(G_GNUC_UNUSED const struct command *cmd)
+command_available(const struct command *cmd)
 {
 #ifdef ENABLE_SQLITE
 	if (strcmp(cmd->cmd, "sticker") == 0)
@@ -2098,7 +2098,7 @@ command_available(G_GNUC_UNUSED const struct command *cmd)
 /* don't be fooled, this is the command handler for "commands" command */
 static enum command_return
 handle_commands(struct client *client,
-		G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		int argc, char *argv[])
 {
 	const unsigned permission = client_get_permission(client);
 	const struct command *cmd;
@@ -2116,7 +2116,7 @@ handle_commands(struct client *client,
 
 static enum command_return
 handle_not_commands(struct client *client,
-		    G_GNUC_UNUSED int argc, G_GNUC_UNUSED char *argv[])
+		    int argc, char *argv[])
 {
 	const unsigned permission = client_get_permission(client);
 	const struct command *cmd;

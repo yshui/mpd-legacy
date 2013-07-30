@@ -224,7 +224,7 @@ fifo_output_finish(struct audio_output *ao)
 
 static bool
 fifo_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		 G_GNUC_UNUSED GError **error)
+		 GError **error)
 {
 	struct fifo_data *fd = (struct fifo_data *)ao;
 

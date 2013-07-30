@@ -66,11 +66,11 @@ struct xspf_parser {
 };
 
 static void
-xspf_start_element(G_GNUC_UNUSED GMarkupParseContext *context,
+xspf_start_element(GMarkupParseContext *context,
 		   const gchar *element_name,
-		   G_GNUC_UNUSED const gchar **attribute_names,
-		   G_GNUC_UNUSED const gchar **attribute_values,
-		   gpointer user_data, G_GNUC_UNUSED GError **error)
+		   const gchar **attribute_names,
+		   const gchar **attribute_values,
+		   gpointer user_data, GError **error)
 {
 	struct xspf_parser *parser = user_data;
 
@@ -120,9 +120,9 @@ xspf_start_element(G_GNUC_UNUSED GMarkupParseContext *context,
 }
 
 static void
-xspf_end_element(G_GNUC_UNUSED GMarkupParseContext *context,
+xspf_end_element(GMarkupParseContext *context,
 		 const gchar *element_name,
-		 gpointer user_data, G_GNUC_UNUSED GError **error)
+		 gpointer user_data, GError **error)
 {
 	struct xspf_parser *parser = user_data;
 
@@ -161,9 +161,9 @@ xspf_end_element(G_GNUC_UNUSED GMarkupParseContext *context,
 }
 
 static void
-xspf_text(G_GNUC_UNUSED GMarkupParseContext *context,
+xspf_text(GMarkupParseContext *context,
 	  const gchar *text, gsize text_len,
-	  gpointer user_data, G_GNUC_UNUSED GError **error)
+	  gpointer user_data, GError **error)
 {
 	struct xspf_parser *parser = user_data;
 
@@ -202,7 +202,7 @@ static const GMarkupParser xspf_parser = {
 };
 
 static void
-song_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+song_free_callback(gpointer data, gpointer user_data)
 {
 	struct song *song = data;
 

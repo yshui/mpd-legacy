@@ -46,7 +46,7 @@ mpd_inotify_queue_init(void)
 }
 
 static void
-free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+free_callback(gpointer data, gpointer user_data)
 {
 	g_free(data);
 }
@@ -62,7 +62,7 @@ mpd_inotify_queue_finish(void)
 }
 
 static gboolean
-mpd_inotify_run_update(G_GNUC_UNUSED gpointer data)
+mpd_inotify_run_update(gpointer data)
 {
 	unsigned id;
 

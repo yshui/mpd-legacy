@@ -71,7 +71,7 @@ dsdiff_init(const struct config_param *param)
  * Read the "size" attribute from the specified header, converting it
  * to the host byte order if needed.
  */
-G_GNUC_CONST
+MPD_CONST
 static uint64_t
 dsdiff_chunk_size(const struct dsdiff_chunk_header *header)
 {
@@ -349,8 +349,8 @@ dsdiff_stream_decode(struct decoder *decoder, struct input_stream *is)
 
 static bool
 dsdiff_scan_stream(struct input_stream *is,
-		   G_GNUC_UNUSED const struct tag_handler *handler,
-		   G_GNUC_UNUSED void *handler_ctx)
+		   const struct tag_handler *handler,
+		   void *handler_ctx)
 {
 	struct dsdiff_metadata metadata = {
 		.sample_rate = 0,

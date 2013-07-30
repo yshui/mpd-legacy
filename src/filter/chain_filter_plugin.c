@@ -41,8 +41,8 @@ filter_quark(void)
 }
 
 static struct filter *
-chain_filter_init(G_GNUC_UNUSED const struct config_param *param,
-		  G_GNUC_UNUSED GError **error_r)
+chain_filter_init(const struct config_param *param,
+		  GError **error_r)
 {
 	struct filter_chain *chain = g_new(struct filter_chain, 1);
 
@@ -53,7 +53,7 @@ chain_filter_init(G_GNUC_UNUSED const struct config_param *param,
 }
 
 static void
-chain_free_child(gpointer data, G_GNUC_UNUSED gpointer user_data)
+chain_free_child(gpointer data, gpointer user_data)
 {
 	struct filter *filter = data;
 
@@ -147,7 +147,7 @@ chain_filter_open(struct filter *_filter, struct audio_format *in_audio_format,
 }
 
 static void
-chain_close_child(gpointer data, G_GNUC_UNUSED gpointer user_data)
+chain_close_child(gpointer data, gpointer user_data)
 {
 	struct filter *filter = data;
 

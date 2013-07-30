@@ -246,7 +246,7 @@ watch_directory_depth(const struct watch_directory *d)
 
 static void
 mpd_inotify_callback(int wd, unsigned mask,
-		     const char *name, G_GNUC_UNUSED void *ctx)
+		     const char *name, void *ctx)
 {
 	struct watch_directory *directory;
 	char *uri_fs;
@@ -366,8 +366,8 @@ mpd_inotify_init(unsigned max_depth)
 }
 
 static gboolean
-free_watch_directory(G_GNUC_UNUSED gpointer key, gpointer value,
-		     G_GNUC_UNUSED gpointer data)
+free_watch_directory(gpointer key, gpointer value,
+		     gpointer data)
 {
 	struct watch_directory *directory = value;
 

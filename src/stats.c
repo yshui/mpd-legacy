@@ -71,7 +71,7 @@ visit_tag(struct visit_data *data, const struct tag *tag)
 
 static bool
 collect_stats_song(struct song *song, void *_data,
-		   G_GNUC_UNUSED GError **error_r)
+		   GError **error_r)
 {
 	struct visit_data *data = _data;
 

@@ -33,12 +33,12 @@
 #include <errno.h>
 #include <string.h>
 
-static void exit_signal_handler(G_GNUC_UNUSED int signum)
+static void exit_signal_handler(int signum)
 {
 	g_main_loop_quit(main_loop);
 }
 
-static void reload_signal_handler(G_GNUC_UNUSED int signum)
+static void reload_signal_handler(int signum)
 {
 	event_pipe_emit_fast(PIPE_EVENT_RELOAD);
 }

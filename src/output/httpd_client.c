@@ -138,7 +138,7 @@ struct httpd_client {
 };
 
 static void
-httpd_client_unref_page(gpointer data, G_GNUC_UNUSED gpointer user_data)
+httpd_client_unref_page(gpointer data, gpointer user_data)
 {
 	struct page *page = data;
 
@@ -460,7 +460,7 @@ httpd_client_read(struct httpd_client *client)
 }
 
 static gboolean
-httpd_client_in_event(G_GNUC_UNUSED GIOChannel *source, GIOCondition condition,
+httpd_client_in_event(GIOChannel *source, GIOCondition condition,
 		      gpointer data)
 {
 	struct httpd_client *client = data;
@@ -605,7 +605,7 @@ bytes_left_till_metadata (struct httpd_client *client)
 
 static gboolean
 httpd_client_out_event(GIOChannel *source,
-		       G_GNUC_UNUSED GIOCondition condition, gpointer data)
+		       GIOCondition condition, gpointer data)
 {
 	struct httpd_client *client = data;
 	struct httpd_output *httpd = client->httpd;

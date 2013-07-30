@@ -22,14 +22,14 @@
 #include "pcm_buffer.h"
 #include "audio_format.h"
 
-G_GNUC_CONST
+MPD_CONST
 static inline uint32_t
 pcm_two_dsd_to_usb_marker1(uint8_t a, uint8_t b)
 {
 	return 0xff050000 | (a << 8) | b;
 }
 
-G_GNUC_CONST
+MPD_CONST
 static inline uint32_t
 pcm_two_dsd_to_usb_marker2(uint8_t a, uint8_t b)
 {

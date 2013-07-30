@@ -99,7 +99,7 @@ mad_fixed_to_24_buffer(int32_t *dest, const struct mad_synth *synth,
 }
 
 static bool
-mp3_plugin_init(G_GNUC_UNUSED const struct config_param *param)
+mp3_plugin_init(const struct config_param *param)
 {
 	gapless_playback = config_get_bool(CONF_GAPLESS_MP3_PLAYBACK,
 					   DEFAULT_GAPLESS_MP3_PLAYBACK);
@@ -423,7 +423,7 @@ id3_tag_query(const void *p0, size_t length)
 #endif /* !HAVE_ID3TAG */
 
 static enum mp3_action
-decode_next_frame_header(struct mp3_data *data, G_GNUC_UNUSED struct tag **tag)
+decode_next_frame_header(struct mp3_data *data, struct tag **tag)
 {
 	enum mad_layer layer;
 

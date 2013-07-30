@@ -256,7 +256,7 @@ vorbis_encoder_blockout(struct vorbis_encoder *encoder)
 }
 
 static bool
-vorbis_encoder_flush(struct encoder *_encoder, G_GNUC_UNUSED GError **error)
+vorbis_encoder_flush(struct encoder *_encoder, GError **error)
 {
 	struct vorbis_encoder *encoder = (struct vorbis_encoder *)_encoder;
 
@@ -265,7 +265,7 @@ vorbis_encoder_flush(struct encoder *_encoder, G_GNUC_UNUSED GError **error)
 }
 
 static bool
-vorbis_encoder_pre_tag(struct encoder *_encoder, G_GNUC_UNUSED GError **error)
+vorbis_encoder_pre_tag(struct encoder *_encoder, GError **error)
 {
 	struct vorbis_encoder *encoder = (struct vorbis_encoder *)_encoder;
 
@@ -296,7 +296,7 @@ copy_tag_to_vorbis_comment(vorbis_comment *vc, const struct tag *tag)
 
 static bool
 vorbis_encoder_tag(struct encoder *_encoder, const struct tag *tag,
-		   G_GNUC_UNUSED GError **error)
+		   GError **error)
 {
 	struct vorbis_encoder *encoder = (struct vorbis_encoder *)_encoder;
 	vorbis_comment comment;
@@ -335,7 +335,7 @@ pcm16_to_vorbis_buffer(float **dest, const int16_t *src,
 static bool
 vorbis_encoder_write(struct encoder *_encoder,
 		     const void *data, size_t length,
-		     G_GNUC_UNUSED GError **error)
+		     GError **error)
 {
 	struct vorbis_encoder *encoder = (struct vorbis_encoder *)_encoder;
 
@@ -386,7 +386,7 @@ vorbis_encoder_read(struct encoder *_encoder, void *_dest, size_t length)
 }
 
 static const char *
-vorbis_encoder_get_mime_type(G_GNUC_UNUSED struct encoder *_encoder)
+vorbis_encoder_get_mime_type(struct encoder *_encoder)
 {
 	return  "audio/ogg";
 }

@@ -24,7 +24,7 @@
 #include <assert.h>
 
 static gboolean
-client_out_event(G_GNUC_UNUSED GIOChannel *source, GIOCondition condition,
+client_out_event(GIOChannel *source, GIOCondition condition,
 		 gpointer data)
 {
 	struct client *client = data;
@@ -59,7 +59,7 @@ client_out_event(G_GNUC_UNUSED GIOChannel *source, GIOCondition condition,
 }
 
 gboolean
-client_in_event(G_GNUC_UNUSED GIOChannel *source, GIOCondition condition,
+client_in_event(GIOChannel *source, GIOCondition condition,
 		gpointer data)
 {
 	struct client *client = data;

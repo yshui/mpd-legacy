@@ -38,9 +38,9 @@ struct software_mixer {
 };
 
 static struct mixer *
-software_mixer_init(G_GNUC_UNUSED void *ao,
-		    G_GNUC_UNUSED const struct config_param *param,
-		    G_GNUC_UNUSED GError **error_r)
+software_mixer_init(void *ao,
+		    const struct config_param *param,
+		    GError **error_r)
 {
 	struct software_mixer *sm = g_new(struct software_mixer, 1);
 
@@ -63,7 +63,7 @@ software_mixer_finish(struct mixer *data)
 }
 
 static int
-software_mixer_get_volume(struct mixer *mixer, G_GNUC_UNUSED GError **error_r)
+software_mixer_get_volume(struct mixer *mixer, GError **error_r)
 {
 	struct software_mixer *sm = (struct software_mixer *)mixer;
 
@@ -72,7 +72,7 @@ software_mixer_get_volume(struct mixer *mixer, G_GNUC_UNUSED GError **error_r)
 
 static bool
 software_mixer_set_volume(struct mixer *mixer, unsigned volume,
-			  G_GNUC_UNUSED GError **error_r)
+			  GError **error_r)
 {
 	struct software_mixer *sm = (struct software_mixer *)mixer;
 

@@ -74,7 +74,7 @@ pulse_mixer_offline(struct pulse_mixer *pm)
  * value.
  */
 static void
-pulse_mixer_volume_cb(G_GNUC_UNUSED pa_context *context, const pa_sink_input_info *i,
+pulse_mixer_volume_cb(pa_context *context, const pa_sink_input_info *i,
 		      int eol, void *userdata)
 {
 	struct pulse_mixer *pm = userdata;
@@ -117,7 +117,7 @@ pulse_mixer_update(struct pulse_mixer *pm,
 }
 
 void
-pulse_mixer_on_connect(G_GNUC_UNUSED struct pulse_mixer *pm,
+pulse_mixer_on_connect(struct pulse_mixer *pm,
 		       struct pa_context *context)
 {
 	pa_operation *o;
@@ -150,7 +150,7 @@ pulse_mixer_on_change(struct pulse_mixer *pm,
 }
 
 static struct mixer *
-pulse_mixer_init(void *ao, G_GNUC_UNUSED const struct config_param *param,
+pulse_mixer_init(void *ao, const struct config_param *param,
 		 GError **error_r)
 {
 	struct pulse_mixer *pm;
@@ -186,7 +186,7 @@ pulse_mixer_finish(struct mixer *data)
 }
 
 static int
-pulse_mixer_get_volume(struct mixer *mixer, G_GNUC_UNUSED GError **error_r)
+pulse_mixer_get_volume(struct mixer *mixer, GError **error_r)
 {
 	struct pulse_mixer *pm = (struct pulse_mixer *) mixer;
 	int ret;

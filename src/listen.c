@@ -41,7 +41,7 @@ int listen_port;
 
 static void
 listen_callback(int fd, const struct sockaddr *address,
-		size_t address_length, int uid, G_GNUC_UNUSED void *ctx)
+		size_t address_length, int uid, void *ctx)
 {
 	client_new(global_player_control, fd, address, address_length, uid);
 }

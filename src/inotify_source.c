@@ -58,8 +58,8 @@ mpd_inotify_quark(void)
 }
 
 static gboolean
-mpd_inotify_in_event(G_GNUC_UNUSED GIOChannel *_source,
-		     G_GNUC_UNUSED GIOCondition condition,
+mpd_inotify_in_event(GIOChannel *_source,
+		     GIOCondition condition,
 		     gpointer data)
 {
 	struct mpd_inotify_source *source = data;

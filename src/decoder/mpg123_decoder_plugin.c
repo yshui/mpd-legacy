@@ -31,7 +31,7 @@
 #define G_LOG_DOMAIN "mpg123"
 
 static bool
-mpd_mpg123_init(G_GNUC_UNUSED const struct config_param *param)
+mpd_mpg123_init(const struct config_param *param)
 {
 	mpg123_init();
 

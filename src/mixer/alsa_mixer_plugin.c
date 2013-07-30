@@ -149,7 +149,7 @@ alsa_mixer_update_fds(struct alsa_mixer_source *source)
  */
 
 static gboolean
-alsa_mixer_source_prepare(GSource *_source, G_GNUC_UNUSED gint *timeout_r)
+alsa_mixer_source_prepare(GSource *_source, gint *timeout_r)
 {
 	struct alsa_mixer_source *source = (struct alsa_mixer_source *)_source;
 	alsa_mixer_update_fds(source);
@@ -173,8 +173,8 @@ alsa_mixer_source_check(GSource *_source)
 
 static gboolean
 alsa_mixer_source_dispatch(GSource *_source,
-			   G_GNUC_UNUSED GSourceFunc callback,
-			   G_GNUC_UNUSED gpointer user_data)
+			   GSourceFunc callback,
+			   gpointer user_data)
 {
 	struct alsa_mixer_source *source = (struct alsa_mixer_source *)_source;
 
@@ -206,7 +206,7 @@ static GSourceFuncs alsa_mixer_source_funcs = {
  */
 
 static int
-alsa_mixer_elem_callback(G_GNUC_UNUSED snd_mixer_elem_t *elem, unsigned mask)
+alsa_mixer_elem_callback(snd_mixer_elem_t *elem, unsigned mask)
 {
 	if (mask & SND_CTL_EVENT_MASK_VALUE)
 		event_pipe_emit(PIPE_EVENT_MIXER);
@@ -220,8 +220,8 @@ alsa_mixer_elem_callback(G_GNUC_UNUSED snd_mixer_elem_t *elem, unsigned mask)
  */
 
 static struct mixer *
-alsa_mixer_init(G_GNUC_UNUSED void *ao, const struct config_param *param,
-		G_GNUC_UNUSED GError **error_r)
+alsa_mixer_init(void *ao, const struct config_param *param,
+		GError **error_r)
 {
 	struct alsa_mixer *am = g_new(struct alsa_mixer, 1);
 

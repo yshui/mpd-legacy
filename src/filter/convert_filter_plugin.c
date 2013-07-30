@@ -55,8 +55,8 @@ struct convert_filter {
 };
 
 static struct filter *
-convert_filter_init(G_GNUC_UNUSED const struct config_param *param,
-		    G_GNUC_UNUSED GError **error_r)
+convert_filter_init(const struct config_param *param,
+		    GError **error_r)
 {
 	struct convert_filter *filter = g_new(struct convert_filter, 1);
 
@@ -72,7 +72,7 @@ convert_filter_finish(struct filter *filter)
 
 static const struct audio_format *
 convert_filter_open(struct filter *_filter, struct audio_format *audio_format,
-		    G_GNUC_UNUSED GError **error_r)
+		    GError **error_r)
 {
 	struct convert_filter *filter = (struct convert_filter *)_filter;
 

@@ -58,9 +58,9 @@ event_pipe_invoke(enum pipe_event event)
 }
 
 static gboolean
-main_notify_event(G_GNUC_UNUSED GIOChannel *source,
-		  G_GNUC_UNUSED GIOCondition condition,
-		  G_GNUC_UNUSED gpointer data)
+main_notify_event(GIOChannel *source,
+		  GIOCondition condition,
+		  gpointer data)
 {
 	char buffer[256];
 	gsize bytes_read;
@@ -160,5 +160,5 @@ void event_pipe_emit_fast(enum pipe_event event)
 
 	pipe_events[event] = true;
 
-	G_GNUC_UNUSED ssize_t nbytes = write(event_pipe[1], "", 1);
+	ssize_t nbytes = write(event_pipe[1], "", 1);
 }

@@ -59,8 +59,8 @@ input_ffmpeg_supported(void)
 }
 
 static bool
-input_ffmpeg_init(G_GNUC_UNUSED const struct config_param *param,
-		  G_GNUC_UNUSED GError **error_r)
+input_ffmpeg_init(const struct config_param *param,
+		  GError **error_r)
 {
 	av_register_all();
 
@@ -175,7 +175,7 @@ input_ffmpeg_eof(struct input_stream *is)
 
 static bool
 input_ffmpeg_seek(struct input_stream *is, goffset offset, int whence,
-		  G_GNUC_UNUSED GError **error_r)
+		  GError **error_r)
 {
 	struct input_ffmpeg *i = (struct input_ffmpeg *)is;
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,0,0)

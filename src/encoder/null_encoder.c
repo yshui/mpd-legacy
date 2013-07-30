@@ -41,8 +41,8 @@ null_encoder_quark(void)
 }
 
 static struct encoder *
-null_encoder_init(G_GNUC_UNUSED const struct config_param *param,
-		  G_GNUC_UNUSED GError **error)
+null_encoder_init(const struct config_param *param,
+		  GError **error)
 {
 	struct null_encoder *encoder;
 
@@ -71,8 +71,8 @@ null_encoder_close(struct encoder *_encoder)
 
 static bool
 null_encoder_open(struct encoder *_encoder,
-		  G_GNUC_UNUSED struct audio_format *audio_format,
-		  G_GNUC_UNUSED GError **error)
+		  struct audio_format *audio_format,
+		  GError **error)
 {
 	struct null_encoder *encoder = (struct null_encoder *)_encoder;
 
@@ -83,7 +83,7 @@ null_encoder_open(struct encoder *_encoder,
 static bool
 null_encoder_write(struct encoder *_encoder,
 		   const void *data, size_t length,
-		   G_GNUC_UNUSED GError **error)
+		   GError **error)
 {
 	struct null_encoder *encoder = (struct null_encoder *)_encoder;
 

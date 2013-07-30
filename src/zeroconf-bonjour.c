@@ -32,12 +32,12 @@ static DNSServiceRef dnsReference;
 static GIOChannel *bonjour_channel;
 
 static void
-dnsRegisterCallback(G_GNUC_UNUSED DNSServiceRef sdRef,
-		    G_GNUC_UNUSED DNSServiceFlags flags,
+dnsRegisterCallback(DNSServiceRef sdRef,
+		    DNSServiceFlags flags,
 		    DNSServiceErrorType errorCode, const char *name,
-		    G_GNUC_UNUSED const char *regtype,
-		    G_GNUC_UNUSED const char *domain,
-		    G_GNUC_UNUSED void *context)
+		    const char *regtype,
+		    const char *domain,
+		    void *context)
 {
 	if (errorCode != kDNSServiceErr_NoError) {
 		g_warning("Failed to register zeroconf service.");
@@ -49,9 +49,9 @@ dnsRegisterCallback(G_GNUC_UNUSED DNSServiceRef sdRef,
 }
 
 static gboolean
-bonjour_channel_event(G_GNUC_UNUSED GIOChannel *source,
-		      G_GNUC_UNUSED GIOCondition condition,
-		      G_GNUC_UNUSED gpointer data)
+bonjour_channel_event(GIOChannel *source,
+		      GIOCondition condition,
+		      gpointer data)
 {
 	DNSServiceProcessResult(dnsReference);
 

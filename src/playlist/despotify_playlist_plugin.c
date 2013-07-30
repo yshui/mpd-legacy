@@ -98,7 +98,7 @@ parse_playlist(struct despotify_playlist *ctx,
 }
 
 static bool
-despotify_playlist_init(G_GNUC_UNUSED const struct config_param *param)
+despotify_playlist_init(const struct config_param *param)
 {
 	return true;
 }
@@ -110,8 +110,8 @@ despotify_playlist_finish(void)
 
 
 static struct playlist_provider *
-despotify_playlist_open_uri(const char *url, G_GNUC_UNUSED GMutex *mutex,
-			    G_GNUC_UNUSED GCond *cond)
+despotify_playlist_open_uri(const char *url, GMutex *mutex,
+			    GCond *cond)
 {
 	struct despotify_playlist *ctx;
 	struct despotify_session *session;
@@ -163,7 +163,7 @@ clean_none:
 }
 
 static void
-track_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+track_free_callback(gpointer data, gpointer user_data)
 {
 	struct song *song = (struct song *)data;
 

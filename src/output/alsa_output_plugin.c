@@ -188,7 +188,7 @@ alsa_finish(struct audio_output *ao)
 }
 
 static bool
-alsa_output_enable(struct audio_output *ao, G_GNUC_UNUSED GError **error_r)
+alsa_output_enable(struct audio_output *ao, GError **error_r)
 {
 	struct alsa_data *ad = (struct alsa_data *)ao;
 

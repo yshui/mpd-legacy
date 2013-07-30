@@ -160,7 +160,7 @@ config_param_free(struct config_param *param)
 }
 
 static void
-config_param_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+config_param_free_callback(gpointer data, gpointer user_data)
 {
 	struct config_param *param = data;
 
@@ -195,7 +195,7 @@ void config_global_init(void)
 }
 
 static void
-config_param_check(gpointer data, G_GNUC_UNUSED gpointer user_data)
+config_param_check(gpointer data, gpointer user_data)
 {
 	struct config_param *param = data;
 

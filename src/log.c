@@ -92,7 +92,7 @@ chomp_length(const char *p)
 static void
 file_log_func(const gchar *log_domain,
 	      GLogLevelFlags log_level,
-	      const gchar *message, G_GNUC_UNUSED gpointer user_data)
+	      const gchar *message, gpointer user_data)
 {
 	char *converted;
 
@@ -180,7 +180,7 @@ glib_to_syslog_level(GLogLevelFlags log_level)
 static void
 syslog_log_func(const gchar *log_domain,
 		GLogLevelFlags log_level, const gchar *message,
-		G_GNUC_UNUSED gpointer user_data)
+		gpointer user_data)
 {
 	if (stdout_mode) {
 		/* fall back to the file log function during

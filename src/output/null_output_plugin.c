@@ -60,7 +60,7 @@ null_finish(struct audio_output *ao)
 
 static bool
 null_open(struct audio_output *ao, struct audio_format *audio_format,
-	  G_GNUC_UNUSED GError **error)
+	  GError **error)
 {
 	struct null_data *nd = (struct null_data *)ao;
 
@@ -90,8 +90,8 @@ null_delay(struct audio_output *ao)
 }
 
 static size_t
-null_play(struct audio_output *ao, G_GNUC_UNUSED const void *chunk, size_t size,
-	  G_GNUC_UNUSED GError **error)
+null_play(struct audio_output *ao, const void *chunk, size_t size,
+	  GError **error)
 {
 	struct null_data *nd = (struct null_data *)ao;
 	struct timer *timer = nd->timer;

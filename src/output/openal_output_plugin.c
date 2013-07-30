@@ -223,7 +223,7 @@ openal_delay(struct audio_output *ao)
 
 static size_t
 openal_play(struct audio_output *ao, const void *chunk, size_t size,
-	    G_GNUC_UNUSED GError **error)
+	    GError **error)
 {
 	struct openal_data *od = (struct openal_data *)ao;
 	ALuint buffer;

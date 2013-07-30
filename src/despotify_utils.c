@@ -11,7 +11,7 @@ static void (*registered_callbacks[8])(struct despotify_session *,
 static void *registered_callback_data[8];
 
 static void callback(struct despotify_session* ds, int sig,
-		void* data, G_GNUC_UNUSED void* callback_data)
+		void* data, void* callback_data)
 {
 	size_t i;
 

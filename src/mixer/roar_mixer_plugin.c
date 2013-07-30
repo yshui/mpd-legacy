@@ -47,8 +47,8 @@ roar_mixer_quark(void)
 }
 
 static struct mixer *
-roar_mixer_init(void *ao, G_GNUC_UNUSED const struct config_param *param,
-		G_GNUC_UNUSED GError **error_r)
+roar_mixer_init(void *ao, const struct config_param *param,
+		GError **error_r)
 {
 	roar_mixer_t *self = g_new(roar_mixer_t, 1);
 	self->self = ao;
@@ -67,19 +67,19 @@ roar_mixer_finish(struct mixer *data)
 }
 
 static void
-roar_mixer_close(G_GNUC_UNUSED struct mixer *data)
+roar_mixer_close(struct mixer *data)
 {
 }
 
 static bool
-roar_mixer_open(G_GNUC_UNUSED struct mixer *data,
-		G_GNUC_UNUSED GError **error_r)
+roar_mixer_open(struct mixer *data,
+		GError **error_r)
 {
 	return true;
 }
 
 static int
-roar_mixer_get_volume(struct mixer *mixer, G_GNUC_UNUSED GError **error_r)
+roar_mixer_get_volume(struct mixer *mixer, GError **error_r)
 {
 	roar_mixer_t *self = (roar_mixer_t *)mixer;
 	return roar_output_get_volume(self->self);
@@ -87,7 +87,7 @@ roar_mixer_get_volume(struct mixer *mixer, G_GNUC_UNUSED GError **error_r)
 
 static bool
 roar_mixer_set_volume(struct mixer *mixer, unsigned volume,
-		G_GNUC_UNUSED GError **error_r)
+		GError **error_r)
 {
 	roar_mixer_t *self = (roar_mixer_t *)mixer;
 	return roar_output_set_volume(self->self, volume);

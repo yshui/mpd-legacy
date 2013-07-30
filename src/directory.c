@@ -196,7 +196,7 @@ directory_add_song(struct directory *directory, struct song *song)
 }
 
 void
-directory_remove_song(G_GNUC_UNUSED struct directory *directory,
+directory_remove_song(struct directory *directory,
 		      struct song *song)
 {
 	assert(holding_db_lock());
@@ -256,7 +256,7 @@ directory_lookup_song(struct directory *directory, const char *uri)
 }
 
 static int
-directory_cmp(G_GNUC_UNUSED void *priv,
+directory_cmp(void *priv,
 	      struct list_head *_a, struct list_head *_b)
 {
 	const struct directory *a = (const struct directory *)_a;

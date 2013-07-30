@@ -139,7 +139,7 @@ static inline int db_error(db_file file){
 }
 #endif
 
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 simple_db_quark(void)
 {
@@ -715,7 +715,7 @@ simple_db_load(struct simple_db *db, GError **error_r)
 }
 
 static bool
-simple_db_open(struct db *_db, G_GNUC_UNUSED GError **error_r)
+simple_db_open(struct db *_db, GError **error_r)
 {
 	struct simple_db *db = (struct simple_db *)_db;
 

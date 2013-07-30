@@ -40,7 +40,7 @@ client_set_expired(struct client *client)
 }
 
 static void
-client_check_expired_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+client_check_expired_callback(gpointer data, gpointer user_data)
 {
 	struct client *client = data;
 
@@ -66,7 +66,7 @@ client_manager_expire(void)
  * An idle event which calls client_manager_expire().
  */
 static gboolean
-client_manager_expire_event(G_GNUC_UNUSED gpointer data)
+client_manager_expire_event(gpointer data)
 {
 	expire_source_id = 0;
 	client_manager_expire();

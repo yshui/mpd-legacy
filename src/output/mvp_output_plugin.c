@@ -134,7 +134,7 @@ mvp_output_test_default_device(void)
 }
 
 static struct audio_output *
-mvp_output_init(G_GNUC_UNUSED const struct config_param *param, GError **error)
+mvp_output_init(const struct config_param *param, GError **error)
 {
 	struct mvp_data *md = g_new(struct mvp_data, 1);
 

@@ -47,7 +47,7 @@ typedef struct _SearchStats {
 
 static bool
 print_visitor_directory(const struct directory *directory, void *data,
-			G_GNUC_UNUSED GError **error_r)
+			GError **error_r)
 {
 	struct client *client = data;
 
@@ -71,7 +71,7 @@ print_playlist_in_directory(struct client *client,
 
 static bool
 print_visitor_song(struct song *song, void *data,
-		   G_GNUC_UNUSED GError **error_r)
+		   GError **error_r)
 {
 	assert(song != NULL);
 	assert(song->parent != NULL);
@@ -89,7 +89,7 @@ print_visitor_song(struct song *song, void *data,
 
 static bool
 print_visitor_song_info(struct song *song, void *data,
-			G_GNUC_UNUSED GError **error_r)
+			GError **error_r)
 {
 	assert(song != NULL);
 	assert(song->parent != NULL);
@@ -108,7 +108,7 @@ print_visitor_song_info(struct song *song, void *data,
 static bool
 print_visitor_playlist(const struct playlist_metadata *playlist,
 		       const struct directory *directory, void *ctx,
-		       G_GNUC_UNUSED GError **error_r)
+		       GError **error_r)
 {
 	struct client *client = ctx;
 	print_playlist_in_directory(client, directory, playlist->name);
@@ -118,7 +118,7 @@ print_visitor_playlist(const struct playlist_metadata *playlist,
 static bool
 print_visitor_playlist_info(const struct playlist_metadata *playlist,
 			    const struct directory *directory,
-			    void *ctx, G_GNUC_UNUSED GError **error_r)
+			    void *ctx, GError **error_r)
 {
 	struct client *client = ctx;
 	print_playlist_in_directory(client, directory, playlist->name);
@@ -169,7 +169,7 @@ struct search_data {
 
 static bool
 search_visitor_song(struct song *song, void *_data,
-		    G_GNUC_UNUSED GError **error_r)
+		    GError **error_r)
 {
 	struct search_data *data = _data;
 
@@ -204,7 +204,7 @@ searchForSongsIn(struct client *client, const char *name,
 
 static bool
 find_visitor_song(struct song *song, void *_data,
-		  G_GNUC_UNUSED GError **error_r)
+		  GError **error_r)
 {
 	struct search_data *data = _data;
 
@@ -239,7 +239,7 @@ static void printSearchStats(struct client *client, SearchStats *stats)
 
 static bool
 stats_visitor_song(struct song *song, void *data,
-		   G_GNUC_UNUSED GError **error_r)
+		   GError **error_r)
 {
 	SearchStats *stats = data;
 
@@ -340,7 +340,7 @@ struct list_tags_data {
 
 static bool
 unique_tags_visitor_song(struct song *song, void *_data,
-			 G_GNUC_UNUSED GError **error_r)
+			 GError **error_r)
 {
 	struct list_tags_data *data = _data;
 	ListCommandItem *item = data->item;

@@ -118,7 +118,7 @@ pulse_output_set_mixer(struct pulse_output *po, struct pulse_mixer *pm)
 
 void
 pulse_output_clear_mixer(struct pulse_output *po,
-			 G_GNUC_UNUSED struct pulse_mixer *pm)
+			 struct pulse_mixer *pm)
 {
 	assert(po != NULL);
 	assert(pm != NULL);
@@ -185,8 +185,8 @@ pulse_wait_for_operation(struct pa_threaded_mainloop *mainloop,
  * the caller thread, to wake pulse_wait_for_operation() up.
  */
 static void
-pulse_output_stream_success_cb(G_GNUC_UNUSED pa_stream *s,
-			       G_GNUC_UNUSED int success, void *userdata)
+pulse_output_stream_success_cb(pa_stream *s,
+			       int success, void *userdata)
 {
 	struct pulse_output *po = userdata;
 
@@ -486,7 +486,7 @@ pulse_output_wait_connection(struct pulse_output *po, GError **error_r)
 #if PA_CHECK_VERSION(0,9,8)
 
 static void
-pulse_output_stream_suspended_cb(G_GNUC_UNUSED pa_stream *stream, void *userdata)
+pulse_output_stream_suspended_cb(pa_stream *stream, void *userdata)
 {
 	struct pulse_output *po = userdata;
 
@@ -532,7 +532,7 @@ pulse_output_stream_state_cb(pa_stream *stream, void *userdata)
 }
 
 static void
-pulse_output_stream_write_cb(G_GNUC_UNUSED pa_stream *stream, size_t nbytes,
+pulse_output_stream_write_cb(pa_stream *stream, size_t nbytes,
 			     void *userdata)
 {
 	struct pulse_output *po = userdata;

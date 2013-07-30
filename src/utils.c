@@ -48,7 +48,7 @@
 #include <windows.h>
 #endif
 
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 parse_path_quark(void)
 {
@@ -56,7 +56,7 @@ parse_path_quark(void)
 }
 
 char *
-parsePath(const char *path, G_GNUC_UNUSED GError **error_r)
+parsePath(const char *path, GError **error_r)
 {
 	assert(path != NULL);
 	assert(error_r == NULL || *error_r == NULL);

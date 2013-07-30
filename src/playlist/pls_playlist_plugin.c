@@ -164,7 +164,7 @@ pls_open_stream(struct input_stream *is)
 
 
 static void
-song_free_callback(gpointer data, G_GNUC_UNUSED gpointer user_data)
+song_free_callback(gpointer data, gpointer user_data)
 {
 	struct song *song = data;
 

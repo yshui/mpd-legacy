@@ -191,7 +191,7 @@ decoder_command_finished(struct decoder *decoder)
 	decoder_unlock(dc);
 }
 
-double decoder_seek_where(G_GNUC_UNUSED struct decoder * decoder)
+double decoder_seek_where(struct decoder * decoder)
 {
 	const struct decoder_control *dc = decoder->dc;
 
@@ -473,10 +473,10 @@ decoder_data(struct decoder *decoder,
 }
 
 enum decoder_command
-decoder_tag(G_GNUC_UNUSED struct decoder *decoder, struct input_stream *is,
+decoder_tag(struct decoder *decoder, struct input_stream *is,
 	    const struct tag *tag)
 {
-	G_GNUC_UNUSED const struct decoder_control *dc = decoder->dc;
+	const struct decoder_control *dc = decoder->dc;
 	enum decoder_command cmd;
 
 	assert(dc->state == DECODE_STATE_DECODE);

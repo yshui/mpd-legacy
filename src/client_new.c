@@ -135,7 +135,7 @@ client_new(struct player_control *player_control,
 }
 
 static void
-deferred_buffer_free(gpointer data, G_GNUC_UNUSED gpointer user_data)
+deferred_buffer_free(gpointer data, gpointer user_data)
 {
 	struct deferred_buffer *buffer = data;
 	g_free(buffer);

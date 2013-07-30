@@ -1536,6 +1536,8 @@ then
 	AX_APPEND_COMPILE_FLAGS([-Wstrict-prototypes])
 	AX_APPEND_COMPILE_FLAGS([-Wcast-qual])
 	AX_APPEND_COMPILE_FLAGS([-Wwrite-strings])
+	AX_APPEND_COMPILE_FLAGS([-Wno-unused-parameter])
+	AX_APPEND_COMPILE_FLAGS([-Werror=implicit-function-declaration])
 	AX_APPEND_COMPILE_FLAGS([-pedantic])
 fi
 

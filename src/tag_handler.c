@@ -44,7 +44,7 @@ const struct tag_handler add_tag_handler = {
 };
 
 static void
-full_tag_pair(const char *name, G_GNUC_UNUSED const char *value, void *ctx)
+full_tag_pair(const char *name, const char *value, void *ctx)
 {
 	struct tag *tag = ctx;
 

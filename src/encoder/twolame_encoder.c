@@ -224,7 +224,7 @@ twolame_encoder_close(struct encoder *_encoder)
 }
 
 static bool
-twolame_encoder_flush(struct encoder *_encoder, G_GNUC_UNUSED GError **error)
+twolame_encoder_flush(struct encoder *_encoder, GError **error)
 {
 	struct twolame_encoder *encoder = (struct twolame_encoder *)_encoder;
 
@@ -235,7 +235,7 @@ twolame_encoder_flush(struct encoder *_encoder, G_GNUC_UNUSED GError **error)
 static bool
 twolame_encoder_write(struct encoder *_encoder,
 		      const void *data, size_t length,
-		      G_GNUC_UNUSED GError **error)
+		      GError **error)
 {
 	struct twolame_encoder *encoder = (struct twolame_encoder *)_encoder;
 	unsigned num_frames;
@@ -289,7 +289,7 @@ twolame_encoder_read(struct encoder *_encoder, void *dest, size_t length)
 }
 
 static const char *
-twolame_encoder_get_mime_type(G_GNUC_UNUSED struct encoder *_encoder)
+twolame_encoder_get_mime_type(struct encoder *_encoder)
 {
 	return "audio/mpeg";
 }
