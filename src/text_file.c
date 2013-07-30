@@ -93,7 +93,9 @@ gz_read_text_line(gzFile file, GString *buffer)
 		p = gzgets(file, buffer->str + length,
 			  buffer->allocated_len - length);
 		if (p == NULL) {
-			if (length == 0 || ferror(file))
+			int errnum;
+			const char *errstr = gzerror(file, &errnum);
+			if (length == 0 || errnum)
 				return NULL;
 			break;
 		}
