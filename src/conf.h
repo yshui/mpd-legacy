@@ -114,7 +114,7 @@ struct config_param {
  * A GQuark for GError instances, resulting from malformed
  * configuration.
  */
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 config_quark(void)
 {

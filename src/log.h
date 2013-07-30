@@ -20,10 +20,12 @@
 #ifndef MPD_LOG_H
 #define MPD_LOG_H
 
+#include "macros.h"
+
 #include <glib.h>
 #include <stdbool.h>
 
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 log_quark(void)
 {

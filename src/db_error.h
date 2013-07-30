@@ -35,7 +35,7 @@ enum db_error {
 /**
  * Quark for GError.domain; the code is an enum #db_error.
  */
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 db_quark(void)
 {

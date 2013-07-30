@@ -63,7 +63,7 @@ pcm_range_64(int64_t sample, unsigned bits)
 	return sample;
 }
 
-G_GNUC_CONST
+MPD_CONST
 static inline int16_t
 pcm_clamp_16(int x)
 {
@@ -77,7 +77,7 @@ pcm_clamp_16(int x)
 	return x;
 }
 
-G_GNUC_CONST
+MPD_CONST
 static inline int32_t
 pcm_clamp_24(int x)
 {

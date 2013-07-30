@@ -27,7 +27,7 @@
 struct sockaddr;
 struct addrinfo;
 
-G_GNUC_CONST
+MPD_CONST
 static inline GQuark
 resolver_quark(void)
 {

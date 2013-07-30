@@ -30,7 +30,7 @@
  * Remove the "const" attribute from a string pointer.  This is a
  * dirty hack, don't use it unless you know what you're doing!
  */
-G_GNUC_CONST
+MPD_CONST
 static inline char *
 deconst_string(const char *p)
 {

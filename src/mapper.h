@@ -41,7 +41,7 @@ void mapper_finish(void);
 /**
  * Return the absolute path of the music directory encoded in UTF-8.
  */
-G_GNUC_CONST
+MPD_CONST
 const char *
 mapper_get_music_directory_utf8(void);
 
@@ -49,14 +49,14 @@ mapper_get_music_directory_utf8(void);
  * Return the absolute path of the music directory encoded in the
  * filesystem character set.
  */
-G_GNUC_CONST
+MPD_CONST
 const char *
 mapper_get_music_directory_fs(void);
 
 /**
  * Returns true if a music directory was configured.
  */
-G_GNUC_CONST
+MPD_CONST
 static inline bool
 mapper_has_music_directory(void)
 {
@@ -128,7 +128,7 @@ map_fs_to_utf8(const char *path_fs);
 /**
  * Returns the playlist directory.
  */
-G_GNUC_CONST
+MPD_CONST
 const char *
 map_spl_path(void);
 

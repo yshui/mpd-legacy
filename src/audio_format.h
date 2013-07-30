@@ -225,7 +225,7 @@ void
 audio_format_mask_apply(struct audio_format *af,
 			const struct audio_format *mask);
 
-G_GNUC_CONST
+MPD_CONST
 static inline unsigned
 sample_format_size(enum sample_format format)
 {

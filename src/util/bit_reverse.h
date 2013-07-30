@@ -20,12 +20,14 @@
 #ifndef MPD_BIT_REVERSE_H
 #define MPD_BIT_REVERSE_H
 
+#include "macros.h"
+
 #include <glib.h>
 #include <stdint.h>
 
 extern const uint8_t bit_reverse_table[256];
 
-G_GNUC_CONST
+MPD_CONST
 static inline uint8_t
 bit_reverse(uint8_t x)
 {
