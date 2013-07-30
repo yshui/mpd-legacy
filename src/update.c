@@ -68,7 +68,7 @@ static void * update_task(void *_path)
 {
 	const char *path = _path;
 
-	if (path != NULL && *path != 0)
+	if (*path != 0)
 		g_debug("starting: %s", path);
 	else
 		g_debug("starting");
@@ -84,7 +84,7 @@ static void * update_task(void *_path)
 		}
 	}
 
-	if (path != NULL && *path != 0)
+	if (*path != 0)
 		g_debug("finished: %s", path);
 	else
 		g_debug("finished");
@@ -104,6 +104,9 @@ spawn_update_task(const char *path)
 
 	progress = UPDATE_PROGRESS_RUNNING;
 	modified = false;
+
+	if(path == NULL)
+		path = "";
 
 	update_thr = g_thread_create(update_task, strdup(path), TRUE, &e);
 	if (update_thr == NULL)

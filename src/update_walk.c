@@ -495,7 +495,7 @@ update_walk(const char *path, bool discard)
 	walk_discard = discard;
 	modified = false;
 
-	if (path != NULL && !isRootDirectory(path)) {
+	if (!isRootDirectory(path)) {
 		update_uri(path);
 	} else {
 		struct directory *directory = db_get_root();
