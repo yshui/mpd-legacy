@@ -23,6 +23,7 @@
 #include "check.h"
 #include "pcm_buffer.h"
 #include "audio_format.h"
+#include "macros.h"
 
 #include <stdbool.h>
 
@@ -117,7 +118,7 @@ pcm_export_open(struct pcm_export_state *state,
 /**
  * Calculate the size of one output frame.
  */
-G_GNUC_PURE
+MPD_PURE
 size_t
 pcm_export_frame_size(const struct pcm_export_state *state,
 		      const struct audio_format *audio_format);
@@ -140,7 +141,7 @@ pcm_export(struct pcm_export_state *state, const void *src, size_t src_size,
  * destination buffer to the according number of bytes from the
  * pcm_export() source buffer.
  */
-G_GNUC_PURE
+MPD_PURE
 size_t
 pcm_export_source_size(const struct pcm_export_state *state, size_t dest_size);
 

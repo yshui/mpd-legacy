@@ -24,7 +24,7 @@
 
 #include <string.h>
 
-G_GNUC_PURE
+MPD_PURE
 static GSList *
 client_find_subscription(const struct client *client, const char *channel)
 {

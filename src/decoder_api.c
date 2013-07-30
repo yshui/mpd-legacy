@@ -80,7 +80,7 @@ decoder_initialized(struct decoder *decoder,
  * Checks if we need an "initial seek".  If so, then the initial seek
  * is prepared, and the function returns true.
  */
-G_GNUC_PURE
+MPD_PURE
 static bool
 decoder_prepare_initial_seek(struct decoder *decoder)
 {
@@ -127,7 +127,7 @@ decoder_prepare_initial_seek(struct decoder *decoder)
  * synthesized command, e.g. to seek to the beginning of the CUE
  * track.
  */
-G_GNUC_PURE
+MPD_PURE
 static enum decoder_command
 decoder_get_virtual_command(struct decoder *decoder)
 {
@@ -232,7 +232,7 @@ void decoder_seek_error(struct decoder * decoder)
  * Should be read operation be cancelled?  That is the case when the
  * player thread has sent a command such as "STOP".
  */
-G_GNUC_PURE
+MPD_PURE
 static inline bool
 decoder_check_cancel_read(const struct decoder *decoder)
 {

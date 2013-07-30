@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-G_GNUC_PURE
+MPD_PURE
 static bool
 valid_channel_char(const char ch)
 {

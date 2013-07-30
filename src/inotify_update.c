@@ -25,6 +25,7 @@
 #include "mapper.h"
 #include "path.h"
 #include "utils.h"
+#include "macros.h"
 
 #include <assert.h>
 #include <sys/inotify.h>
@@ -230,7 +231,7 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 	closedir(dir);
 }
 
-G_GNUC_PURE
+MPD_PURE
 static unsigned
 watch_directory_depth(const struct watch_directory *d)
 {

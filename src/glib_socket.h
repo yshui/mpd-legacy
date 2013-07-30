@@ -26,7 +26,7 @@
  * Portable wrapper for g_io_channel_unix_new() or
  * g_io_channel_win32_new_socket().
  */
-G_GNUC_MALLOC
+MPD_MALLOC
 static inline GIOChannel *
 g_io_channel_new_socket(int fd)
 {

@@ -20,6 +20,8 @@
 #ifndef MPD_SIMPLE_DB_PLUGIN_H
 #define MPD_SIMPLE_DB_PLUGIN_H
 
+#include "db_plugin.h"
+
 #include <glib.h>
 #include <stdbool.h>
 #include <time.h>
@@ -28,14 +30,14 @@ extern const struct db_plugin simple_db_plugin;
 
 struct db;
 
-G_GNUC_PURE
+MPD_PURE
 struct directory *
 simple_db_get_root(struct db *db);
 
 bool
 simple_db_save(struct db *db, GError **error_r);
 
-G_GNUC_PURE
+MPD_PURE
 time_t
 simple_db_get_mtime(const struct db *db);
 

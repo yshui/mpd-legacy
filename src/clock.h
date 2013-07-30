@@ -20,6 +20,8 @@
 #ifndef MPD_CLOCK_H
 #define MPD_CLOCK_H
 
+#include "macros.h"
+
 #include <glib.h>
 
 #include <stdint.h>
@@ -27,14 +29,14 @@
 /**
  * Returns the value of a monotonic clock in milliseconds.
  */
-G_GNUC_PURE
+MPD_PURE
 unsigned
 monotonic_clock_ms(void);
 
 /**
  * Returns the value of a monotonic clock in microseconds.
  */
-G_GNUC_PURE
+MPD_PURE
 uint64_t
 monotonic_clock_us(void);
 

@@ -20,6 +20,8 @@
 #ifndef MPD_CLIENT_H
 #define MPD_CLIENT_H
 
+#include "macros.h"
+
 #include <glib.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -35,28 +37,28 @@ void client_manager_deinit(void);
 void client_new(struct player_control *player_control,
 		int fd, const struct sockaddr *sa, size_t sa_length, int uid);
 
-G_GNUC_PURE
+MPD_PURE
 bool client_is_expired(const struct client *client);
 
 /**
  * returns the uid of the client process, or a negative value if the
  * uid is unknown
  */
-G_GNUC_PURE
+MPD_PURE
 int client_get_uid(const struct client *client);
 
 /**
  * Is this client running on the same machine, connected with a local
  * (UNIX domain) socket?
  */
-G_GNUC_PURE
+MPD_PURE
 static inline bool
 client_is_local(const struct client *client)
 {
 	return client_get_uid(client) > 0;
 }
 
-G_GNUC_PURE
+MPD_PURE
 unsigned client_get_permission(const struct client *client);
 
 void client_set_permission(struct client *client, unsigned permission);

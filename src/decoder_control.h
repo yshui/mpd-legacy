@@ -120,7 +120,7 @@ struct decoder_control {
 	char *mixramp_prev_end;
 };
 
-G_GNUC_MALLOC
+MPD_MALLOC
 struct decoder_control *
 dc_new(GCond *client_cond);
 

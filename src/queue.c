@@ -20,7 +20,6 @@
 #include "config.h"
 #include "queue.h"
 #include "song.h"
-#include "macros.h"
 
 #include <stdlib.h>
 
@@ -477,7 +476,7 @@ queue_shuffle_range(struct queue *queue, unsigned start, unsigned end)
 /**
  * Find the first item that has this specified priority or higher.
  */
-G_GNUC_PURE
+MPD_PURE
 static unsigned
 queue_find_priority_order(const struct queue *queue, unsigned start_order,
 			  uint8_t priority, unsigned exclude_order)
@@ -496,7 +495,7 @@ queue_find_priority_order(const struct queue *queue, unsigned start_order,
 	return queue->length;
 }
 
-G_GNUC_PURE
+MPD_PURE
 static unsigned
 queue_count_same_priority(const struct queue *queue, unsigned start_order,
 			  uint8_t priority)

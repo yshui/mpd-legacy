@@ -20,6 +20,8 @@
 #ifndef MPD_IO_THREAD_H
 #define MPD_IO_THREAD_H
 
+#include "macros.h"
+
 #include <glib.h>
 #include <stdbool.h>
 
@@ -48,25 +50,25 @@ io_thread_quit(void);
 void
 io_thread_deinit(void);
 
-G_GNUC_PURE
+MPD_PURE
 GMainContext *
 io_thread_context(void);
 
 /**
  * Is the current thread the I/O thread?
  */
-G_GNUC_PURE
+MPD_PURE
 bool
 io_thread_inside(void);
 
 guint
 io_thread_idle_add(GSourceFunc function, gpointer data);
 
-G_GNUC_MALLOC
+MPD_MALLOC
 GSource *
 io_thread_timeout_add(guint interval_ms, GSourceFunc function, gpointer data);
 
-G_GNUC_MALLOC
+MPD_MALLOC
 GSource *
 io_thread_timeout_add_seconds(guint interval,
 			      GSourceFunc function, gpointer data);

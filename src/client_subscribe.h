@@ -20,6 +20,8 @@
 #ifndef MPD_CLIENT_SUBSCRIBE_H
 #define MPD_CLIENT_SUBSCRIBE_H
 
+#include "macros.h"
+
 #include <stdbool.h>
 #include <glib.h>
 
@@ -52,7 +54,7 @@ client_unsubscribe_all(struct client *client);
 bool
 client_push_message(struct client *client, const struct client_message *msg);
 
-G_GNUC_MALLOC
+MPD_MALLOC
 GSList *
 client_read_messages(struct client *client);
 

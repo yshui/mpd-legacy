@@ -27,6 +27,7 @@
 #define MPD_DB_LOCK_H
 
 #include "check.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -41,7 +42,7 @@ extern GThread *db_mutex_holder;
 /**
  * Does the current thread hold the database lock?
  */
-G_GNUC_PURE
+MPD_PURE
 static inline bool
 holding_db_lock(void)
 {

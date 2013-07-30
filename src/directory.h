@@ -22,6 +22,7 @@
 
 #include "check.h"
 #include "util/list.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -97,14 +98,14 @@ isRootDirectory(const char *name)
 /**
  * Generic constructor for #directory object.
  */
-G_GNUC_MALLOC
+MPD_MALLOC
 struct directory *
 directory_new(const char *dirname, struct directory *parent);
 
 /**
  * Create a new root #directory object.
  */
-G_GNUC_MALLOC
+MPD_MALLOC
 static inline struct directory *
 directory_new_root(void)
 {
@@ -153,14 +154,14 @@ directory_is_root(const struct directory *directory)
 /**
  * Returns the base name of the directory.
  */
-G_GNUC_PURE
+MPD_PURE
 const char *
 directory_get_name(const struct directory *directory);
 
 /**
  * Caller must lock the #db_mutex.
  */
-G_GNUC_PURE
+MPD_PURE
 struct directory *
 directory_get_child(const struct directory *directory, const char *name);
 
@@ -172,7 +173,7 @@ directory_get_child(const struct directory *directory, const char *name);
  * @param parent the parent directory the new one will be added to
  * @param name_utf8 the UTF-8 encoded name of the new sub directory
  */
-G_GNUC_MALLOC
+MPD_MALLOC
 struct directory *
 directory_new_child(struct directory *parent, const char *name_utf8);
 
@@ -227,7 +228,7 @@ directory_remove_song(struct directory *directory, struct song *song);
  *
  * Caller must lock the #db_mutex.
  */
-G_GNUC_PURE
+MPD_PURE
 struct song *
 directory_get_song(const struct directory *directory, const char *name_utf8);
 

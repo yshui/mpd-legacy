@@ -20,6 +20,8 @@
 #ifndef MPD_OUTPUT_PLUGIN_H
 #define MPD_OUTPUT_PLUGIN_H
 
+#include "macros.h"
+
 #include <glib.h>
 
 #include <stdbool.h>
@@ -165,7 +167,7 @@ ao_plugin_test_default_device(const struct audio_output_plugin *plugin)
 		: false;
 }
 
-G_GNUC_MALLOC
+MPD_MALLOC
 struct audio_output *
 ao_plugin_init(const struct audio_output_plugin *plugin,
 	       const struct config_param *param,
@@ -187,7 +189,7 @@ ao_plugin_open(struct audio_output *ao, struct audio_format *audio_format,
 void
 ao_plugin_close(struct audio_output *ao);
 
-G_GNUC_PURE
+MPD_PURE
 unsigned
 ao_plugin_delay(struct audio_output *ao);
 

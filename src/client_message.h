@@ -20,6 +20,8 @@
 #ifndef MPD_CLIENT_MESSAGE_H
 #define MPD_CLIENT_MESSAGE_H
 
+#include "macros.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -34,11 +36,11 @@ struct client_message {
 	char *message;
 };
 
-G_GNUC_PURE
+MPD_PURE
 bool
 client_message_valid_channel_name(const char *name);
 
-G_GNUC_PURE
+MPD_PURE
 static inline bool
 client_message_defined(const struct client_message *msg)
 {
@@ -59,7 +61,7 @@ void
 client_message_copy(struct client_message *dest,
 		    const struct client_message *src);
 
-G_GNUC_MALLOC
+MPD_MALLOC
 struct client_message *
 client_message_dup(const struct client_message *src);
 

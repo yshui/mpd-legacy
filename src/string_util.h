@@ -20,6 +20,8 @@
 #ifndef MPD_STRING_UTIL_H
 #define MPD_STRING_UTIL_H
 
+#include "macros.h"
+
 #include <glib.h>
 
 #include <stdbool.h>
@@ -49,14 +51,14 @@ deconst_string(const char *p)
  * This is a faster version of g_strchug(), because it does not move
  * data.
  */
-G_GNUC_PURE
+MPD_PURE
 const char *
 strchug_fast_c(const char *p);
 
 /**
  * Same as strchug_fast_c(), but works with a writable pointer.
  */
-G_GNUC_PURE
+MPD_PURE
 static inline char *
 strchug_fast(char *p)
 {

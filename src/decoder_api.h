@@ -35,6 +35,7 @@
 #include "tag.h"
 #include "audio_format.h"
 #include "conf.h"
+#include "macros.h"
 
 #include <stdbool.h>
 

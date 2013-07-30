@@ -20,6 +20,8 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+#include "macros.h"
+
 #include <glib.h>
 
 #include <assert.h>
@@ -188,7 +190,7 @@ queue_position_to_order(const struct queue *queue, unsigned position)
 	}
 }
 
-G_GNUC_PURE
+MPD_PURE
 static inline uint8_t
 queue_get_priority_at_position(const struct queue *queue, unsigned position)
 {

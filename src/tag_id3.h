@@ -51,9 +51,9 @@ tag_id3_load(const char *path_fs, GError **error_r);
 #else
 
 static inline bool
-tag_id3_scan(G_GNUC_UNUSED const char *path_fs,
-	     G_GNUC_UNUSED const struct tag_handler *handler,
-	     G_GNUC_UNUSED void *handler_ctx)
+tag_id3_scan(const char *path_fs,
+	     const struct tag_handler *handler,
+	     void *handler_ctx)
 {
 	return false;
 }

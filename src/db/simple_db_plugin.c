@@ -566,7 +566,7 @@ simple_db_load_internal(db_file fp, struct directory *music_root, GError **error
 	return success;
 }
 
-G_GNUC_PURE
+MPD_PURE
 static const struct directory *
 simple_db_lookup_directory(const struct simple_db *db, const char *uri)
 {

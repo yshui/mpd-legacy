@@ -26,6 +26,8 @@
 #ifndef MPD_DB_PLUGIN_H
 #define MPD_DB_PLUGIN_H
 
+#include "macros.h"
+
 #include <glib.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -78,7 +80,7 @@ struct db_plugin {
 		      GError **error_r);
 };
 
-G_GNUC_MALLOC
+MPD_MALLOC
 static inline struct db *
 db_plugin_new(const struct db_plugin *plugin, const struct config_param *param,
 	      GError **error_r)

@@ -52,7 +52,7 @@ static unsigned calc_hash(const char *p) {
 	return hash;
 }
 
-G_GNUC_MALLOC struct strset *strset_new(void)
+MPD_MALLOC struct strset *strset_new(void)
 {
 	struct strset *set = g_new0(struct strset, 1);
 	return set;

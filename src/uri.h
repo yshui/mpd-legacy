@@ -20,6 +20,8 @@
 #ifndef MPD_URI_H
 #define MPD_URI_H
 
+#include "macros.h"
+
 #include <glib.h>
 
 #include <stdbool.h>
@@ -28,10 +30,10 @@
  * Checks whether the specified URI has a scheme in the form
  * "scheme://".
  */
-G_GNUC_PURE
+MPD_PURE
 bool uri_has_scheme(const char *uri);
 
-G_GNUC_PURE
+MPD_PURE
 const char *
 uri_get_suffix(const char *uri);
 
@@ -43,7 +45,7 @@ uri_get_suffix(const char *uri);
  * - no double slashes
  * - no path component begins with a dot
  */
-G_GNUC_PURE
+MPD_PURE
 bool
 uri_safe_local(const char *uri);
 
@@ -53,7 +55,7 @@ uri_safe_local(const char *uri);
  * NULL if nothing needs to be removed, or if the URI is not
  * recognized.
  */
-G_GNUC_MALLOC
+MPD_MALLOC
 char *
 uri_remove_auth(const char *uri);
 
