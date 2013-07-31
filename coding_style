@@ -1,0 +1,4 @@
+This file doesn't contain information on how many spaces you should you for
+indentation (yet).
+
+1) Macro vs static inline: always use static inline when possible.
