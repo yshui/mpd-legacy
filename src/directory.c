@@ -69,7 +69,7 @@ directory_free(struct directory *directory)
 	directory_for_each_child_safe(child, n, directory)
 		directory_free(child);
 
-	g_free(directory);
+	free(directory);
 	/* this resets last dir returned */
 	/*directory_get_path(NULL); */
 }

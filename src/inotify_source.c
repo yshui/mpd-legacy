@@ -115,7 +115,7 @@ mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx,
 		g_set_error(error_r, mpd_inotify_quark(), errno,
 			    "inotify_init() has failed: %s",
 			    g_strerror(errno));
-		g_free(source);
+		free(source);
 		return NULL;
 	}
 
@@ -138,7 +138,7 @@ mpd_inotify_source_free(struct mpd_inotify_source *source)
 	g_io_channel_unref(source->channel);
 	fifo_buffer_free(source->buffer);
 	close(source->fd);
-	g_free(source);
+	free(source);
 }
 
 int

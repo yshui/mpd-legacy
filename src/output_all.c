@@ -154,7 +154,7 @@ audio_output_all_finish(void)
 		audio_output_finish(audio_outputs[i]);
 	}
 
-	g_free(audio_outputs);
+	free(audio_outputs);
 	audio_outputs = NULL;
 	num_audio_outputs = 0;
 

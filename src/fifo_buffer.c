@@ -86,7 +86,7 @@ fifo_buffer_realloc(struct fifo_buffer *buffer, size_t new_size)
 	/* existing data must fit in new size: second check */
 	assert(buffer->end <= new_size);
 
-	buffer = g_realloc(buffer, sizeof(*buffer) - sizeof(buffer->buffer) +
+	buffer = realloc(buffer, sizeof(*buffer) - sizeof(buffer->buffer) +
 			   new_size);
 	buffer->size = new_size;
 	return buffer;

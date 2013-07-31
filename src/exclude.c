@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 
 GSList *
 exclude_list_load(const char *path_fs)
@@ -46,7 +47,7 @@ exclude_list_load(const char *path_fs)
 			char *path_utf8 = fs_charset_to_utf8(path_fs);
 			g_debug("Failed to open %s: %s",
 				path_utf8, g_strerror(errno));
-			g_free(path_utf8);
+			free(path_utf8);
 		}
 
 		return NULL;

@@ -53,7 +53,7 @@ text_input_stream_free(struct text_input_stream *tis)
 {
 	fifo_buffer_free(tis->buffer);
 	free(tis->line);
-	g_free(tis);
+	free(tis);
 }
 
 const char *
@@ -64,7 +64,7 @@ text_input_stream_read(struct text_input_stream *tis)
 	const char *src, *p;
 	size_t length, nbytes;
 
-	g_free(tis->line);
+	free(tis->line);
 	tis->line = NULL;
 
 	do {

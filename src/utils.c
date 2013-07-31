@@ -152,10 +152,6 @@ build_filename(const char *c1, ...){
 	return res;
 }
 
-bool is_alpha(char c){
-	return (c>='A' && c<='Z') || (c>='a' && c<='z');
-}
-
 char *strdup_basename (const char *file_name)
 {
 	gssize base;
@@ -213,4 +209,13 @@ char *strdup_basename (const char *file_name)
 	retval[len] = '\0';
 
 	return retval;
+}
+
+char *strdup_printf(const char *fmt, ...){
+	va_list args;
+	va_start(args, fmt);
+	int len = vsnprintf(NULL, 0, fmt, args);
+	char *buf = malloc(len);
+	vsnprintf(buf, len, fmt, args);
+	return buf;
 }

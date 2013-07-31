@@ -24,6 +24,7 @@
 #include <glib.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "inotify"
@@ -48,7 +49,7 @@ mpd_inotify_queue_init(void)
 static void
 free_callback(gpointer data, gpointer user_data)
 {
-	g_free(data);
+	free(data);
 }
 
 void
@@ -76,7 +77,7 @@ mpd_inotify_run_update(gpointer data)
 
 		g_debug("updating '%s' job=%u", uri_utf8, id);
 
-		g_free(uri_utf8);
+		free(uri_utf8);
 		inotify_queue = g_slist_delete_link(inotify_queue,
 						    inotify_queue);
 	}
@@ -112,7 +113,7 @@ mpd_inotify_enqueue(char *uri_utf8)
 
 		if (path_in(uri_utf8, current_uri)) {
 			/* already enqueued */
-			g_free(uri_utf8);
+			free(uri_utf8);
 			inotify_queue = g_slist_concat(inotify_queue,
 						       old_queue);
 			return;
@@ -124,7 +125,7 @@ mpd_inotify_enqueue(char *uri_utf8)
 			/* existing path is a sub-path of the new
 			   path; we can dequeue the existing path and
 			   update the new path instead */
-			g_free(current_uri);
+			free(current_uri);
 		else
 			/* move the existing path to the new queue */
 			inotify_queue = g_slist_prepend(inotify_queue,

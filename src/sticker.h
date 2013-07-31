@@ -72,7 +72,7 @@ sticker_enabled(void);
 
 /**
  * Returns one value from an object's sticker record.  The caller must
- * free the return value with g_free().
+ * free the return value with free().
  */
 char *
 sticker_load_value(const char *type, const char *uri, const char *name);

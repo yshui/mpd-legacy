@@ -71,7 +71,7 @@ song_replace_uri(struct song *old_song, const char *uri)
 	new_song->mtime = old_song->mtime;
 	new_song->start_ms = old_song->start_ms;
 	new_song->end_ms = old_song->end_ms;
-	g_free(old_song);
+	free(old_song);
 	return new_song;
 }
 

@@ -54,7 +54,7 @@ static unsigned calc_hash(const char *p) {
 
 MPD_MALLOC struct strset *strset_new(void)
 {
-	struct strset *set = g_new0(struct strset, 1);
+	struct strset *set = tmalloc(struct strset, 1);
 	return set;
 }
 
@@ -67,12 +67,12 @@ void strset_free(struct strset *set)
 
 		while (slot != NULL) {
 			next = slot->next;
-			g_free(slot);
+			free(slot);
 			slot = next;
 		}
 	}
 
-	g_free(set);
+	free(set);
 }
 
 void strset_add(struct strset *set, const char *value)

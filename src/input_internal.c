@@ -51,7 +51,7 @@ input_stream_deinit(struct input_stream *is)
 	assert(is->plugin != NULL);
 
 	free(is->uri);
-	g_free(is->mime);
+	free(is->mime);
 }
 
 void

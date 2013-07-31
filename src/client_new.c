@@ -71,7 +71,7 @@ client_new(struct player_control *player_control,
 			      "libwrap refused connection (libwrap=%s) from %s",
 			      progname, hostaddr);
 
-			g_free(hostaddr);
+			free(hostaddr);
 			close_socket(fd);
 			return;
 		}
@@ -138,7 +138,7 @@ static void
 deferred_buffer_free(gpointer data, gpointer user_data)
 {
 	struct deferred_buffer *buffer = data;
-	g_free(buffer);
+	free(buffer);
 }
 
 void
@@ -162,5 +162,5 @@ client_close(struct client *client)
 
 	g_log(G_LOG_DOMAIN, LOG_LEVEL_SECURE,
 	      "[%u] closed", client->num);
-	g_free(client);
+	free(client);
 }

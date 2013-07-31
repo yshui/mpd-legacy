@@ -94,7 +94,7 @@ client_write_deferred(struct client *client)
 
 			assert(client->deferred_bytes >= decr);
 			client->deferred_bytes -= decr;
-			g_free(buf);
+			free(buf);
 			g_queue_pop_head(client->deferred_send);
 		}
 

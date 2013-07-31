@@ -68,7 +68,7 @@ locate_item_list_free(struct locate_item_list *list)
 	for (unsigned i = 0; i < list->length; ++i)
 		free(list->items[i].needle);
 
-	g_free(list);
+	free(list);
 }
 
 struct locate_item_list *
@@ -120,8 +120,8 @@ locate_item_list_casefold(const struct locate_item_list *list)
 void
 locate_item_free(struct locate_item *item)
 {
-	g_free(item->needle);
-	g_free(item);
+	free(item->needle);
+	free(item);
 }
 
 static bool

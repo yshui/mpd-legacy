@@ -55,10 +55,10 @@ dc_free(struct decoder_control *dc)
 {
 	g_cond_free(dc->cond);
 	g_mutex_free(dc->mutex);
-	g_free(dc->mixramp_start);
-	g_free(dc->mixramp_end);
-	g_free(dc->mixramp_prev_end);
-	g_free(dc);
+	free(dc->mixramp_start);
+	free(dc->mixramp_end);
+	free(dc->mixramp_prev_end);
+	free(dc);
 }
 
 static void
@@ -168,7 +168,7 @@ dc_mixramp_start(struct decoder_control *dc, char *mixramp_start)
 {
 	assert(dc != NULL);
 
-	g_free(dc->mixramp_start);
+	free(dc->mixramp_start);
 	dc->mixramp_start = mixramp_start;
 }
 
@@ -177,7 +177,7 @@ dc_mixramp_end(struct decoder_control *dc, char *mixramp_end)
 {
 	assert(dc != NULL);
 
-	g_free(dc->mixramp_end);
+	free(dc->mixramp_end);
 	dc->mixramp_end = mixramp_end;
 }
 
@@ -186,6 +186,6 @@ dc_mixramp_prev_end(struct decoder_control *dc, char *mixramp_prev_end)
 {
 	assert(dc != NULL);
 
-	g_free(dc->mixramp_prev_end);
+	free(dc->mixramp_prev_end);
 	dc->mixramp_prev_end = mixramp_prev_end;
 }

@@ -171,7 +171,7 @@ icy_meta(struct icy_metadata *im, const void *data, size_t length)
 			tag_free(im->tag);
 
 		im->tag = icy_parse_tag(im->meta_data);
-		g_free(im->meta_data);
+		free(im->meta_data);
 
 		/* change back to normal data mode */
 

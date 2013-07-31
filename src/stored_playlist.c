@@ -209,8 +209,8 @@ spl_list_free(GPtrArray *list)
 	for (unsigned i = 0; i < list->len; ++i) {
 		struct stored_playlist_info *playlist =
 			g_ptr_array_index(list, i);
-		g_free(playlist->name);
-		g_free(playlist);
+		free(playlist->name);
+		free(playlist);
 	}
 
 	g_ptr_array_free(list, true);
@@ -429,7 +429,7 @@ spl_remove_index(const char *utf8path, unsigned pos, GError **error_r)
 	}
 
 	uri = spl_remove_index_internal(list, pos);
-	g_free(uri);
+	free(uri);
 	bool result = spl_save(list, utf8path, error_r);
 
 	spl_free(list);

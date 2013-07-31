@@ -29,7 +29,7 @@ struct sticker;
 
 /**
  * Returns one value from a song's sticker record.  The caller must
- * free the return value with g_free().
+ * free the return value with free().
  */
 char *
 sticker_song_get_value(const struct song *song, const char *name);

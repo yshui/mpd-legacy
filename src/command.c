@@ -412,7 +412,7 @@ handle_status(struct client *client,
 		client_printf(client,
 			      COMMAND_STATUS_ERROR ": %s\n",
 			      error);
-		g_free(error);
+		free(error);
 	}
 
 	song = playlist_get_next_song(&g_playlist);

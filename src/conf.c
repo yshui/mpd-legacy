@@ -156,7 +156,7 @@ config_param_free(struct config_param *param)
 	if (param->num_block_params)
 		free(param->block_params);
 
-	g_free(param);
+	free(param);
 }
 
 static void

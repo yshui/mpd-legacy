@@ -295,7 +295,7 @@ void
 log_deinit(void)
 {
 	close_log_files();
-	g_free(out_filename);
+	free(out_filename);
 }
 
 

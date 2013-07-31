@@ -150,11 +150,11 @@ sticker_song_find(struct directory *directory, const char *name,
 	bool success;
 
 	data.base_uri = directory_get_path(directory);
-	if (*data.base_uri != 0)
-		/* append slash to base_uri */
-		data.base_uri = allocated =
-			g_strconcat(data.base_uri, "/", NULL);
-	else
+	if (*data.base_uri != 0){
+		allocated = malloc(strlen(data.base_uri + 2));
+		strcpy(allocated, data.base_uri);
+		strcat(allocated, "/");
+	}else
 		/* searching in root directory - no trailing slash */
 		allocated = NULL;
 
@@ -162,7 +162,7 @@ sticker_song_find(struct directory *directory, const char *name,
 
 	success = sticker_find("song", data.base_uri, name,
 			       sticker_song_find_cb, &data);
-	g_free(allocated);
+	free(allocated);
 
 	return success;
 }

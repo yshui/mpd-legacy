@@ -264,9 +264,11 @@ map_spl_utf8_to_fs(const char *name)
 	if (playlist_dir_fs == NULL)
 		return NULL;
 
-	filename_utf8 = g_strconcat(name, PLAYLIST_FILE_SUFFIX, NULL);
+	filename_utf8 = malloc(strlen(name) + strlen(PLAYLIST_FILE_SUFFIX) + 1);
+	strcpy(filename_utf8, name);
+	strcat(filename_utf8, PLAYLIST_FILE_SUFFIX);
 	filename_fs = utf8_to_fs_charset(filename_utf8);
-	g_free(filename_utf8);
+	free(filename_utf8);
 	if (filename_fs == NULL)
 		return NULL;
 

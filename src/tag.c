@@ -179,9 +179,9 @@ static void tag_delete_item(struct tag *tag, unsigned idx)
 	}
 
 	if (tag->num_items > 0) {
-		tag->items = g_realloc(tag->items, items_size(tag));
+		tag->items = realloc(tag->items, items_size(tag));
 	} else {
-		g_free(tag->items);
+		free(tag->items);
 		tag->items = NULL;
 	}
 }
@@ -280,7 +280,7 @@ tag_merge(const struct tag *base, const struct tag *add)
 		assert(n > 0);
 
 		ret->num_items = n;
-		ret->items = g_realloc(ret->items, items_size(ret));
+		ret->items = realloc(ret->items, items_size(ret));
 	}
 
 	return ret;
@@ -493,7 +493,7 @@ tag_add_item_internal(struct tag *tag, enum tag_type type,
 
 	if (tag->items != bulk.items)
 		/* bulk mode disabled */
-		tag->items = g_realloc(tag->items, items_size(tag));
+		tag->items = realloc(tag->items, items_size(tag));
 	else if (tag->num_items >= BULK_MAX) {
 		/* bulk list already full - switch back to non-bulk */
 		assert(bulk.busy);

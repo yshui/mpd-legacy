@@ -163,7 +163,7 @@ config_get_string(const char *name, const char *default_value);
  * Returns NULL if the value is not present.  If the path could not be
  * parsed, returns NULL and sets the error.
  *
- * The return value must be freed with g_free().
+ * The return value must be freed with free().
  */
 MPD_MALLOC
 char *

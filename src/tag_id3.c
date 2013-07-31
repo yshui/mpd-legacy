@@ -104,10 +104,10 @@ import_id3_string(bool is_id3v1, const id3_ucs4_t *ucs4)
 		if (utf8 == NULL) {
 			g_debug("Unable to convert %s string to UTF-8: '%s'",
 				encoding, isostr);
-			g_free(isostr);
+			free(isostr);
 			return NULL;
 		}
-		g_free(isostr);
+		free(isostr);
 	} else {
 		utf8 = id3_ucs4_utf8duplicate(ucs4);
 		if (G_UNLIKELY(!utf8)) {

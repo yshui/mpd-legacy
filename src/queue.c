@@ -328,7 +328,7 @@ queue_finish(struct queue *queue)
 {
 	queue_clear(queue);
 
-	g_free(queue->items);
+	free(queue->items);
 	free(queue->order);
 	free(queue->id_to_position);
 

@@ -19,10 +19,12 @@
 
 #include "config.h"
 #include "icy_server.h"
+#include "utils.h"
 
 #include <glib.h>
 
 #include <assert.h>
+#include <stdlib.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "icy_server"
@@ -61,7 +63,7 @@ icy_server_metadata_string(const char *stream_title, const char* stream_url)
 	guint meta_length;
 
 	// The leading n is a placeholder for the length information
-	icy_metadata = g_strdup_printf("nStreamTitle='%s';"
+	icy_metadata = strdup_printf("nStreamTitle='%s';"
 				       "StreamUrl='%s';",
 				       stream_title,
 				       stream_url);
@@ -77,7 +79,7 @@ icy_server_metadata_string(const char *stream_title, const char* stream_url)
 	icy_metadata[0] = meta_length;
 
 	if (meta_length > 255) {
-		g_free(icy_metadata);
+		free(icy_metadata);
 		return NULL;
 	}
 
@@ -143,7 +145,7 @@ icy_server_metadata_page(const struct tag *tag, ...)
 
 	icy_metadata = page_new_copy(icy_string, (icy_string[0] * 16) + 1);
 
-	g_free(icy_string);
+	free(icy_string);
 
 	return icy_metadata;
 }

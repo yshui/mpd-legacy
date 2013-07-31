@@ -303,7 +303,7 @@ newListCommandItem(int tagType, const struct locate_item_list *criteria)
 
 static void freeListCommandItem(ListCommandItem * item)
 {
-	g_free(item);
+	free(item);
 }
 
 static void

@@ -36,7 +36,7 @@ resolver_quark(void)
 
 /**
  * Converts the specified socket address into a string in the form
- * "IP:PORT".  The return value must be freed with g_free() when you
+ * "IP:PORT".  The return value must be freed with free() when you
  * don't need it anymore.
  *
  * @param sa the sockaddr struct

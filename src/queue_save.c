@@ -35,7 +35,7 @@ queue_save_song(FILE *fp, int idx, const struct song *song)
 	char *uri = song_get_uri(song);
 
 	fprintf(fp, "%i:%s\n", idx, uri);
-	g_free(uri);
+	free(uri);
 }
 
 void

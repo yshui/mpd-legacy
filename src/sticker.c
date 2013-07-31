@@ -537,7 +537,7 @@ sticker_free(struct sticker *sticker)
 	assert(sticker->table != NULL);
 
 	g_hash_table_destroy(sticker->table);
-	g_free(sticker);
+	free(sticker);
 }
 
 const char *

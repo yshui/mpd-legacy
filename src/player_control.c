@@ -27,6 +27,8 @@
 #include "idle.h"
 #include "pcm_volume.h"
 #include "main.h"
+#include "utils.h"
+#include "macros.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -39,7 +41,7 @@ pc_enqueue_song_locked(struct player_control *pc, struct song *song);
 struct player_control *
 pc_new(unsigned buffer_chunks, unsigned int buffered_before_play)
 {
-	struct player_control *pc = g_new0(struct player_control, 1);
+	struct player_control *pc = tmalloc(struct player_control, 1);
 
 	pc->buffer_chunks = buffer_chunks;
 	pc->buffered_before_play = buffered_before_play;
@@ -62,7 +64,7 @@ pc_free(struct player_control *pc)
 {
 	g_cond_free(pc->cond);
 	g_mutex_free(pc->mutex);
-	g_free(pc);
+	free(pc);
 }
 
 void
@@ -274,25 +276,25 @@ pc_get_error_message(struct player_control *pc)
 
 	case PLAYER_ERROR_FILENOTFOUND:
 		uri = pc_errored_song_uri(pc);
-		error = g_strdup_printf("file \"%s\" does not exist or is inaccessible", uri);
+		error = strdup_printf("file \"%s\" does not exist or is inaccessible", uri);
 		free(uri);
 		return error;
 
 	case PLAYER_ERROR_FILE:
 		uri = pc_errored_song_uri(pc);
-		error = g_strdup_printf("problems decoding \"%s\"", uri);
+		error = strdup_printf("problems decoding \"%s\"", uri);
 		free(uri);
 		return error;
 
 	case PLAYER_ERROR_AUDIO:
-		return g_strdup("problems opening audio device");
+		return strdup("problems opening audio device");
 
 	case PLAYER_ERROR_SYSTEM:
-		return g_strdup("system error occurred");
+		return strdup("system error occurred");
 
 	case PLAYER_ERROR_UNKTYPE:
 		uri = pc_errored_song_uri(pc);
-		error = g_strdup_printf("file type of \"%s\" is unknown", uri);
+		error = strdup_printf("file type of \"%s\" is unknown", uri);
 		free(uri);
 		return error;
 	}

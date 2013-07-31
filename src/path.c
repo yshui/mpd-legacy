@@ -81,7 +81,7 @@ path_set_fs_charset(const char *charset)
 		MPD_ERROR("invalid filesystem charset: %s", charset);
 	g_free(test);
 
-	g_free(fs_charset);
+	free(fs_charset);
 	fs_charset = strdup(charset);
 
 	g_debug("path_set_fs_charset: fs charset is: %s", fs_charset);

@@ -82,8 +82,8 @@ music_buffer_free(struct music_buffer *buffer)
 	assert(buffer->num_allocated == 0);
 
 	g_mutex_free(buffer->mutex);
-	g_free(buffer->chunks);
-	g_free(buffer);
+	free(buffer->chunks);
+	free(buffer);
 }
 
 unsigned
