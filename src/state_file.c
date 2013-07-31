@@ -24,6 +24,7 @@
 #include "playlist_state.h"
 #include "volume.h"
 #include "text_file.h"
+#include "macros.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -56,7 +57,7 @@ state_file_write(struct player_control *pc)
 	g_debug("Saving state file %s", state_file_path);
 
 	fp = fopen(state_file_path, "w");
-	if (G_UNLIKELY(!fp)) {
+	if (unlikely(!fp)) {
 		g_warning("failed to create %s: %s",
 			  state_file_path, g_strerror(errno));
 		return;
@@ -84,7 +85,7 @@ state_file_read(struct player_control *pc)
 	g_debug("Loading state file %s", state_file_path);
 
 	fp = fopen(state_file_path, "r");
-	if (G_UNLIKELY(!fp)) {
+	if (unlikely(!fp)) {
 		g_warning("failed to open %s: %s",
 			  state_file_path, g_strerror(errno));
 		return;

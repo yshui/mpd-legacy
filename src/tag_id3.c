@@ -93,7 +93,7 @@ import_id3_string(bool is_id3v1, const id3_ucs4_t *ucs4)
 	if (is_id3v1 &&
 	    (encoding = config_get_string(CONF_ID3V1_ENCODING, NULL)) != NULL) {
 		isostr = id3_ucs4_latin1duplicate(ucs4);
-		if (G_UNLIKELY(!isostr)) {
+		if (unlikely(!isostr)) {
 			return NULL;
 		}
 
@@ -110,7 +110,7 @@ import_id3_string(bool is_id3v1, const id3_ucs4_t *ucs4)
 		free(isostr);
 	} else {
 		utf8 = id3_ucs4_utf8duplicate(ucs4);
-		if (G_UNLIKELY(!utf8)) {
+		if (unlikely(!utf8)) {
 			return NULL;
 		}
 	}

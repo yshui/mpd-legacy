@@ -22,13 +22,13 @@
  *
  */
 
+#include "macros.h"
 #include "list_sort.h"
 #include "list.h"
 
 #include <glib.h>
 #include <string.h>
 
-#define unlikely G_UNLIKELY
 #define ARRAY_SIZE G_N_ELEMENTS
 
 #define MAX_LIST_LENGTH_BITS 20

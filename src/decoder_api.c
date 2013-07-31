@@ -287,7 +287,7 @@ size_t decoder_read(struct decoder *decoder,
 	assert(nbytes == 0 || error == NULL);
 	assert(nbytes > 0 || error != NULL || input_stream_eof(is));
 
-	if (G_UNLIKELY(nbytes == 0 && error != NULL)) {
+	if (unlikely(nbytes == 0 && error != NULL)) {
 		g_warning("%s", error->message);
 		g_error_free(error);
 	}

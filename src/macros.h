@@ -12,6 +12,9 @@
 # define MPD_PURE __attribute__((__pure__))
 # define MPD_MALLOC __attribute__((__malloc__))
 # define MPD_CONST __attribute__((__const__))
+
+# define likely(expr) (__builtin_expect (!!(expr), 1))
+# define unlikely(expr) (__builtin_expect (!!(expr), 0))
 #else
 # define MPD_PURE
 # define MPD_MALLOC

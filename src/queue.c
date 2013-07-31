@@ -362,7 +362,7 @@ queue_item_compare_order_priority(gconstpointer av, gconstpointer bv,
 	uint8_t a = queue->items[*ap].priority;
 	uint8_t b = queue->items[*bp].priority;
 
-	if (G_LIKELY(a == b))
+	if (likely(a == b))
 		return 0;
 	else if (a > b)
 		return -1;

@@ -19,6 +19,7 @@
 
 #ifndef MPD_PCM_UTILS_H
 #define MPD_PCM_UTILS_H
+#include "macros.h"
 
 #include <glib.h>
 
@@ -42,9 +43,9 @@ pcm_end_pointer(const void *p, size_t size)
 static inline int32_t
 pcm_range(int32_t sample, unsigned bits)
 {
-	if (G_UNLIKELY(sample < (-1 << (bits - 1))))
+	if (unlikely(sample < (-1 << (bits - 1))))
 		return -1 << (bits - 1);
-	if (G_UNLIKELY(sample >= (1 << (bits - 1))))
+	if (unlikely(sample >= (1 << (bits - 1))))
 		return (1 << (bits - 1)) - 1;
 	return sample;
 }
@@ -56,9 +57,9 @@ pcm_range(int32_t sample, unsigned bits)
 static inline int64_t
 pcm_range_64(int64_t sample, unsigned bits)
 {
-	if (G_UNLIKELY(sample < ((int64_t)-1 << (bits - 1))))
+	if (unlikely(sample < ((int64_t)-1 << (bits - 1))))
 		return (int64_t)-1 << (bits - 1);
-	if (G_UNLIKELY(sample >= ((int64_t)1 << (bits - 1))))
+	if (unlikely(sample >= ((int64_t)1 << (bits - 1))))
 		return ((int64_t)1 << (bits - 1)) - 1;
 	return sample;
 }
@@ -70,9 +71,9 @@ pcm_clamp_16(int x)
 	static const int32_t MIN_VALUE = G_MININT16;
 	static const int32_t MAX_VALUE = G_MAXINT16;
 
-	if (G_UNLIKELY(x < MIN_VALUE))
+	if (unlikely(x < MIN_VALUE))
 		return MIN_VALUE;
-	if (G_UNLIKELY(x > MAX_VALUE))
+	if (unlikely(x > MAX_VALUE))
 		return MAX_VALUE;
 	return x;
 }
@@ -84,9 +85,9 @@ pcm_clamp_24(int x)
 	static const int32_t MIN_VALUE = -(1 << 23);
 	static const int32_t MAX_VALUE = (1 << 23) - 1;
 
-	if (G_UNLIKELY(x < MIN_VALUE))
+	if (unlikely(x < MIN_VALUE))
 		return MIN_VALUE;
-	if (G_UNLIKELY(x > MAX_VALUE))
+	if (unlikely(x > MAX_VALUE))
 		return MAX_VALUE;
 	return x;
 }

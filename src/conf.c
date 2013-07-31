@@ -514,7 +514,7 @@ config_dup_path(const char *name, GError **error_r)
 		return NULL;
 
 	char *path = parsePath(param->value, error_r);
-	if (G_UNLIKELY(path == NULL))
+	if (unlikely(path == NULL))
 		g_prefix_error(error_r,
 			       "Invalid path in \"%s\" at line %i: ",
 			       name, param->line);
@@ -618,7 +618,7 @@ config_dup_block_path(const struct config_param *param, const char *name,
 		return NULL;
 
 	char *path = parsePath(bp->value, error_r);
-	if (G_UNLIKELY(path == NULL))
+	if (unlikely(path == NULL))
 		g_prefix_error(error_r,
 			       "Invalid path in \"%s\" at line %i: ",
 			       name, bp->line);
