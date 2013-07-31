@@ -255,27 +255,27 @@ copy_interleave_frame2(uint8_t *dest, uint8_t **src,
 static int
 copy_interleave_frame(const AVCodecContext *codec_context,
 		      const AVFrame *frame,
-		      uint8_t *buffer, size_t buffer_size)
+		      uint8_t **buffer, size_t *buffer_size)
 {
 	int plane_size;
-	const int data_size =
+	size_t data_size =
 		av_samples_get_buffer_size(&plane_size,
 					   codec_context->channels,
 					   frame->nb_samples,
 					   codec_context->sample_fmt, 1);
-	if (buffer_size < (size_t)data_size)
-		/* buffer is too small - shouldn't happen */
-		return AVERROR(EINVAL);
+	if (*buffer_size < data_size){
+		*buffer = realloc(*buffer, data_size);
+		*buffer_size = data_size;
+	}
 
 	if (av_sample_fmt_is_planar(codec_context->sample_fmt) &&
 	    codec_context->channels > 1) {
-		copy_interleave_frame2(buffer, frame->extended_data,
+		copy_interleave_frame2(*buffer, frame->extended_data,
 				       frame->nb_samples,
 				       codec_context->channels,
 				       av_get_bytes_per_sample(codec_context->sample_fmt));
-	} else {
-		memcpy(buffer, frame->extended_data[0], data_size);
-	}
+	} else
+		memcpy(*buffer, frame->extended_data[0], data_size);
 
 	return data_size;
 }
@@ -299,8 +299,8 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 #endif
 
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,25,0)
-	uint8_t aligned_buffer[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2 + 16];
-	const size_t buffer_size = sizeof(aligned_buffer);
+	uint8_t *aligned_buffer = NULL;
+	size_t buffer_size = 0;
 #else
 	/* libavcodec < 0.8 needs an aligned buffer */
 	uint8_t audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2 + 16];
@@ -332,8 +332,8 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 		if (len >= 0 && got_frame) {
 			audio_size = copy_interleave_frame(codec_context,
 							   frame,
-							   aligned_buffer,
-							   buffer_size);
+							   &aligned_buffer,
+							   &buffer_size);
 			if (audio_size < 0)
 				len = audio_size;
 		} else if (len >= 0)
@@ -376,6 +376,9 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 				   aligned_buffer, audio_size,
 				   codec_context->bit_rate / 1000);
 	}
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,25,0)
+	free(aligned_buffer);
+#endif
 	return cmd;
 }
 
