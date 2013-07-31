@@ -21,7 +21,6 @@
 #define MPD_INPUT_STREAM_H
 
 #include "check.h"
-#include "gcc.h"
 #include "macros.h"
 
 #include <glib.h>
@@ -100,7 +99,6 @@ struct input_stream {
  * notifications
  * @return an #input_stream object on success, NULL on error
  */
-gcc_nonnull(1, 2)
 MPD_MALLOC
 struct input_stream *
 input_stream_open(const char *uri,
@@ -112,18 +110,15 @@ input_stream_open(const char *uri,
  *
  * The caller must not lock the mutex.
  */
-gcc_nonnull(1)
 void
 input_stream_close(struct input_stream *is);
 
-gcc_nonnull(1)
 static inline void
 input_stream_lock(struct input_stream *is)
 {
 	g_mutex_lock(is->mutex);
 }
 
-gcc_nonnull(1)
 static inline void
 input_stream_unlock(struct input_stream *is)
 {
@@ -135,7 +130,6 @@ input_stream_unlock(struct input_stream *is)
  *
  * @return false on error
  */
-gcc_nonnull(1)
 bool
 input_stream_check(struct input_stream *is, GError **error_r);
 
@@ -143,7 +137,6 @@ input_stream_check(struct input_stream *is, GError **error_r);
  * Update the public attributes.  Call before accessing attributes
  * such as "ready" or "offset".
  */
-gcc_nonnull(1)
 void
 input_stream_update(struct input_stream *is);
 
@@ -152,7 +145,6 @@ input_stream_update(struct input_stream *is);
  *
  * The caller must lock the mutex.
  */
-gcc_nonnull(1)
 void
 input_stream_wait_ready(struct input_stream *is);
 
@@ -160,7 +152,6 @@ input_stream_wait_ready(struct input_stream *is);
  * Wrapper for input_stream_wait_locked() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-gcc_nonnull(1)
 void
 input_stream_lock_wait_ready(struct input_stream *is);
 
@@ -174,7 +165,6 @@ input_stream_lock_wait_ready(struct input_stream *is);
  * @param offset the relative offset
  * @param whence the base of the seek, one of SEEK_SET, SEEK_CUR, SEEK_END
  */
-gcc_nonnull(1)
 bool
 input_stream_seek(struct input_stream *is, goffset offset, int whence,
 		  GError **error_r);
@@ -183,7 +173,6 @@ input_stream_seek(struct input_stream *is, goffset offset, int whence,
  * Wrapper for input_stream_seek() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-gcc_nonnull(1)
 bool
 input_stream_lock_seek(struct input_stream *is, goffset offset, int whence,
 		       GError **error_r);
@@ -193,7 +182,6 @@ input_stream_lock_seek(struct input_stream *is, goffset offset, int whence,
  *
  * The caller must lock the mutex.
  */
-gcc_nonnull(1)
 MPD_PURE
 bool input_stream_eof(struct input_stream *is);
 
@@ -201,7 +189,6 @@ bool input_stream_eof(struct input_stream *is);
  * Wrapper for input_stream_eof() which locks and unlocks the mutex;
  * the caller must not be holding it already.
  */
-gcc_nonnull(1)
 MPD_PURE
 bool
 input_stream_lock_eof(struct input_stream *is);
@@ -214,7 +201,6 @@ input_stream_lock_eof(struct input_stream *is);
  * @return a tag object which must be freed with tag_free(), or NULL
  * if the tag has not changed since the last call
  */
-gcc_nonnull(1)
 MPD_MALLOC
 struct tag *
 input_stream_tag(struct input_stream *is);
@@ -223,7 +209,6 @@ input_stream_tag(struct input_stream *is);
  * Wrapper for input_stream_tag() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-gcc_nonnull(1)
 MPD_MALLOC
 struct tag *
 input_stream_lock_tag(struct input_stream *is);
@@ -235,7 +220,6 @@ input_stream_lock_tag(struct input_stream *is);
  *
  * The caller must lock the mutex.
  */
-gcc_nonnull(1)
 MPD_PURE
 bool
 input_stream_available(struct input_stream *is);
@@ -251,7 +235,6 @@ input_stream_available(struct input_stream *is);
  * @param size the maximum number of bytes to read
  * @return the number of bytes read
  */
-gcc_nonnull(1, 2)
 size_t
 input_stream_read(struct input_stream *is, void *ptr, size_t size,
 		  GError **error_r);
@@ -260,7 +243,6 @@ input_stream_read(struct input_stream *is, void *ptr, size_t size,
  * Wrapper for input_stream_tag() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-gcc_nonnull(1, 2)
 size_t
 input_stream_lock_read(struct input_stream *is, void *ptr, size_t size,
 		       GError **error_r);

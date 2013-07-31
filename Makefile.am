@@ -92,7 +92,6 @@ mpd_headers = \
 	src/inotify_source.h \
 	src/inotify_queue.h \
 	src/inotify_update.h \
-	src/gcc.h \
 	src/decoder_list.h \
 	src/decoder_print.h \
 	src/decoder/flac_compat.h \

@@ -20,7 +20,6 @@
 #ifndef MPD_DB_SELECTION_H
 #define MPD_DB_SELECTION_H
 
-#include "gcc.h"
 
 #include <assert.h>
 
@@ -41,7 +40,6 @@ struct db_selection {
 	bool recursive;
 };
 
-gcc_nonnull(1,2)
 static inline void
 db_selection_init(struct db_selection *selection,
 		  const char *uri, bool recursive)

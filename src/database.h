@@ -20,7 +20,6 @@
 #ifndef MPD_DATABASE_H
 #define MPD_DATABASE_H
 
-#include "gcc.h"
 
 #include "macros.h"
 
@@ -56,23 +55,19 @@ db_get_root(void);
 /**
  * Caller must lock the #db_mutex.
  */
-gcc_nonnull(1)
 MPD_PURE
 struct directory *
 db_get_directory(const char *name);
 
-gcc_nonnull(1)
 MPD_PURE
 struct song *
 db_get_song(const char *file);
 
-gcc_nonnull(1,2)
 bool
 db_visit(const struct db_selection *selection,
 	 const struct db_visitor *visitor, void *ctx,
 	 GError **error_r);
 
-gcc_nonnull(1,2)
 bool
 db_walk(const char *uri,
 	const struct db_visitor *visitor, void *ctx,

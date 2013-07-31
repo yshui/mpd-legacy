@@ -113,12 +113,7 @@ song_file_update(struct song *song)
 	song->mtime = st.st_mtime;
 
 	GMutex *mutex = NULL;
-	GCond *cond;
-#if !GCC_CHECK_VERSION(4, 2)
-	/* work around "may be used uninitialized in this function"
-	   false positive */
-	cond = NULL;
-#endif
+	GCond *cond = NULL;
 
 	do {
 		/* load file tag */

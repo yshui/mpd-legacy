@@ -20,7 +20,6 @@
 #ifndef MPD_TAG_H
 #define MPD_TAG_H
 
-#include "gcc.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -73,7 +72,7 @@ struct tag_item {
 	 * the value of this tag; this is a variable length string
 	 */
 	char value[sizeof(long)];
-} gcc_packed;
+};
 
 /**
  * The meta information about a song file.  It is a MPD specific
