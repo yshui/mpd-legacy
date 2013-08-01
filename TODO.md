@@ -17,7 +17,7 @@
 * DBus support.
 * Mutliple control protocol (like json over http)
 * Create outputs on the fly (like http streams)
-* (Possibly) get rid of GLib.
+* Get rid of GLib in core mpd. glib in plugins in fine since I gonna implement loadable plugin support.
 
 # Possible alternatives to GLib functionalities
 * Multithread -> Single thread (lots of works to be done)
