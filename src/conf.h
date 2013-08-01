@@ -21,6 +21,7 @@
 #define MPD_CONF_H
 
 #include "macros.h"
+#include "utils.h"
 
 #include <stdbool.h>
 #include <glib.h>
@@ -194,7 +195,7 @@ static inline char *
 config_dup_block_string(const struct config_param *param, const char *name,
 			const char *default_value)
 {
-	return strdup(config_get_block_string(param, name, default_value));
+	return sstrdup(config_get_block_string(param, name, default_value));
 }
 
 /**

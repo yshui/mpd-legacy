@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #ifndef assert_static
 /* Compile time assertion developed by Ralf Holly */
@@ -44,6 +45,10 @@ char *strdup_printf(const char *, ...);
 
 static inline bool is_alpha(char c){
 	return (c>='A' && c<='Z') || (c>='a' && c<='z');
+}
+
+static inline char *sstrdup(const char *s){
+	return s ? strdup(s) : NULL;
 }
 
 #endif
