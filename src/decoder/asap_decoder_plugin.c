@@ -102,8 +102,10 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 	if(len < 0){
 		free(buf);
 		g_warning("Failed to read %s", tname);
+		g_free(tname);
 		return NULL;
 	}
+	g_free(tname);
 
 	asap_info = ASAPInfo_New();
 	if(!ASAPInfo_Load(asap_info, name, buf, len)){
@@ -112,7 +114,10 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 		g_warning("Cannot load %s\n", path_fs);
 		return false;
 	}
+	free(buf);
+
 	num_songs = ASAPInfo_GetSongs(asap_info);
+	ASAPInfo_Delete(asap_info);
 	/* if it only contains a single tune, don't treat as container */
 	if (num_songs < 2)
 		return NULL;
@@ -158,7 +163,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 		g_warning("Cannot load %s\n", path_fs);
 		return;
 	}
-	free(tname);
+	g_free(tname);
 
 	int track_id = get_song_num(path_fs);
 	if(!track_id)
@@ -242,10 +247,12 @@ asap_scan_file(const char *path_fs,
 	asap_info = ASAPInfo_New();
 	if(!ASAPInfo_Load(asap_info, tname, buf, len)){
 		free(buf);
+		free(tname);
 		ASAPInfo_Delete(asap_info);
 		g_warning("Cannot load %s\n", path_fs);
 		return false;
 	}
+	free(tname);
 
 	int track_id = get_song_num(path_fs);
 	if(track_id == 0)
