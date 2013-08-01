@@ -59,9 +59,6 @@ const struct input_plugin *const input_plugins[] = {
 #ifdef ENABLE_CURL
 	&input_plugin_curl,
 #endif
-#ifdef ENABLE_SOUP
-	&input_plugin_soup,
-#endif
 #ifdef HAVE_FFMPEG
 	&input_plugin_ffmpeg,
 #endif

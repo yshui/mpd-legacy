@@ -721,12 +721,6 @@ libinput_a_SOURCES += src/input/curl_input_plugin.c \
 	src/icy_metadata.c
 endif
 
-if ENABLE_SOUP
-libinput_a_SOURCES += \
-	src/input/soup_input_plugin.c \
-	src/input/soup_input_plugin.h
-endif
-
 if ENABLE_CDIO_PARANOIA
 libinput_a_SOURCES += src/input/cdio_paranoia_input_plugin.c
 endif
