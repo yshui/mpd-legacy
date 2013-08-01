@@ -40,10 +40,12 @@ static char *fs_charset;
 char *
 fs_charset_to_utf8(const char *path_fs)
 {
+	if(!path_fs)
+		return NULL;
 	char *tmp = g_convert(path_fs, -1,
 			 "utf-8", fs_charset,
 			 NULL, NULL, NULL);
-	char *res = strdup(tmp);
+	char *res = tmp ? strdup(tmp) : strdup(path_fs);
 	g_free(tmp);
 	return res;
 }
@@ -51,6 +53,8 @@ fs_charset_to_utf8(const char *path_fs)
 char *
 utf8_to_fs_charset(const char *path_utf8)
 {
+	if(!path_utf8)
+		return NULL;
 	gchar *p;
 	char *res;
 
