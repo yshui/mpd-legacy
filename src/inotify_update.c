@@ -118,7 +118,7 @@ remove_watch_directory(struct watch_directory *directory)
 		g_list_remove(directory->parent->children, directory);
 
 	mpd_inotify_source_rm(inotify_source, directory->descriptor);
-	g_free(directory->name);
+	free(directory->name);
 	g_slice_free(struct watch_directory, directory);
 }
 

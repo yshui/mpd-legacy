@@ -20,6 +20,12 @@
 #ifndef MPD_UTILS_H
 #define MPD_UTILS_H
 
+#include "util/bit_reverse.h"
+#include "util/byte_reverse.h"
+#include "util/list.h"
+#include "util/list_sort.h"
+#include "util/file_utils.h"
+
 #include <glib.h>
 #include <stdbool.h>
 #include <string.h>

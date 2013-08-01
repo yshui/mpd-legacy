@@ -385,7 +385,8 @@ libutil_a_SOURCES = \
 	src/util/list.h \
 	src/util/list_sort.c src/util/list_sort.h \
 	src/util/byte_reverse.c src/util/byte_reverse.h \
-	src/util/bit_reverse.c src/util/bit_reverse.h
+	src/util/bit_reverse.c src/util/bit_reverse.h \
+	src/util/file_utils.c src/util/file_utils.h
 
 # PCM library
 

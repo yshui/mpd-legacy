@@ -36,6 +36,7 @@
 #include "string_util.h"
 #include "conf.h"
 #include "mpd_error.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <string.h>
@@ -120,6 +121,27 @@ playlist_list_global_finish(void)
 		playlist_plugin_finish(plugin);
 }
 
+static inline
+char *strdup_uri_scheme(const char *uri){
+	if(!uri)
+		return NULL;
+	const char *tmp = uri;
+	if(!is_alpha(*tmp))
+		return NULL;
+	tmp++;
+	while(*tmp != ':'){
+		char c = *tmp;
+		if(!is_alpha(c) &&
+		   (c > '9' && c < '0') &&
+		   c != '+' &&
+		   c != '.' &&
+		   c != '-')
+			return NULL;
+		tmp++;
+	}
+	return strndup(uri, tmp-uri);
+}
+
 static struct playlist_provider *
 playlist_list_open_uri_scheme(const char *uri, GMutex *mutex, GCond *cond,
 			      bool *tried)
@@ -129,7 +151,7 @@ playlist_list_open_uri_scheme(const char *uri, GMutex *mutex, GCond *cond,
 
 	assert(uri != NULL);
 
-	scheme = g_uri_parse_scheme(uri);
+	scheme = strdup_uri_scheme(uri);
 	if (scheme == NULL)
 		return NULL;
 
@@ -150,7 +172,7 @@ playlist_list_open_uri_scheme(const char *uri, GMutex *mutex, GCond *cond,
 		}
 	}
 
-	g_free(scheme);
+	free(scheme);
 	return playlist;
 }
 

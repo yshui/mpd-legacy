@@ -25,6 +25,7 @@
 #include "playlist.h"
 #include "song.h"
 #include "input_stream.h"
+#include "utils.h"
 
 enum playlist_result
 playlist_load_into_queue(const char *uri, struct playlist_provider *source,
@@ -34,7 +35,7 @@ playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 {
 	enum playlist_result result;
 	struct song *song;
-	char *base_uri = uri != NULL ? g_path_get_dirname(uri) : NULL;
+	char *base_uri = strdup_dirname(uri);
 
 	for (unsigned i = 0;
 	     i < end_index && (song = playlist_plugin_read(source)) != NULL;
@@ -54,12 +55,12 @@ playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 		if (result != PLAYLIST_RESULT_SUCCESS) {
 			if (!song_in_database(song))
 				song_free(song);
-			g_free(base_uri);
+			free(base_uri);
 			return result;
 		}
 	}
 
-	g_free(base_uri);
+	free(base_uri);
 
 	return PLAYLIST_RESULT_SUCCESS;
 }

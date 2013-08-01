@@ -69,7 +69,7 @@ music_pipe_free(struct music_pipe *mp)
 	assert(mp->tail_r == &mp->head);
 
 	g_mutex_free(mp->mutex);
-	g_free(mp);
+	free(mp);
 }
 
 #ifndef NDEBUG

@@ -31,6 +31,7 @@
 #include "database.h"
 #include "client.h"
 #include "input_stream.h"
+#include "utils.h"
 
 void
 playlist_print_uris(struct client *client, const struct playlist *playlist)
@@ -152,7 +153,7 @@ playlist_provider_print(struct client *client, const char *uri,
 			struct playlist_provider *playlist, bool detail)
 {
 	struct song *song;
-	char *base_uri = uri != NULL ? g_path_get_dirname(uri) : NULL;
+	char *base_uri = strdup_dirname(uri);
 
 	while ((song = playlist_plugin_read(playlist)) != NULL) {
 		song = playlist_check_translate_song(song, base_uri, false);
@@ -168,7 +169,7 @@ playlist_provider_print(struct client *client, const char *uri,
 			song_free(song);
 	}
 
-	g_free(base_uri);
+	free(base_uri);
 }
 
 bool
