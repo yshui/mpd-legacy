@@ -153,7 +153,7 @@ load_playlist_info(const char *parent_path_fs, const char *name_fs)
 	if (!g_str_has_suffix(name_fs, PLAYLIST_FILE_SUFFIX))
 		return NULL;
 
-	path_fs = build_filename(parent_path_fs, name_fs, NULL);
+	path_fs = build_db_filename(parent_path_fs, name_fs, NULL);
 	ret = stat(path_fs, &st);
 	free(path_fs);
 	if (ret < 0 || !S_ISREG(st.st_mode))

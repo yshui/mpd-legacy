@@ -87,7 +87,7 @@ check_directory(const char *path)
 	}
 
 #ifndef WIN32
-	char *x = build_filename(path, ".", NULL);
+	char *x = build_db_filename(path, ".", NULL);
 	if (stat(x, &st) < 0 && errno == EACCES)
 		g_warning("No permission to traverse (\"execute\") directory: %s",
 			  path);
@@ -173,7 +173,7 @@ map_uri_fs(const char *uri)
 	if (uri_fs == NULL)
 		return NULL;
 
-	path_fs = build_filename(music_dir_fs, uri_fs, NULL);
+	path_fs = build_db_filename(music_dir_fs, uri_fs, NULL);
 	free(uri_fs);
 
 	return path_fs;
@@ -214,7 +214,7 @@ map_directory_child_fs(const struct directory *directory, const char *name)
 		return NULL;
 	}
 
-	path = build_filename(parent_fs, name_fs, NULL);
+	path = build_db_filename(parent_fs, name_fs, NULL);
 	free(parent_fs);
 	free(name_fs);
 
@@ -272,7 +272,7 @@ map_spl_utf8_to_fs(const char *name)
 	if (filename_fs == NULL)
 		return NULL;
 
-	path = build_filename(playlist_dir_fs, filename_fs, NULL);
+	path = build_db_filename(playlist_dir_fs, filename_fs, NULL);
 	free(filename_fs);
 
 	return path;

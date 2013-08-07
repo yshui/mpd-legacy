@@ -92,7 +92,7 @@ song_get_uri(const struct song *song)
 	if (!song_in_database(song) || directory_is_root(song->parent))
 		return strdup(song->uri);
 	else
-		return build_filename(directory_get_path(song->parent),
+		return build_db_filename(directory_get_path(song->parent),
 				   song->uri, NULL);
 }
 

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "file_utils.h"
 #include "macros.h"
@@ -22,23 +23,29 @@
 #define SLASH_C SLASH[0]
 
 char *
-build_filename(const char *c1, ...){
+build_db_filename(const char *c1, ...){
 	va_list va_args;
-	int len = strlen(c1);
+	int len = c1 ? strlen(c1) : 0;
 	const char *component;
 	va_start(va_args, c1);
 
-	while((component = va_arg(va_args, const char *)))
+	while((component = va_arg(va_args, const char *))){
+		assert(component);
 		len += strlen(component) + 1;
+	}
 
 	va_end(va_args);
 
 	char *res = malloc(len + 1);
 
 	va_start(va_args, c1);
-	strcpy(res, c1);
+	if(c1)
+		strcpy(res, c1);
+	else
+		strcpy(res, va_arg(va_args, const char *));
+
 	while((component = va_arg(va_args, const char *))){
-		strcat(res, SLASH);
+		strcat(res, "/");
 		strcat(res, component);
 	}
 

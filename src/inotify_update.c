@@ -134,7 +134,7 @@ watch_directory_get_uri_fs(const struct watch_directory *directory)
 	if (parent_uri == NULL)
 		return strdup(directory->name);
 
-	uri = build_filename(parent_uri, directory->name);
+	uri = build_db_filename(parent_uri, directory->name);
 	free(parent_uri);
 
 	return uri;
@@ -181,7 +181,7 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		if (skip_path(ent->d_name))
 			continue;
 
-		child_path_fs = build_filename(path_fs, ent->d_name, NULL);
+		child_path_fs = build_db_filename(path_fs, ent->d_name, NULL);
 		ret = stat(child_path_fs, &st);
 		if (ret < 0) {
 			g_warning("Failed to stat %s: %s",
@@ -266,12 +266,12 @@ mpd_inotify_callback(int wd, unsigned mask,
 	uri_fs = watch_directory_get_uri_fs(directory);
 
 	if (uri_fs != NULL)
-		path_fs = allocated = build_filename(root, uri_fs, NULL);
+		path_fs = allocated = build_db_filename(root, uri_fs, NULL);
 	else
 		path_fs = root;
 
 	if ((mask & (IN_ATTRIB|IN_CREATE)) != 0) {
-		char *new_path_fs = build_filename(path_fs, name, NULL);
+		char *new_path_fs = build_db_filename(path_fs, name, NULL);
 
 		int ret = stat(new_path_fs, &st);
 		if (ret < 0)

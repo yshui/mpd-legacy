@@ -155,7 +155,7 @@ playlist_check_translate_song(struct song *song, const char *base_uri,
 
 	char *allocated = NULL;
 	if (base_uri != NULL)
-		uri = allocated = build_filename(base_uri, uri, NULL);
+		uri = allocated = build_db_filename(base_uri, uri, NULL);
 
 	struct song *dest = playlist_check_load_song(song, uri, secure);
 	song_free(song);

@@ -113,7 +113,7 @@ directory_new_child(struct directory *parent, const char *name_utf8)
 		allocated = NULL;
 		path_utf8 = name_utf8;
 	} else {
-		allocated = build_filename(directory_get_path(parent), name_utf8, NULL);
+		allocated = build_db_filename(directory_get_path(parent), name_utf8, NULL);
 		path_utf8 = allocated;
 	}
 

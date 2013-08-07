@@ -6,6 +6,6 @@
 
 #pragma once
 
-char *build_filename(const char *, ...);
+char *build_db_filename(const char *, ...);
 char *strdup_basename(const char *);
 char *strdup_dirname(const char *);

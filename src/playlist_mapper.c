@@ -58,7 +58,7 @@ playlist_open_in_playlist_dir(const char *uri, GMutex *mutex, GCond *cond,
 	if (playlist_directory_fs == NULL)
 		return NULL;
 
-	path_fs = build_filename(playlist_directory_fs, uri, NULL);
+	path_fs = build_db_filename(playlist_directory_fs, uri, NULL);
 
 	struct playlist_provider *playlist =
 		playlist_open_path(path_fs, mutex, cond, is_r);

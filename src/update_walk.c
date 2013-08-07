@@ -368,7 +368,7 @@ update_directory(struct directory *directory, const struct stat *st)
 		return false;
 	}
 
-	char *exclude_path_fs  = build_filename(path_fs, ".mpdignore", NULL);
+	char *exclude_path_fs  = build_db_filename(path_fs, ".mpdignore", NULL);
 	GSList *exclude_list = exclude_list_load(exclude_path_fs);
 	free(exclude_path_fs);
 
