@@ -1544,6 +1544,7 @@ then
 	AX_APPEND_COMPILE_FLAGS([-Wwrite-strings])
 	AX_APPEND_COMPILE_FLAGS([-Wno-unused-parameter])
 	AX_APPEND_COMPILE_FLAGS([-Werror=implicit-function-declaration])
+	AX_APPEND_COMPILE_FLAGS([-Werror=incompatible-pointer-types])
 	AX_APPEND_COMPILE_FLAGS([-pedantic])
 fi
 
