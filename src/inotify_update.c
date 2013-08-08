@@ -313,8 +313,6 @@ mpd_inotify_callback(int wd, unsigned mask,
 			/* this function will take care of freeing
 			   uri_utf8 */
 			mpd_inotify_enqueue(uri_utf8);
-
-		free(uri_utf8);
 	}
 
 	free(uri_fs);
