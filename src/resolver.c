@@ -57,6 +57,9 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
 	}
 #endif
 
+	if(length <= sizeof(sa_family_t))
+		return NULL;
+
 	ret = getnameinfo(sa, length, host, sizeof(host), serv, sizeof(serv),
 			  NI_NUMERICHOST|NI_NUMERICSERV);
 	if (ret != 0) {
