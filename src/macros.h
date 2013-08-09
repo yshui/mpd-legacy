@@ -21,5 +21,15 @@
 # define MPD_CONST
 #endif
 
+#define GCC_CHECK_VERSION(major, minor) \
+       (defined(__GNUC__) && \
+        (__GNUC__ > (major) || \
+         (__GNUC__ == (major) && __GNUC_MINOR__ >= (minor))))
+
+#if GCC_CHECK_VERSION(2, 8)
+#  define GNUC_EXT __extension__
+#else
+#  define GNUC_EXT
+#endif
 
 #define tmalloc(type, nmemb) calloc((nmemb), sizeof(type))
