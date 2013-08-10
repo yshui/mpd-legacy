@@ -10,7 +10,7 @@
 
 #include "macros.h"
 
-#if (defined(__has_feature) && __has_feature(c_atomic)) || GCC_CHECK_VERSION(4, 44)
+#if __has_feature(c_atomic) || GCC_CHECK_VERSION(4, 44)
 
 # include <stdatomic.h>
 typedef _Atomic(int32_t) atomic_t;

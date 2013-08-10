@@ -8,6 +8,10 @@
 
 #include <stdlib.h>
 
+#ifndef __has_feature
+# define __has_feature(x) 0
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 # define MPD_PURE __attribute__((__pure__))
 # define MPD_MALLOC __attribute__((__malloc__))
