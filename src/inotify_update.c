@@ -134,7 +134,7 @@ watch_directory_get_uri_fs(const struct watch_directory *directory)
 	if (parent_uri == NULL)
 		return strdup(directory->name);
 
-	uri = build_db_filename(parent_uri, directory->name);
+	uri = build_db_filename(parent_uri, directory->name, NULL);
 	free(parent_uri);
 
 	return uri;
