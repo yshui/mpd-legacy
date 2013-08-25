@@ -93,6 +93,7 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 	struct stat st_buf;
 	if(stat(path_fs, &st_buf) != 0){
 		g_warning("Failed to stat %s (%s)\n", path_fs, strerror(errno));
+		free(tname);
 		return NULL;
 	}
 
@@ -102,22 +103,23 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 	if(len < 0){
 		free(buf);
 		g_warning("Failed to read %s", tname);
-		g_free(tname);
+		free(tname);
 		return NULL;
 	}
-	g_free(tname);
 
 	asap_info = ASAPInfo_New();
 	if(!ASAPInfo_Load(asap_info, name, buf, len)){
 		free(buf);
 		ASAPInfo_Delete(asap_info);
 		g_warning("Cannot load %s\n", path_fs);
+		free(tname);
 		return false;
 	}
 	free(buf);
 
 	num_songs = ASAPInfo_GetSongs(asap_info);
 	ASAPInfo_Delete(asap_info);
+	free(tname);
 	/* if it only contains a single tune, don't treat as container */
 	if (num_songs < 2)
 		return NULL;
