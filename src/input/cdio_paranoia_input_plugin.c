@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "input/cdio_paranoia_input_plugin.h"
 #include "input_internal.h"
 #include "input_plugin.h"
@@ -204,15 +205,15 @@ input_cdio_open(const char *uri,
 	bool reverse_endian;
 	switch (data_bigendianp(i->drv)) {
 	case -1:
-		g_debug("cdda: drive returns unknown audio data");
+		log_debug("cdda: drive returns unknown audio data");
 		reverse_endian = false;
 		break;
 	case 0:
-		g_debug("cdda: drive returns audio data Little Endian.");
+		log_debug("cdda: drive returns audio data Little Endian.");
 		reverse_endian = G_BYTE_ORDER == G_BIG_ENDIAN;
 		break;
 	case 1:
-		g_debug("cdda: drive returns audio data Big Endian.");
+		log_debug("cdda: drive returns audio data Big Endian.");
 		reverse_endian = G_BYTE_ORDER == G_LITTLE_ENDIAN;
 		break;
 	default:
@@ -316,7 +317,7 @@ input_cdio_read(struct input_stream *is, void *ptr, size_t length,
 
 			s_err = cdda_errors(cis->drv);
 			if (s_err) {
-				g_warning("paranoia_read: %s", s_err );
+				log_warning("paranoia_read: %s", s_err );
 				free(s_err);
 			}
 			s_mess = cdda_messages(cis->drv);

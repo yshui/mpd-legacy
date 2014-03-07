@@ -145,7 +145,7 @@ recorder_write_to_file(struct recorder_output *recorder,
 		} else if (errno != EINTR) {
 			g_set_error(error_r, recorder_output_quark(), 0,
 				    "Failed to write to '%s': %s",
-				    recorder->path, g_strerror(errno));
+				    recorder->path, strerror(errno));
 			return false;
 		}
 	}
@@ -191,7 +191,7 @@ recorder_output_open(struct audio_output *ao,
 	if (recorder->fd < 0) {
 		g_set_error(error_r, recorder_output_quark(), 0,
 			    "Failed to create '%s': %s",
-			    recorder->path, g_strerror(errno));
+			    recorder->path, strerror(errno));
 		return false;
 	}
 

@@ -666,7 +666,7 @@ pulse_output_close(struct audio_output *ao)
 		o = pa_stream_drain(po->stream,
 				    pulse_output_stream_success_cb, po);
 		if (o == NULL) {
-			g_warning("pa_stream_drain() has failed: %s",
+			log_warning("pa_stream_drain() has failed: %s",
 				  pa_strerror(pa_context_errno(po->context)));
 		} else
 			pulse_wait_for_operation(po->mainloop, o);
@@ -873,7 +873,7 @@ pulse_output_cancel(struct audio_output *ao)
 
 	o = pa_stream_flush(po->stream, pulse_output_stream_success_cb, po);
 	if (o == NULL) {
-		g_warning("pa_stream_flush() has failed: %s",
+		log_warning("pa_stream_flush() has failed: %s",
 			  pa_strerror(pa_context_errno(po->context)));
 		pa_threaded_mainloop_unlock(po->mainloop);
 		return;
@@ -898,7 +898,7 @@ pulse_output_pause(struct audio_output *ao)
 
 	if (!pulse_output_wait_stream(po, &error)) {
 		pa_threaded_mainloop_unlock(po->mainloop);
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return false;
 	}
@@ -910,7 +910,7 @@ pulse_output_pause(struct audio_output *ao)
 	if (!pulse_output_stream_is_paused(po) &&
 	    !pulse_output_stream_pause(po, true, &error)) {
 		pa_threaded_mainloop_unlock(po->mainloop);
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return false;
 	}

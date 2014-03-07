@@ -60,7 +60,7 @@ refill_buffer(struct input_despotify *ctx)
 			break;
 
 		if (rc < 0) {
-			g_debug("despotify_get_pcm error\n");
+			log_debug("despotify_get_pcm error\n");
 			ctx->eof = true;
 			break;
 		}
@@ -83,14 +83,14 @@ static void callback(struct despotify_session* ds,
 		break;
 
 	case DESPOTIFY_TRACK_PLAY_ERROR:
-		g_debug("Track play error\n");
+		log_debug("Track play error\n");
 		ctx->eof = true;
 		ctx->len_available = 0;
 		break;
 
 	case DESPOTIFY_END_OF_PLAYLIST:
 		ctx->eof = true;
-		g_debug("End of playlist: %d\n", ctx->eof);
+		log_debug("End of playlist: %d\n", ctx->eof);
 		break;
 	}
 }
@@ -115,7 +115,7 @@ input_despotify_open(const char *url,
 
 	ds_link = despotify_link_from_uri(url + 6);
 	if (!ds_link) {
-		g_debug("Can't find %s\n", url);
+		log_debug("Can't find %s\n", url);
 		return NULL;
 	}
 	if (ds_link->type != LINK_TYPE_TRACK) {

@@ -27,6 +27,8 @@
 #ifndef MPD_MIXER_PLUGIN_H
 #define MPD_MIXER_PLUGIN_H
 
+#include "log.h"
+
 #include <glib.h>
 
 #include <stdbool.h>

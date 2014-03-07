@@ -189,7 +189,7 @@ parse_cmdline(int argc, char **argv, struct options *options,
 	options->daemon = !option_no_daemon;
 
 	if (option_no_config) {
-		g_debug("Ignoring config, using daemon defaults\n");
+		log_debug("Ignoring config, using daemon defaults\n");
 		return true;
 	} else if (argc <= 1) {
 		/* default configuration file path */

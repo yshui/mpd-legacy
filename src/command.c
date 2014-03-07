@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "command.h"
 #include "protocol/argparser.h"
 #include "protocol/result.h"
@@ -120,7 +121,7 @@ print_playlist_result(struct client *client,
 
 	case PLAYLIST_RESULT_ERRNO:
 		command_error(client, ACK_ERROR_SYSTEM, "%s",
-			      g_strerror(errno));
+			      strerror(errno));
 		return COMMAND_RETURN_ERROR;
 
 	case PLAYLIST_RESULT_DENIED:
@@ -179,7 +180,7 @@ print_error(struct client *client, GError *error)
 	assert(client != NULL);
 	assert(error != NULL);
 
-	g_warning("%s", error->message);
+	log_warning("%s", error->message);
 
 	if (error->domain == playlist_quark()) {
 		enum playlist_result result = error->code;
@@ -204,7 +205,7 @@ print_error(struct client *client, GError *error)
 		}
 	} else if (error->domain == g_file_error_quark()) {
 		command_error(client, ACK_ERROR_SYSTEM, "%s",
-			      g_strerror(error->code));
+			      strerror(error->code));
 		g_error_free(error);
 		return COMMAND_RETURN_ERROR;
 	}

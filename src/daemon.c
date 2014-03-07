@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "daemon.h"
 
 #include <glib.h>
@@ -70,7 +71,7 @@ daemonize_kill(void)
 	fp = fopen(pidfile, "r");
 	if (fp == NULL)
 		MPD_ERROR("unable to open pid file \"%s\": %s",
-			  pidfile, g_strerror(errno));
+			  pidfile, strerror(errno));
 
 	if (fscanf(fp, "%i", &pid) != 1) {
 		MPD_ERROR("unable to read the pid from file \"%s\"",
@@ -81,7 +82,7 @@ daemonize_kill(void)
 	ret = kill(pid, SIGTERM);
 	if (ret < 0)
 		MPD_ERROR("unable to kill process %i: %s",
-			  pid, g_strerror(errno));
+			  pid, strerror(errno));
 
 	exit(EXIT_SUCCESS);
 }
@@ -103,7 +104,7 @@ daemonize_set_user(void)
 	if (user_gid != (gid_t)-1 && user_gid != getgid()) {
 		if (setgid(user_gid) == -1) {
 			MPD_ERROR("cannot setgid to %d: %s",
-				  (int)user_gid, g_strerror(errno));
+				  (int)user_gid, strerror(errno));
 		}
 	}
 
@@ -112,9 +113,9 @@ daemonize_set_user(void)
 	 * (must be done before we change our uid)
 	 */
 	if (!had_group && initgroups(user_name, user_gid) == -1) {
-		g_warning("cannot init supplementary groups "
+		log_warning("cannot init supplementary groups "
 			  "of user \"%s\": %s",
-			  user_name, g_strerror(errno));
+			  user_name, strerror(errno));
 	}
 #endif
 
@@ -122,7 +123,7 @@ daemonize_set_user(void)
 	if (user_uid != (uid_t)-1 && user_uid != getuid() &&
 	    setuid(user_uid) == -1) {
 		MPD_ERROR("cannot change to uid of user \"%s\": %s",
-			  user_name, g_strerror(errno));
+			  user_name, strerror(errno));
 	}
 }
 
@@ -136,7 +137,7 @@ daemonize_detach(void)
 #ifdef HAVE_DAEMON
 
 	if (daemon(0, 1))
-		MPD_ERROR("daemon() failed: %s", g_strerror(errno));
+		MPD_ERROR("daemon() failed: %s", strerror(errno));
 
 #elif defined(HAVE_FORK)
 
@@ -144,7 +145,7 @@ daemonize_detach(void)
 
 	switch (fork()) {
 	case -1:
-		MPD_ERROR("fork() failed: %s", g_strerror(errno));
+		MPD_ERROR("fork() failed: %s", strerror(errno));
 	case 0:
 		break;
 	default:
@@ -165,7 +166,7 @@ daemonize_detach(void)
 	MPD_ERROR("no support for daemonizing");
 #endif
 
-	g_debug("daemonized!");
+	log_debug("daemonized!");
 }
 
 void
@@ -176,11 +177,11 @@ daemonize(bool detach)
 	if (pidfile != NULL) {
 		/* do this before daemon'izing so we can fail gracefully if we can't
 		 * write to the pid file */
-		g_debug("opening pid file");
+		log_debug("opening pid file");
 		fp = fopen(pidfile, "w+");
 		if (!fp) {
 			MPD_ERROR("could not create pid file \"%s\": %s",
-				  pidfile, g_strerror(errno));
+				  pidfile, strerror(errno));
 		}
 	}
 
@@ -188,7 +189,7 @@ daemonize(bool detach)
 		daemonize_detach();
 
 	if (pidfile != NULL) {
-		g_debug("writing pid file");
+		log_debug("writing pid file");
 		fprintf(fp, "%lu\n", (unsigned long)getpid());
 		fclose(fp);
 	}

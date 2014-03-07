@@ -63,7 +63,7 @@ ao_enable(struct audio_output *ao)
 	success = ao_plugin_enable(ao, &error);
 	g_mutex_lock(ao->mutex);
 	if (!success) {
-		g_warning("Failed to enable \"%s\" [%s]: %s\n",
+		log_warning("Failed to enable \"%s\" [%s]: %s\n",
 			  ao->name, ao->plugin->name, error->message);
 		g_error_free(error);
 		return false;
@@ -160,7 +160,7 @@ ao_open(struct audio_output *ao)
 
 	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format, &error);
 	if (filter_audio_format == NULL) {
-		g_warning("Failed to open filter for \"%s\" [%s]: %s",
+		log_warning("Failed to open filter for \"%s\" [%s]: %s",
 			  ao->name, ao->plugin->name, error->message);
 		g_error_free(error);
 
@@ -181,7 +181,7 @@ ao_open(struct audio_output *ao)
 	assert(!ao->open);
 
 	if (!success) {
-		g_warning("Failed to open \"%s\" [%s]: %s",
+		log_warning("Failed to open \"%s\" [%s]: %s",
 			  ao->name, ao->plugin->name, error->message);
 		g_error_free(error);
 
@@ -194,14 +194,14 @@ ao_open(struct audio_output *ao)
 
 	ao->open = true;
 
-	g_debug("opened plugin=%s name=\"%s\" "
+	log_debug("opened plugin=%s name=\"%s\" "
 		"audio_format=%s",
 		ao->plugin->name, ao->name,
 		audio_format_to_string(&ao->out_audio_format, &af_string));
 
 	if (!audio_format_equals(&ao->in_audio_format,
 				 &ao->out_audio_format))
-		g_debug("converting from %s",
+		log_debug("converting from %s",
 			audio_format_to_string(&ao->in_audio_format,
 					       &af_string));
 }
@@ -228,7 +228,7 @@ ao_close(struct audio_output *ao, bool drain)
 
 	g_mutex_lock(ao->mutex);
 
-	g_debug("closed plugin=%s name=\"%s\"", ao->plugin->name, ao->name);
+	log_debug("closed plugin=%s name=\"%s\"", ao->plugin->name, ao->name);
 }
 
 static void
@@ -240,7 +240,7 @@ ao_reopen_filter(struct audio_output *ao)
 	ao_filter_close(ao);
 	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format, &error);
 	if (filter_audio_format == NULL) {
-		g_warning("Failed to open filter for \"%s\" [%s]: %s",
+		log_warning("Failed to open filter for \"%s\" [%s]: %s",
 			  ao->name, ao->plugin->name, error->message);
 		g_error_free(error);
 
@@ -344,7 +344,7 @@ ao_chunk_data(struct audio_output *ao, const struct music_chunk *chunk,
 		data = filter_filter(replay_gain_filter, data, length,
 				     &length, &error);
 		if (data == NULL) {
-			g_warning("\"%s\" [%s] failed to filter: %s",
+			log_warning("\"%s\" [%s] failed to filter: %s",
 				  ao->name, ao->plugin->name, error->message);
 			g_error_free(error);
 			return NULL;
@@ -403,7 +403,7 @@ ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 		memcpy(dest, other_data, other_length);
 		if (!pcm_mix(dest, data, length, ao->in_audio_format.format,
 			     1.0 - chunk->mix_ratio)) {
-			g_warning("Cannot cross-fade format %s",
+			log_warning("Cannot cross-fade format %s",
 				  sample_format_to_string(ao->in_audio_format.format));
 			return NULL;
 		}
@@ -416,7 +416,7 @@ ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 
 	data = filter_filter(ao->filter, data, length, &length, &error);
 	if (data == NULL) {
-		g_warning("\"%s\" [%s] failed to filter: %s",
+		log_warning("\"%s\" [%s] failed to filter: %s",
 			  ao->name, ao->plugin->name, error->message);
 		g_error_free(error);
 		return NULL;
@@ -462,7 +462,7 @@ ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 		g_mutex_lock(ao->mutex);
 		if (nbytes == 0) {
 			/* play()==0 means failure */
-			g_warning("\"%s\" [%s] failed to play: %s",
+			log_warning("\"%s\" [%s] failed to play: %s",
 				  ao->name, ao->plugin->name, error->message);
 			g_error_free(error);
 

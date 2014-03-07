@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "volume.h"
 #include "conf.h"
 #include "idle.h"
@@ -129,7 +130,7 @@ read_sw_volume_state(const char *line)
 	if (*end == 0 && sv >= 0 && sv <= 100)
 		software_volume_change(sv);
 	else
-		g_warning("Can't parse software volume: %s\n", line);
+		log_warning("Can't parse software volume: %s\n", line);
 	return true;
 }
 

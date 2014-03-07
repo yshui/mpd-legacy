@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "log.h"
 #include "config.h"
 #include "database.h"
 #include "db_error.h"
@@ -101,7 +102,7 @@ db_get_song(const char *file)
 {
 	assert(file != NULL);
 
-	g_debug("get song: %s", file);
+	log_debug("get song: %s", file);
 
 	if (db == NULL)
 		return NULL;

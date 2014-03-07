@@ -54,12 +54,12 @@ state_file_write(struct player_control *pc)
 
 	assert(state_file_path != NULL);
 
-	g_debug("Saving state file %s", state_file_path);
+	log_debug("Saving state file %s", state_file_path);
 
 	fp = fopen(state_file_path, "w");
 	if (unlikely(!fp)) {
-		g_warning("failed to create %s: %s",
-			  state_file_path, g_strerror(errno));
+		log_warning("failed to create %s: %s",
+			  state_file_path, strerror(errno));
 		return;
 	}
 
@@ -82,12 +82,12 @@ state_file_read(struct player_control *pc)
 
 	assert(state_file_path != NULL);
 
-	g_debug("Loading state file %s", state_file_path);
+	log_debug("Loading state file %s", state_file_path);
 
 	fp = fopen(state_file_path, "r");
 	if (unlikely(!fp)) {
-		g_warning("failed to open %s: %s",
-			  state_file_path, g_strerror(errno));
+		log_warning("failed to open %s: %s",
+			  state_file_path, strerror(errno));
 		return;
 	}
 
@@ -99,7 +99,7 @@ state_file_read(struct player_control *pc)
 			playlist_state_restore(line, fp, buffer,
 					       &g_playlist, pc);
 		if (!success)
-			g_warning("Unrecognized line in state file: %s", line);
+			log_warning("Unrecognized line in state file: %s", line);
 	}
 
 	fclose(fp);

@@ -18,6 +18,7 @@
  */
 
 #include "config.h" /* must be first for large file support */
+#include "log.h"
 #include "inotify_update.h"
 #include "inotify_source.h"
 #include "inotify_queue.h"
@@ -102,7 +103,7 @@ remove_watch_directory(struct watch_directory *directory)
 	assert(directory != NULL);
 
 	if (directory->parent == NULL) {
-		g_warning("music directory was removed - "
+		log_warning("music directory was removed - "
 			  "cannot continue to watch it");
 		return;
 	}
@@ -167,8 +168,8 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 
 	dir = opendir(path_fs);
 	if (dir == NULL) {
-		g_warning("Failed to open directory %s: %s",
-			  path_fs, g_strerror(errno));
+		log_warning("Failed to open directory %s: %s",
+			  path_fs, strerror(errno));
 		return;
 	}
 
@@ -184,8 +185,8 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		child_path_fs = build_db_filename(path_fs, ent->d_name, NULL);
 		ret = stat(child_path_fs, &st);
 		if (ret < 0) {
-			g_warning("Failed to stat %s: %s",
-				  child_path_fs, g_strerror(errno));
+			log_warning("Failed to stat %s: %s",
+				  child_path_fs, strerror(errno));
 			free(child_path_fs);
 			continue;
 		}
@@ -198,7 +199,7 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		ret = mpd_inotify_source_add(inotify_source, child_path_fs,
 					     IN_MASK, &error);
 		if (ret < 0) {
-			g_warning("Failed to register %s: %s",
+			log_warning("Failed to register %s: %s",
 				  child_path_fs, error->message);
 			g_error_free(error);
 			error = NULL;
@@ -257,7 +258,7 @@ mpd_inotify_callback(int wd, unsigned mask,
 	char *allocated = NULL;
 	struct stat st;
 
-	/*g_debug("wd=%d mask=0x%x name='%s'", wd, mask, name);*/
+	/*log_debug("wd=%d mask=0x%x name='%s'", wd, mask, name);*/
 
 	directory = tree_find_watch_directory(wd);
 	if (directory == NULL)
@@ -275,8 +276,8 @@ mpd_inotify_callback(int wd, unsigned mask,
 
 		int ret = stat(new_path_fs, &st);
 		if (ret < 0)
-			g_warning("Failed to stat %s: %s",
-					new_path_fs, g_strerror(errno));
+			log_warning("Failed to stat %s: %s",
+					new_path_fs, strerror(errno));
 		else
 			new_directory = S_ISDIR(st.st_mode);
 
@@ -324,18 +325,18 @@ mpd_inotify_init(unsigned max_depth)
 {
 	GError *error = NULL;
 
-	g_debug("initializing inotify");
+	log_debug("initializing inotify");
 
 	const char *path = mapper_get_music_directory_fs();
 	if (path == NULL) {
-		g_debug("no music directory configured");
+		log_debug("no music directory configured");
 		return;
 	}
 
 	inotify_source = mpd_inotify_source_new(mpd_inotify_callback, NULL,
 						&error);
 	if (inotify_source == NULL) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return;
 	}
@@ -346,7 +347,7 @@ mpd_inotify_init(unsigned max_depth)
 	inotify_root.descriptor = mpd_inotify_source_add(inotify_source, path,
 							 IN_MASK, &error);
 	if (inotify_root.descriptor < 0) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		mpd_inotify_source_free(inotify_source);
 		inotify_source = NULL;
@@ -360,7 +361,7 @@ mpd_inotify_init(unsigned max_depth)
 
 	mpd_inotify_queue_init();
 
-	g_debug("watching music directory");
+	log_debug("watching music directory");
 }
 
 static gboolean

@@ -76,7 +76,7 @@ audio_output_state_read(const char *line)
 	name = endptr + 1;
 	ao = audio_output_find(name);
 	if (ao == NULL) {
-		g_debug("Ignoring device state for '%s'", name);
+		log_debug("Ignoring device state for '%s'", name);
 		return true;
 	}
 

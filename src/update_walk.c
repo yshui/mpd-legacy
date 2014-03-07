@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_walk.h"
 #include "update_io.h"
@@ -190,7 +191,7 @@ find_inode_ancestor(struct directory *parent, ino_t inode, dev_t device)
 			return -1;
 
 		if (parent->inode == inode && parent->device == device) {
-			g_debug("recursive directory found");
+			log_debug("recursive directory found");
 			return 1;
 		}
 
@@ -262,7 +263,7 @@ update_directory_child(struct directory *directory,
 			db_unlock();
 		}
 	} else {
-		g_debug("update: %s is not a directory, archive or music", name);
+		log_debug("update: %s is not a directory, archive or music", name);
 	}
 }
 
@@ -362,8 +363,8 @@ update_directory(struct directory *directory, const struct stat *st)
 
 	DIR *dir = opendir(path_fs);
 	if (!dir) {
-		g_warning("Failed to open directory %s: %s",
-			  path_fs, g_strerror(errno));
+		log_warning("Failed to open directory %s: %s",
+			  path_fs, strerror(errno));
 		free(path_fs);
 		return false;
 	}

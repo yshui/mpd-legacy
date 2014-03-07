@@ -20,6 +20,7 @@
 #ifndef MPD_PLAYLIST_H
 #define MPD_PLAYLIST_H
 
+#include "log.h"
 #include "queue.h"
 #include "playlist_error.h"
 

@@ -288,7 +288,7 @@ flac_scan_file2(const char *file, const char *char_tnum,
 		default:
 			err = FLAC__Metadata_SimpleIteratorStatusString[s];
 		}
-		g_debug("Reading '%s' metadata gave the following error: %s\n",
+		log_debug("Reading '%s' metadata gave the following error: %s\n",
 			file, err);
 		FLAC__metadata_simple_iterator_delete(it);
 		return false;

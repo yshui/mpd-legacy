@@ -46,7 +46,7 @@ soundcloud_init(const struct config_param *param)
 	soundcloud_config.apikey =
 		config_dup_block_string(param, "apikey", NULL);
 	if (soundcloud_config.apikey == NULL) {
-		g_debug("disabling the soundcloud playlist plugin "
+		log_debug("disabling the soundcloud playlist plugin "
 			"because API key is not set");
 		return false;
 	}
@@ -258,7 +258,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 	input_stream = input_stream_open(url, mutex, cond, &error);
 	if (input_stream == NULL) {
 		if (error != NULL) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 		return -1;
@@ -274,7 +274,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 		nbytes = input_stream_read(input_stream, buffer, sizeof(buffer), &error);
 		if (nbytes == 0) {
 			if (error != NULL) {
-				g_warning("%s", error->message);
+				log_warning("%s", error->message);
 				g_error_free(error);
 			}
 			if (input_stream_eof(input_stream)) {
@@ -302,7 +302,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 		    )
 		{
 			unsigned char *str = yajl_get_error(hand, 1, ubuffer, nbytes);
-			g_warning("%s", str);
+			log_warning("%s", str);
 			yajl_free_error(hand, str);
 			break;
 		}
@@ -349,7 +349,7 @@ soundcloud_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	rest = p;
 
 	if (strcmp(scheme, "soundcloud") != 0) {
-		g_warning("incompatible scheme for soundcloud plugin: %s", scheme);
+		log_warning("incompatible scheme for soundcloud plugin: %s", scheme);
 		g_free(s);
 		return NULL;
 	}
@@ -369,7 +369,7 @@ soundcloud_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	g_free(s);
 
 	if (u == NULL) {
-		g_warning("unknown soundcloud URI");
+		log_warning("unknown soundcloud URI");
 		return NULL;
 	}
 

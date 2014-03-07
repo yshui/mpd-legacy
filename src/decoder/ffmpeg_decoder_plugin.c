@@ -321,7 +321,7 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 
 		AVFrame *frame = avcodec_alloc_frame();
 		if (frame == NULL) {
-			g_warning("Could not allocate frame");
+			log_warning("Could not allocate frame");
 			break;
 		}
 
@@ -357,7 +357,7 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 
 		if (len < 0) {
 			/* if error, we skip the frame */
-			g_message("decoding failed, frame skipped\n");
+			log_info("decoding failed, frame skipped\n");
 			break;
 		}
 
@@ -425,11 +425,11 @@ ffmpeg_sample_format(enum AVSampleFormat sample_fmt)
 	const char *name = av_get_sample_fmt_string(buffer, sizeof(buffer),
 						    sample_fmt);
 	if (name != NULL)
-		g_warning("Unsupported libavcodec SampleFormat value: %s (%d)",
+		log_warning("Unsupported libavcodec SampleFormat value: %s (%d)",
 			  name, sample_fmt);
 	else
 #endif
-		g_warning("Unsupported libavcodec SampleFormat value: %d",
+		log_warning("Unsupported libavcodec SampleFormat value: %d",
 			  sample_fmt);
 	return SAMPLE_FORMAT_UNDEFINED;
 }
@@ -475,13 +475,13 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 	if (input_format == NULL)
 		return;
 
-	g_debug("detected input format '%s' (%s)",
+	log_debug("detected input format '%s' (%s)",
 		input_format->name, input_format->long_name);
 
 	struct mpd_ffmpeg_stream *stream =
 		mpd_ffmpeg_stream_open(decoder, input);
 	if (stream == NULL) {
-		g_warning("Failed to open stream");
+		log_warning("Failed to open stream");
 		return;
 	}
 
@@ -489,7 +489,7 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 	AVFormatContext *format_context = NULL;
 	if (mpd_ffmpeg_open_input(&format_context, stream->io, input->uri,
 				  input_format) != 0) {
-		g_warning("Open failed\n");
+		log_warning("Open failed\n");
 		mpd_ffmpeg_stream_close(stream);
 		return;
 	}
@@ -501,7 +501,7 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 	const int find_result = av_find_stream_info(format_context);
 #endif
 	if (find_result < 0) {
-		g_warning("Couldn't find stream info\n");
+		log_warning("Couldn't find stream info\n");
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
 #else
@@ -513,7 +513,7 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 
 	int audio_stream = ffmpeg_find_audio_stream(format_context);
 	if (audio_stream == -1) {
-		g_warning("No audio stream inside\n");
+		log_warning("No audio stream inside\n");
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
 #else
@@ -527,12 +527,12 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 
 	AVCodecContext *codec_context = av_stream->codec;
 	if (codec_context->codec_name[0] != 0)
-		g_debug("codec '%s'", codec_context->codec_name);
+		log_debug("codec '%s'", codec_context->codec_name);
 
 	AVCodec *codec = avcodec_find_decoder(codec_context->codec_id);
 
 	if (!codec) {
-		g_warning("Unsupported audio codec\n");
+		log_warning("Unsupported audio codec\n");
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
 #else
@@ -553,7 +553,7 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 				       codec_context->sample_rate,
 				       sample_format,
 				       codec_context->channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
@@ -575,7 +575,7 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 	const int open_result = avcodec_open(codec_context, codec);
 #endif
 	if (open_result < 0) {
-		g_warning("Could not open codec\n");
+		log_warning("Could not open codec\n");
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
 #else

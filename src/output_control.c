@@ -183,7 +183,7 @@ audio_output_open(struct audio_output *ao,
 		GError *error = NULL;
 
 		if (!mixer_open(ao->mixer, &error)) {
-			g_warning("Failed to open mixer for '%s': %s",
+			log_warning("Failed to open mixer for '%s': %s",
 				  ao->name, error->message);
 			g_error_free(error);
 		}

@@ -367,7 +367,7 @@ static void close_shout_conn(struct shout_data * sd)
 
 	if (shout_get_connected(sd->shout_conn) != SHOUTERR_UNCONNECTED &&
 	    shout_close(sd->shout_conn) != SHOUTERR_SUCCESS) {
-		g_warning("problem closing connection to shout server: %s\n",
+		log_warning("problem closing connection to shout server: %s\n",
 			  shout_get_error(sd->shout_conn));
 	}
 }
@@ -514,7 +514,7 @@ static void my_shout_set_tag(struct audio_output *ao,
 		/* encoder plugin supports stream tags */
 
 		if (!encoder_pre_tag(sd->encoder, &error)) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 			return;
 		}
@@ -523,7 +523,7 @@ static void my_shout_set_tag(struct audio_output *ao,
 			return;
 
 		if (!encoder_tag(sd->encoder, tag, &error)) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 	} else {
@@ -534,7 +534,7 @@ static void my_shout_set_tag(struct audio_output *ao,
 		shout_metadata_add(sd->shout_meta, "song", song);
 		if (SHOUTERR_SUCCESS != shout_set_metadata(sd->shout_conn,
 							   sd->shout_meta)) {
-			g_warning("error setting shout metadata\n");
+			log_warning("error setting shout metadata\n");
 		}
 	}
 

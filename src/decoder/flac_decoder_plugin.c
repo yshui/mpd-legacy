@@ -139,7 +139,7 @@ static void flacPrintErroredState(FLAC__SeekableStreamDecoderState state)
 		break;
 	}
 
-	g_warning("%s\n", FLAC__SeekableStreamDecoderStateString[state]);
+	log_warning("%s\n", FLAC__SeekableStreamDecoderStateString[state]);
 }
 #else /* FLAC_API_VERSION_CURRENT >= 7 */
 static void flacPrintErroredState(FLAC__StreamDecoderState state)
@@ -160,7 +160,7 @@ static void flacPrintErroredState(FLAC__StreamDecoderState state)
 		break;
 	}
 
-	g_warning("%s\n", FLAC__StreamDecoderStateString[state]);
+	log_warning("%s\n", FLAC__StreamDecoderStateString[state]);
 }
 #endif /* FLAC_API_VERSION_CURRENT >= 7 */
 
@@ -206,13 +206,13 @@ flac_decoder_new(void)
 {
 	FLAC__StreamDecoder *sd = FLAC__stream_decoder_new();
 	if (sd == NULL) {
-		g_warning("FLAC__stream_decoder_new() failed");
+		log_warning("FLAC__stream_decoder_new() failed");
 		return NULL;
 	}
 
 #if defined(FLAC_API_VERSION_CURRENT) && FLAC_API_VERSION_CURRENT > 7
 	if(!FLAC__stream_decoder_set_metadata_respond(sd, FLAC__METADATA_TYPE_VORBIS_COMMENT))
-		g_debug("FLAC__stream_decoder_set_metadata_respond() has failed");
+		log_debug("FLAC__stream_decoder_set_metadata_respond() has failed");
 #endif
 
 	return sd;
@@ -225,7 +225,7 @@ flac_decoder_initialize(struct flac_data *data, FLAC__StreamDecoder *sd,
 	data->total_frames = duration;
 
 	if (!FLAC__stream_decoder_process_until_end_of_metadata(sd)) {
-		g_warning("problem reading metadata");
+		log_warning("problem reading metadata");
 		return false;
 	}
 
@@ -360,7 +360,7 @@ flac_decode_internal(struct decoder * decoder,
 		flac_data_deinit(&data);
 		FLAC__stream_decoder_delete(flac_dec);
 #if defined(FLAC_API_VERSION_CURRENT) && FLAC_API_VERSION_CURRENT > 7
-		g_warning("%s", FLAC__StreamDecoderInitStatusString[status]);
+		log_warning("%s", FLAC__StreamDecoderInitStatusString[status]);
 #endif
 		return;
 	}

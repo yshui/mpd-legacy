@@ -98,15 +98,11 @@ GCond *main_cond;
 struct player_control *global_player_control;
 
 static bool
-glue_daemonize_init(const struct options *options, GError **error_r)
+glue_daemonize_init(const struct options *options)
 {
-	GError *error = NULL;
-
-	char *pid_file = config_dup_path(CONF_PID_FILE, &error);
-	if (pid_file == NULL && error != NULL) {
-		g_propagate_error(error_r, error);
+	char *pid_file = config_dup_path(CONF_PID_FILE);
+	if (pid_file == NULL)
 		return false;
-	}
 
 	daemonize_init(config_get_string(CONF_USER, NULL),
 		       config_get_string(CONF_GROUP, NULL),
@@ -120,20 +116,15 @@ glue_daemonize_init(const struct options *options, GError **error_r)
 }
 
 static bool
-glue_mapper_init(GError **error_r)
+glue_mapper_init(void)
 {
-	GError *error = NULL;
-	char *music_dir = config_dup_path(CONF_MUSIC_DIR, &error);
-	if (music_dir == NULL && error != NULL) {
-		g_propagate_error(error_r, error);
+	char *music_dir = config_dup_path(CONF_MUSIC_DIR);
+	if (music_dir == NULL)
 		return false;
-	}
 
-	char *playlist_dir = config_dup_path(CONF_PLAYLIST_DIR, &error);
-	if (playlist_dir == NULL && error != NULL) {
-		g_propagate_error(error_r, error);
+	char *playlist_dir = config_dup_path(CONF_PLAYLIST_DIR);
+	if (playlist_dir == NULL)
 		return false;
-	}
 
 	if (music_dir == NULL)
 		music_dir = strdup(g_get_user_special_dir(G_USER_DIRECTORY_MUSIC));
@@ -160,7 +151,7 @@ glue_db_init_and_load(void)
 
 	if (!mapper_has_music_directory()) {
 		if (path != NULL)
-			g_message("Found " CONF_DB_FILE " setting without "
+			log_info("Found " CONF_DB_FILE " setting without "
 				  CONF_MUSIC_DIR " - disabling database");
 		db_init(NULL, NULL);
 		return true;
@@ -188,9 +179,9 @@ glue_sticker_init(void)
 {
 #ifdef ENABLE_SQLITE
 	GError *error = NULL;
-	char *sticker_file = config_dup_path(CONF_STICKER_FILE, &error);
-	if (sticker_file == NULL && error != NULL)
-		MPD_ERROR("%s", error->message);
+	char *sticker_file = config_dup_path(CONF_STICKER_FILE);
+	if (sticker_file == NULL)
+		MPD_ERROR("Failed to init sticker\n");
 
 	if (!sticker_global_init(sticker_file, &error))
 		MPD_ERROR("%s", error->message);
@@ -200,15 +191,11 @@ glue_sticker_init(void)
 }
 
 static bool
-glue_state_file_init(GError **error_r)
+glue_state_file_init(void)
 {
-	GError *error = NULL;
-
-	char *path = config_dup_path(CONF_STATE_FILE, &error);
-	if (path == NULL && error != NULL) {
-		g_propagate_error(error_r, error);
+	char *path = config_dup_path(CONF_STATE_FILE);
+	if (path == NULL)
 		return false;
-	}
 
 	state_file_init(path, global_player_control);
 	free(path);
@@ -347,29 +334,28 @@ int mpd_main(int argc, char *argv[])
 
 	success = parse_cmdline(argc, argv, &options, &error);
 	if (!success) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
 
-	if (!glue_daemonize_init(&options, &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	if (!glue_daemonize_init(&options)) {
+		log_warning("Can't daemonize");
 		return EXIT_FAILURE;
 	}
 
 	stats_global_init();
 	tag_lib_init();
 
-	if (!log_init(options.verbose, options.log_stderr, &error)) {
-		g_warning("%s", error->message);
+	if (!log_init(options.verbose, options.log_stderr)) {
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
 
 	success = listen_global_init(&error);
 	if (!success) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
@@ -386,9 +372,8 @@ int mpd_main(int argc, char *argv[])
 
 	path_global_init();
 
-	if (!glue_mapper_init(&error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	if (!glue_mapper_init()) {
+		log_warning("Can't initialize mapper");
 		return EXIT_FAILURE;
 	}
 
@@ -400,7 +385,7 @@ int mpd_main(int argc, char *argv[])
 #endif
 
 	if (!pcm_resample_global_init(&error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
@@ -421,7 +406,7 @@ int mpd_main(int argc, char *argv[])
 	replay_gain_global_init();
 
 	if (!input_stream_global_init(&error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
@@ -435,7 +420,7 @@ int mpd_main(int argc, char *argv[])
 	initSigHandlers();
 
 	if (!io_thread_start(&error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return EXIT_FAILURE;
 	}
@@ -452,11 +437,8 @@ int mpd_main(int argc, char *argv[])
 			MPD_ERROR("directory update failed");
 	}
 
-	if (!glue_state_file_init(&error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	if (!glue_state_file_init())
 		return EXIT_FAILURE;
-	}
 
 	success = config_get_bool(CONF_AUTO_UPDATE, false);
 #ifdef ENABLE_INOTIFY
@@ -465,7 +447,7 @@ int mpd_main(int argc, char *argv[])
 						     G_MAXUINT));
 #else
 	if (success)
-		g_warning("inotify: auto_update was disabled. enable during compilation phase");
+		log_warning("inotify: auto_update was disabled. enable during compilation phase");
 #endif
 
 	config_global_check();
@@ -502,7 +484,7 @@ int mpd_main(int argc, char *argv[])
 
 	start = clock();
 	db_finish();
-	g_debug("db_finish took %f seconds",
+	log_debug("db_finish took %f seconds",
 		((float)(clock()-start))/CLOCKS_PER_SEC);
 
 #ifdef ENABLE_SQLITE

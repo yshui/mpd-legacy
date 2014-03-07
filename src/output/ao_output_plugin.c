@@ -74,7 +74,7 @@ ao_output_error(GError **error_r)
 		break;
 
 	default:
-		error = g_strerror(errno);
+		error = strerror(errno);
 	}
 
 	g_set_error(error_r, ao_output_quark(), errno,
@@ -127,7 +127,7 @@ ao_output_init(const struct config_param *param,
 		return NULL;
 	}
 
-	g_debug("using ao driver \"%s\" for \"%s\"\n", ai->short_name,
+	log_debug("using ao driver \"%s\" for \"%s\"\n", ai->short_name,
 		config_get_block_string(param, "name", NULL));
 
 	value = config_get_block_string(param, "options", NULL);

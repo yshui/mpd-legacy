@@ -57,7 +57,7 @@ audiofile_file_read(AFvirtualfile *vfile, void *data, size_t length)
 
 	nbytes = input_stream_lock_read(is, data, length, &error);
 	if (nbytes == 0 && error != NULL) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return -1;
 	}
@@ -140,7 +140,7 @@ audiofile_setup_sample_format(AFfilehandle af_fp)
 
 	afGetSampleFormat(af_fp, AF_DEFAULT_TRACK, &fs, &bits);
 	if (!audio_valid_sample_format(audiofile_bits_to_sample_format(bits))) {
-		g_debug("input file has %d bit samples, converting to 16",
+		log_debug("input file has %d bit samples, converting to 16",
 			bits);
 		bits = 16;
 	}
@@ -167,7 +167,7 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 	enum decoder_command cmd;
 
 	if (!is->seekable) {
-		g_warning("not seekable");
+		log_warning("not seekable");
 		return;
 	}
 
@@ -175,7 +175,7 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 
 	af_fp = afOpenVirtualFile(vf, "r", NULL);
 	if (af_fp == AF_NULL_FILEHANDLE) {
-		g_warning("failed to input stream\n");
+		log_warning("failed to input stream\n");
 		return;
 	}
 
@@ -184,7 +184,7 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 				       audiofile_setup_sample_format(af_fp),
 				       afGetVirtualChannels(af_fp, AF_DEFAULT_TRACK),
 				       &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		afCloseFile(af_fp);
 		return;
@@ -230,7 +230,7 @@ audiofile_scan_file(const char *file,
 	int total_time = audiofile_get_duration(file);
 
 	if (total_time < 0) {
-		g_debug("Failed to get total song time from: %s\n",
+		log_debug("Failed to get total song time from: %s\n",
 			file);
 		return false;
 	}

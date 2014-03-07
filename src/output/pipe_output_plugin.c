@@ -82,7 +82,7 @@ pipe_output_open(struct audio_output *ao,
 	if (pd->fh == NULL) {
 		g_set_error(error, pipe_output_quark(), errno,
 			    "Error opening pipe \"%s\": %s",
-			    pd->cmd, g_strerror(errno));
+			    pd->cmd, strerror(errno));
 		return false;
 	}
 
@@ -106,7 +106,7 @@ pipe_output_play(struct audio_output *ao, const void *chunk, size_t size, GError
 	ret = fwrite(chunk, 1, size, pd->fh);
 	if (ret == 0)
 		g_set_error(error, pipe_output_quark(), errno,
-			    "Write error on pipe: %s", g_strerror(errno));
+			    "Write error on pipe: %s", strerror(errno));
 
 	return ret;
 }

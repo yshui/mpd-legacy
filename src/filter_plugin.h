@@ -26,6 +26,8 @@
 #ifndef MPD_FILTER_PLUGIN_H
 #define MPD_FILTER_PLUGIN_H
 
+#include "log.h"
+
 #include <glib.h>
 
 #include <stdbool.h>

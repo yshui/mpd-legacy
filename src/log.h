@@ -22,15 +22,24 @@
 
 #include "macros.h"
 
-#include <glib.h>
 #include <stdbool.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-MPD_CONST
-static inline GQuark
-log_quark(void)
-{
-	return g_quark_from_static_string("log");
-}
+#ifdef HAVE_SYSLOG
+#include <syslog.h>
+#else
+//Some loglevel definitions
+#define	LOG_EMERG	0
+#define	LOG_ALERT	1
+#define	LOG_CRIT	2
+#define	LOG_ERR		3
+#define	LOG_WARNING	4
+#define	LOG_NOTICE	5
+#define	LOG_INFO	6
+#define	LOG_DEBUG	7
+#endif
+
 
 /**
  * Configure a logging destination for daemon startup, before the
@@ -40,11 +49,14 @@ log_quark(void)
  *
  * @param verbose true when the program is started with --verbose
  */
+
+extern void (*log_handler)(int log_level, const char *str);
+
 void
 log_early_init(bool verbose);
 
 bool
-log_init(bool verbose, bool use_stdout, GError **error_r);
+log_init(bool verbose, bool use_stdout);
 
 void
 log_deinit(void);
@@ -52,5 +64,25 @@ log_deinit(void);
 void setup_log_output(bool use_stdout);
 
 int cycle_log_files(void);
+
+static inline void log_meta(int log_level, const char *fmt, ...){
+	va_list args;
+	va_start(args, fmt);
+	int len = vsnprintf(0, 0, fmt, args);
+	va_end(args);
+
+	va_start(args, fmt);
+	char *buf = (char *)malloc(len);
+	vsnprintf(buf, len, fmt, args);
+	va_end(args);
+
+	log_handler(log_level, buf);
+	free(buf);
+}
+
+#define log_debug(...) log_meta(LOG_DEBUG, __VA_ARGS__)
+#define log_info(...) log_meta(LOG_INFO, __VA_ARGS__)
+#define log_warning(...) log_meta(LOG_WARNING, __VA_ARGS__)
+#define log_err(...) log_meta(LOG_ERR, __VA_ARGS__)
 
 #endif /* LOG_H */

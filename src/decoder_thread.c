@@ -78,7 +78,7 @@ decoder_input_stream_open(struct decoder_control *dc, const char *uri)
 	is = input_stream_open(uri, dc->mutex, dc->cond, &error);
 	if (is == NULL) {
 		if (error != NULL) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 
@@ -101,7 +101,7 @@ decoder_input_stream_open(struct decoder_control *dc, const char *uri)
 	if (!input_stream_check(is, &error)) {
 		decoder_unlock(dc);
 
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 
 		return NULL;
@@ -126,7 +126,7 @@ decoder_stream_decode(const struct decoder_plugin *plugin,
 	assert(input_stream->ready);
 	assert(decoder->dc->state == DECODE_STATE_START);
 
-	g_debug("probing plugin %s", plugin->name);
+	log_debug("probing plugin %s", plugin->name);
 
 	if (decoder->dc->command == DECODE_COMMAND_STOP)
 		return true;
@@ -159,7 +159,7 @@ decoder_file_decode(const struct decoder_plugin *plugin,
 	assert(g_path_is_absolute(path));
 	assert(decoder->dc->state == DECODE_STATE_START);
 
-	g_debug("probing plugin %s", plugin->name);
+	log_debug("probing plugin %s", plugin->name);
 
 	if (decoder->dc->command == DECODE_COMMAND_STOP)
 		return true;

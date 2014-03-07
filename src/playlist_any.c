@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "playlist_any.h"
 #include "playlist_list.h"
 #include "playlist_mapper.h"
@@ -43,7 +44,7 @@ playlist_open_remote(const char *uri, GMutex *mutex, GCond *cond,
 	struct input_stream *is = input_stream_open(uri, mutex, cond, &error);
 	if (is == NULL) {
 		if (error != NULL) {
-			g_warning("Failed to open %s: %s",
+			log_warning("Failed to open %s: %s",
 				  uri, error->message);
 			g_error_free(error);
 		}

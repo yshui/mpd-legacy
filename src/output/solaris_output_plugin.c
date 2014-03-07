@@ -122,7 +122,7 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	if (so->fd < 0) {
 		g_set_error(error, solaris_output_quark(), errno,
 			    "Failed to open %s: %s",
-			    so->device, g_strerror(errno));
+			    so->device, strerror(errno));
 		return false;
 	}
 
@@ -137,7 +137,7 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	ret = ioctl(so->fd, AUDIO_GETINFO, &info);
 	if (ret < 0) {
 		g_set_error(error, solaris_output_quark(), errno,
-			    "AUDIO_GETINFO failed: %s", g_strerror(errno));
+			    "AUDIO_GETINFO failed: %s", strerror(errno));
 		close(so->fd);
 		return false;
 	}
@@ -150,7 +150,7 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	ret = ioctl(so->fd, AUDIO_SETINFO, &info);
 	if (ret < 0) {
 		g_set_error(error, solaris_output_quark(), errno,
-			    "AUDIO_SETINFO failed: %s", g_strerror(errno));
+			    "AUDIO_SETINFO failed: %s", strerror(errno));
 		close(so->fd);
 		return false;
 	}
@@ -176,7 +176,7 @@ solaris_output_play(struct audio_output *ao, const void *chunk, size_t size,
 	nbytes = write(so->fd, chunk, size);
 	if (nbytes <= 0) {
 		g_set_error(error, solaris_output_quark(), errno,
-			    "Write failed: %s", g_strerror(errno));
+			    "Write failed: %s", strerror(errno));
 		return 0;
 	}
 

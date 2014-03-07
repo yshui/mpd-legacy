@@ -26,6 +26,7 @@
 #ifndef MPD_DB_PLUGIN_H
 #define MPD_DB_PLUGIN_H
 
+#include "log.h"
 #include "macros.h"
 
 #include <glib.h>

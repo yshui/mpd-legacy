@@ -57,7 +57,7 @@ sndfile_vio_read(void *ptr, sf_count_t count, void *user_data)
 
 	nbytes = input_stream_lock_read(is, ptr, count, &error);
 	if (nbytes == 0 && error != NULL) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return -1;
 	}
@@ -128,7 +128,7 @@ sndfile_stream_decode(struct decoder *decoder, struct input_stream *is)
 
 	sf = sf_open_virtual(&vio, SFM_READ, &info, is);
 	if (sf == NULL) {
-		g_warning("sf_open_virtual() failed");
+		log_warning("sf_open_virtual() failed");
 		return;
 	}
 
@@ -138,7 +138,7 @@ sndfile_stream_decode(struct decoder *decoder, struct input_stream *is)
 	if (!audio_format_init_checked(&audio_format, info.samplerate,
 				       SAMPLE_FORMAT_S32,
 				       info.channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return;
 	}
@@ -189,7 +189,7 @@ sndfile_scan_file(const char *path_fs,
 
 	if (!audio_valid_sample_rate(info.samplerate)) {
 		sf_close(sf);
-		g_warning("Invalid sample rate in %s\n", path_fs);
+		log_warning("Invalid sample rate in %s\n", path_fs);
 		return false;
 	}
 

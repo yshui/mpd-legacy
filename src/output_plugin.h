@@ -21,6 +21,7 @@
 #define MPD_OUTPUT_PLUGIN_H
 
 #include "macros.h"
+#include "log.h"
 
 #include <glib.h>
 

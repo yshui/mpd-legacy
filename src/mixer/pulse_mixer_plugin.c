@@ -107,7 +107,7 @@ pulse_mixer_update(struct pulse_mixer *pm,
 					   pa_stream_get_index(stream),
 					   pulse_mixer_volume_cb, pm);
 	if (o == NULL) {
-		g_warning("pa_context_get_sink_input_info() failed: %s",
+		log_warning("pa_context_get_sink_input_info() failed: %s",
 			  pa_strerror(pa_context_errno(context)));
 		pulse_mixer_offline(pm);
 		return;
@@ -128,7 +128,7 @@ pulse_mixer_on_connect(struct pulse_mixer *pm,
 				 (pa_subscription_mask_t)PA_SUBSCRIPTION_MASK_SINK_INPUT,
 				 NULL, NULL);
 	if (o == NULL) {
-		g_warning("pa_context_subscribe() failed: %s",
+		log_warning("pa_context_subscribe() failed: %s",
 			  pa_strerror(pa_context_errno(context)));
 		return;
 	}

@@ -130,7 +130,7 @@ playlist_append_uri(struct playlist *playlist, struct player_control *pc,
 {
 	struct song *song;
 
-	g_debug("add to playlist: %s", uri);
+	log_debug("add to playlist: %s", uri);
 
 	song = song_by_uri(uri);
 	if (song == NULL)

@@ -20,6 +20,7 @@
 #ifndef MPD_OUTPUT_INTERNAL_H
 #define MPD_OUTPUT_INTERNAL_H
 
+#include "log.h"
 #include "audio_format.h"
 #include "pcm_buffer.h"
 

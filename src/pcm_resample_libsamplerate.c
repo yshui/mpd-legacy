@@ -77,7 +77,7 @@ pcm_resample_lsr_global_init(const char *converter, GError **error_r)
 		return false;
 	}
 
-	g_debug("libsamplerate converter '%s'",
+	log_debug("libsamplerate converter '%s'",
 		src_get_name(lsr_converter));
 
 	return true;
@@ -142,7 +142,7 @@ pcm_resample_set(struct pcm_resample_state *state,
 	}
 
 	data->src_ratio = (double)dest_rate / (double)src_rate;
-	g_debug("setting samplerate conversion ratio to %.2lf",
+	log_debug("setting samplerate conversion ratio to %.2lf",
 		data->src_ratio);
 	src_set_ratio(state->state, data->src_ratio);
 

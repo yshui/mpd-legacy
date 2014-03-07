@@ -75,7 +75,7 @@ mpd_inotify_run_update(gpointer data)
 			/* retry later */
 			return true;
 
-		g_debug("updating '%s' job=%u", uri_utf8, id);
+		log_debug("updating '%s' job=%u", uri_utf8, id);
 
 		free(uri_utf8);
 		inotify_queue = g_slist_delete_link(inotify_queue,

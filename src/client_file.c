@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 bool
 client_allow_file(const struct client *client, const char *path_fs,
@@ -54,7 +55,7 @@ client_allow_file(const struct client *client, const char *path_fs,
 	struct stat st;
 	if (stat(path_fs, &st) < 0) {
 		g_set_error(error_r, g_file_error_quark(), errno,
-			    "%s", g_strerror(errno));
+			    "%s", strerror(errno));
 		return false;
 	}
 

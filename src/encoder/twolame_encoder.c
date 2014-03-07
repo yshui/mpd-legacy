@@ -112,7 +112,7 @@ twolame_encoder_init(const struct config_param *param, GError **error)
 {
 	struct twolame_encoder *encoder;
 
-	g_debug("libtwolame version %s", get_twolame_version());
+	log_debug("libtwolame version %s", get_twolame_version());
 
 	encoder = g_new(struct twolame_encoder, 1);
 	encoder_struct_init(&encoder->encoder, &twolame_encoder_plugin);

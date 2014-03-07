@@ -128,7 +128,7 @@ oss_mixer_open(struct mixer *data, GError **error_r)
 	if (om->device_fd < 0) {
 		g_set_error(error_r, oss_mixer_quark(), errno,
 			    "failed to open %s: %s",
-			    om->device, g_strerror(errno));
+			    om->device, strerror(errno));
 		return false;
 	}
 
@@ -138,7 +138,7 @@ oss_mixer_open(struct mixer *data, GError **error_r)
 		if (ioctl(om->device_fd, SOUND_MIXER_READ_DEVMASK, &devmask) < 0) {
 			g_set_error(error_r, oss_mixer_quark(), errno,
 				    "READ_DEVMASK failed: %s",
-				    g_strerror(errno));
+				    strerror(errno));
 			oss_mixer_close(data);
 			return false;
 		}
@@ -167,7 +167,7 @@ oss_mixer_get_volume(struct mixer *mixer, GError **error_r)
 	if (ret < 0) {
 		g_set_error(error_r, oss_mixer_quark(), errno,
 			    "failed to read OSS volume: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 		return false;
 	}
 
@@ -175,7 +175,7 @@ oss_mixer_get_volume(struct mixer *mixer, GError **error_r)
 	right = (level & 0xff00) >> 8;
 
 	if (left != right) {
-		g_warning("volume for left and right is not the same, \"%i\" and "
+		log_warning("volume for left and right is not the same, \"%i\" and "
 			  "\"%i\"\n", left, right);
 	}
 
@@ -198,7 +198,7 @@ oss_mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r)
 	if (ret < 0) {
 		g_set_error(error_r, oss_mixer_quark(), errno,
 			    "failed to set OSS volume: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 		return false;
 	}
 

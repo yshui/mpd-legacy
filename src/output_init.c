@@ -49,13 +49,13 @@
 static const struct audio_output_plugin *
 audio_output_detect(GError **error)
 {
-	g_warning("Attempt to detect audio output device");
+	log_warning("Attempt to detect audio output device");
 
 	audio_output_plugins_for_each(plugin) {
 		if (plugin->test_default_device == NULL)
 			continue;
 
-		g_warning("Attempting to detect a %s audio device",
+		log_warning("Attempting to detect a %s audio device",
 			  plugin->name);
 		if (ao_plugin_test_default_device(plugin))
 			return plugin;
@@ -199,7 +199,7 @@ ao_base_init(struct audio_output *ao,
 	// It's not really fatal - Part of the filter chain has been set up already
 	// and even an empty one will work (if only with unexpected behaviour)
 	if (error != NULL) {
-		g_warning("Failed to initialize filter chain for '%s': %s",
+		log_warning("Failed to initialize filter chain for '%s': %s",
 			  ao->name, error->message);
 		g_error_free(error);
 	}
@@ -253,7 +253,7 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param,
 					    ao->plugin->mixer_plugin,
 					    ao->filter, &error);
 	if (ao->mixer == NULL && error != NULL) {
-		g_warning("Failed to initialize hardware mixer for '%s': %s",
+		log_warning("Failed to initialize hardware mixer for '%s': %s",
 			  ao->name, error->message);
 		g_error_free(error);
 	}
@@ -265,7 +265,7 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param,
 			replay_gain_filter_set_mixer(ao->replay_gain_filter,
 						     ao->mixer, 100);
 		else
-			g_warning("No such mixer for output '%s'", ao->name);
+			log_warning("No such mixer for output '%s'", ao->name);
 	} else if (strcmp(replay_gain_handler, "software") != 0 &&
 		   ao->replay_gain_filter != NULL) {
 		g_set_error(error_r, audio_output_quark(), 0,
@@ -307,14 +307,14 @@ audio_output_new(const struct config_param *param,
 			return false;
 		}
 	} else {
-		g_warning("No \"%s\" defined in config file\n",
+		log_warning("No \"%s\" defined in config file\n",
 			  CONF_AUDIO_OUTPUT);
 
 		plugin = audio_output_detect(error_r);
 		if (plugin == NULL)
 			return false;
 
-		g_message("Successfully detected a %s audio device",
+		log_info("Successfully detected a %s audio device",
 			  plugin->name);
 	}
 

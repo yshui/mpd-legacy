@@ -417,7 +417,7 @@ faad_stream_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	ret = faad_decoder_init(decoder, buffer, &audio_format, &error);
 	if (!ret) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		faacDecClose(decoder);
 		return;
@@ -446,20 +446,20 @@ faad_stream_decode(struct decoder *mpd_decoder, struct input_stream *is)
 		decoded = faad_decoder_decode(decoder, buffer, &frame_info);
 
 		if (frame_info.error > 0) {
-			g_warning("error decoding AAC stream: %s\n",
+			log_warning("error decoding AAC stream: %s\n",
 				  faacDecGetErrorMessage(frame_info.error));
 			break;
 		}
 
 		if (frame_info.channels != audio_format.channels) {
-			g_warning("channel count changed from %u to %u",
+			log_warning("channel count changed from %u to %u",
 				  audio_format.channels, frame_info.channels);
 			break;
 		}
 
 #ifdef HAVE_FAACDECFRAMEINFO_SAMPLERATE
 		if (frame_info.samplerate != audio_format.sample_rate) {
-			g_warning("sample rate changed from %u to %lu",
+			log_warning("sample rate changed from %u to %lu",
 				  audio_format.sample_rate,
 				  (unsigned long)frame_info.samplerate);
 			break;

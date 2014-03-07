@@ -205,14 +205,14 @@ set_audioformat(struct jack_data *jd, struct audio_format *audio_format)
 static void
 mpd_jack_error(const char *msg)
 {
-	g_warning("%s", msg);
+	log_warning("%s", msg);
 }
 
 #ifdef HAVE_JACK_SET_INFO_FUNCTION
 static void
 mpd_jack_info(const char *msg)
 {
-	g_message("%s", msg);
+	log_info("%s", msg);
 }
 #endif
 
@@ -351,7 +351,7 @@ mpd_jack_init(const struct config_param *param, GError **error_r)
 		/* compatibility with MPD < 0.16 */
 		value = config_get_block_string(param, "ports", NULL);
 		if (value != NULL)
-			g_warning("deprecated option 'ports' in line %d",
+			log_warning("deprecated option 'ports' in line %d",
 				  param->line);
 	}
 
@@ -367,7 +367,7 @@ mpd_jack_init(const struct config_param *param, GError **error_r)
 
 	if (jd->num_destination_ports > 0 &&
 	    jd->num_destination_ports != jd->num_source_ports)
-		g_warning("number of source ports (%u) mismatches the "
+		log_warning("number of source ports (%u) mismatches the "
 			  "number of destination ports (%u) in line %d",
 			  jd->num_source_ports, jd->num_destination_ports,
 			  param->line);
@@ -494,7 +494,7 @@ mpd_jack_start(struct jack_data *jd, GError **error_r)
 		     num_destination_ports < MAX_PORTS &&
 			     jports[num_destination_ports] != NULL;
 		     ++num_destination_ports) {
-			g_debug("destination_port[%u] = '%s'\n",
+			log_debug("destination_port[%u] = '%s'\n",
 				num_destination_ports,
 				jports[num_destination_ports]);
 			destination_ports[num_destination_ports] =

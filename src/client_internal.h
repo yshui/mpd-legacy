@@ -20,6 +20,7 @@
 #ifndef MPD_CLIENT_INTERNAL_H
 #define MPD_CLIENT_INTERNAL_H
 
+#include "log.h"
 #include "client.h"
 #include "client_message.h"
 #include "command.h"

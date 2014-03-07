@@ -556,7 +556,7 @@ simple_db_load_internal(db_file fp, struct directory *music_root, GError **error
 		}
 	}
 
-	g_debug("reading DB");
+	log_debug("reading DB");
 
 	db_lock();
 	success = simple_db_directory_load(fp, music_root, buffer, error);
@@ -631,7 +631,7 @@ simple_db_check(struct simple_db *db, GError **error_r)
 			g_set_error(error_r, simple_db_quark(), errno,
 				    "Couldn't stat parent directory of db file "
 				    "\"%s\": %s",
-				    db->path, g_strerror(errno));
+				    db->path, strerror(errno));
 			return false;
 		}
 
@@ -648,7 +648,7 @@ simple_db_check(struct simple_db *db, GError **error_r)
 		if (access(dirPath, X_OK | W_OK)) {
 			g_set_error(error_r, simple_db_quark(), errno,
 				    "Can't create db file in \"%s\": %s",
-				    dirPath, g_strerror(errno));
+				    dirPath, strerror(errno));
 			g_free(dirPath);
 			return false;
 		}
@@ -663,7 +663,7 @@ simple_db_check(struct simple_db *db, GError **error_r)
 	if (stat(db->path, &st) < 0) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Couldn't stat db file \"%s\": %s",
-			    db->path, g_strerror(errno));
+			    db->path, strerror(errno));
 		return false;
 	}
 
@@ -678,7 +678,7 @@ simple_db_check(struct simple_db *db, GError **error_r)
 	if (access(db->path, R_OK | W_OK)) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Can't open db file \"%s\" for reading/writing: %s",
-			    db->path, g_strerror(errno));
+			    db->path, strerror(errno));
 		return false;
 	}
 
@@ -696,7 +696,7 @@ simple_db_load(struct simple_db *db, GError **error_r)
 	if (fp == NULL) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Failed to open database file \"%s\": %s",
-			    db->path, g_strerror(errno));
+			    db->path, strerror(errno));
 		return false;
 	}
 
@@ -726,7 +726,7 @@ simple_db_open(struct db *_db, GError **error_r)
 	if (!simple_db_load(db, &error)) {
 		directory_free(db->root);
 
-		g_warning("Failed to load database: %s", error->message);
+		log_warning("Failed to load database: %s", error->message);
 		g_error_free(error);
 
 		if (!simple_db_check(db, error_r))
@@ -824,21 +824,21 @@ simple_db_save(struct db *_db, GError **error_r)
 
 	db_lock();
 
-	g_debug("removing empty directories from DB");
+	log_debug("removing empty directories from DB");
 	directory_prune_empty(music_root);
 
-	g_debug("sorting DB");
+	log_debug("sorting DB");
 	directory_sort(music_root);
 
 	db_unlock();
 
-	g_debug("writing DB");
+	log_debug("writing DB");
 
 	db_file fp = db_open(db->path, "w");
 	if (!fp) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "unable to write to db file \"%s\": %s",
-			    db->path, g_strerror(errno));
+			    db->path, strerror(errno));
 		return false;
 	}
 
@@ -847,7 +847,7 @@ simple_db_save(struct db *_db, GError **error_r)
 	if (db_error(fp)) {
 		g_set_error(error_r, simple_db_quark(), errno,
 			    "Failed to write to database file: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 		db_close(fp);
 		return false;
 	}

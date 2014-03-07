@@ -69,25 +69,25 @@ static void * update_task(void *_path)
 	const char *path = _path;
 
 	if (*path != 0)
-		g_debug("starting: %s", path);
+		log_debug("starting: %s", path);
 	else
-		g_debug("starting");
+		log_debug("starting");
 
 	modified = update_walk(path, discard);
 
 	if (modified || !db_exists()) {
 		GError *error = NULL;
 		if (!db_save(&error)) {
-			g_warning("Failed to save database: %s",
+			log_warning("Failed to save database: %s",
 				  error->message);
 			g_error_free(error);
 		}
 	}
 
 	if (*path != 0)
-		g_debug("finished: %s", path);
+		log_debug("finished: %s", path);
 	else
-		g_debug("finished");
+		log_debug("finished");
 	free(_path);
 
 	progress = UPDATE_PROGRESS_DONE;
@@ -114,7 +114,7 @@ spawn_update_task(const char *path)
 
 	if (++update_task_id > update_task_id_max)
 		update_task_id = 1;
-	g_debug("spawned thread for update job id %i", update_task_id);
+	log_debug("spawned thread for update job id %i", update_task_id);
 }
 
 unsigned

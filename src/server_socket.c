@@ -23,6 +23,7 @@
 #define _GNU_SOURCE 1
 #endif
 
+#include "log.h"
 #include "server_socket.h"
 #include "socket_util.h"
 #include "resolver.h"
@@ -163,13 +164,13 @@ server_socket_in_event(GIOChannel *source,
 					 &address_length);
 	if (fd >= 0) {
 		if (socket_keepalive(fd))
-			g_warning("Could not set TCP keepalive option: %s",
-				  g_strerror(errno));
+			log_warning("Could not set TCP keepalive option: %s",
+				  strerror(errno));
 		s->parent->callback(fd, (const struct sockaddr*)&address,
 				    address_length, get_remote_uid(fd),
 				    s->parent->callback_ctx);
 	} else {
-		g_warning("accept() failed: %s", g_strerror(errno));
+		log_warning("accept() failed: %s", strerror(errno));
 	}
 
 	return true;
@@ -216,7 +217,7 @@ server_socket_open(struct server_socket *ss, GError **error_r)
 			if (good != NULL && good->serial == s->serial) {
 				char *address_string = one_socket_to_string(s);
 				char *good_string = one_socket_to_string(good);
-				g_warning("bind to '%s' failed: %s "
+				log_warning("bind to '%s' failed: %s "
 					  "(continuing anyway, because "
 					  "binding to '%s' succeeded)",
 					  address_string, error->message,
@@ -313,7 +314,7 @@ server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r)
 			&address_length) < 0) {
 		g_set_error(error_r, server_socket_quark(), errno,
 			    "Failed to get socket address: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 		return false;
 	}
 

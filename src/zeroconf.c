@@ -44,7 +44,7 @@ void initZeroconf(void)
 		return;
 
 	if (listen_port <= 0) {
-		g_warning("No global port, disabling zeroconf");
+		log_warning("No global port, disabling zeroconf");
 		zeroconfEnabled = false;
 		return;
 	}

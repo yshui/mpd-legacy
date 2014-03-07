@@ -250,7 +250,7 @@ roar_cancel_locked(struct roar *self)
 	if (roar_vs_stream(vss, &(self->info), ROAR_DIR_PLAY,
 			   &(self->err)) < 0) {
 		roar_vs_close(vss, ROAR_VS_TRUE, &(self->err));
-		g_warning("Failed to start stream");
+		log_warning("Failed to start stream");
 		return;
 	}
 

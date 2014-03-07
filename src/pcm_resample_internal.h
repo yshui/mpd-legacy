@@ -27,6 +27,7 @@
 #ifndef MPD_PCM_RESAMPLE_INTERNAL_H
 #define MPD_PCM_RESAMPLE_INTERNAL_H
 
+#include "log.h"
 #include "check.h"
 #include "pcm_resample.h"
 

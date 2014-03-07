@@ -163,13 +163,13 @@ osx_output_set_device(struct osx_output *oo, GError **error)
 			goto done;
 		}
 		if (strcmp(oo->device_name, name) == 0) {
-			g_debug("found matching device: ID=%u, name=%s",
+			log_debug("found matching device: ID=%u, name=%s",
 				(unsigned int) deviceids[i], name);
 			break;
 		}
 	}
 	if (i == numdevices) {
-		g_warning("Found no audio device with name '%s' "
+		log_warning("Found no audio device with name '%s' "
 			  "(will use default audio device)",
 			  oo->device_name);
 		goto done;
@@ -188,7 +188,7 @@ osx_output_set_device(struct osx_output *oo, GError **error)
 		ret = false;
 		goto done;
 	}
-	g_debug("set OS X audio output device ID=%u, name=%s",
+	log_debug("set OS X audio output device ID=%u, name=%s",
 		(unsigned int) deviceids[i], name);
 
 done:

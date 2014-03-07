@@ -91,7 +91,7 @@ flac_got_stream_info(struct flac_data *data,
 				       stream_info->sample_rate,
 				       flac_sample_format(stream_info->bits_per_sample),
 				       stream_info->channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		data->unsupported = true;
 		return;
@@ -144,7 +144,7 @@ void flac_error_common_cb(const FLAC__StreamDecoderErrorStatus status,
 	if (decoder_get_command(data->decoder) == DECODE_COMMAND_STOP)
 		return;
 
-	g_warning("%s", FLAC__StreamDecoderErrorStatusString[status]);
+	log_warning("%s", FLAC__StreamDecoderErrorStatusString[status]);
 }
 
 /**
@@ -165,7 +165,7 @@ flac_got_first_frame(struct flac_data *data, const FLAC__FrameHeader *header)
 				       header->sample_rate,
 				       flac_sample_format(header->bits_per_sample),
 				       header->channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		data->unsupported = true;
 		return false;

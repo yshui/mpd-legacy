@@ -45,13 +45,13 @@ client_check_expired_callback(gpointer data, gpointer user_data)
 	struct client *client = data;
 
 	if (client_is_expired(client)) {
-		g_debug("[%u] expired", client->num);
+		log_debug("[%u] expired", client->num);
 		client_close(client);
 	} else if (!client->idle_waiting && /* idle clients
 					       never expire */
 		   (int)g_timer_elapsed(client->last_activity, NULL) >
 		   client_timeout) {
-		g_debug("[%u] timeout", client->num);
+		log_debug("[%u] timeout", client->num);
 		client_close(client);
 	}
 }

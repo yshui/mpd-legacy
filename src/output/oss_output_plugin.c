@@ -153,8 +153,8 @@ oss_output_test_default_device(void)
 			close(fd);
 			return true;
 		}
-		g_warning("Error opening OSS device \"%s\": %s\n",
-			  default_devices[i], g_strerror(errno));
+		log_warning("Error opening OSS device \"%s\": %s\n",
+			  default_devices[i], strerror(errno));
 	}
 
 	return false;
@@ -189,17 +189,17 @@ oss_open_default(GError **error)
 			/* never reached */
 			break;
 		case OSS_STAT_DOESN_T_EXIST:
-			g_warning("%s not found\n", dev);
+			log_warning("%s not found\n", dev);
 			break;
 		case OSS_STAT_NOT_CHAR_DEV:
-			g_warning("%s is not a character device\n", dev);
+			log_warning("%s is not a character device\n", dev);
 			break;
 		case OSS_STAT_NO_PERMS:
-			g_warning("%s: permission denied\n", dev);
+			log_warning("%s: permission denied\n", dev);
 			break;
 		case OSS_STAT_OTHER:
-			g_warning("Error accessing %s: %s\n",
-				  dev, g_strerror(err[i]));
+			log_warning("Error accessing %s: %s\n",
+				  dev, strerror(err[i]));
 		}
 	}
 
@@ -296,7 +296,7 @@ oss_try_ioctl_r(int fd, unsigned long request, int *value_r,
 		return UNSUPPORTED;
 
 	g_set_error(error_r, oss_output_quark(), errno,
-		    "%s: %s", msg, g_strerror(errno));
+		    "%s: %s", msg, strerror(errno));
 	return ERROR;
 }
 
@@ -652,7 +652,7 @@ oss_reopen(struct oss_data *od, GError **error_r)
 	if (od->fd < 0) {
 		g_set_error(error_r, oss_output_quark(), errno,
 			    "Error opening OSS device \"%s\": %s",
-			    od->device, g_strerror(errno));
+			    od->device, strerror(errno));
 		return false;
 	}
 
@@ -705,7 +705,7 @@ oss_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	if (od->fd < 0) {
 		g_set_error(error, oss_output_quark(), errno,
 			    "Error opening OSS device \"%s\": %s",
-			    od->device, g_strerror(errno));
+			    od->device, strerror(errno));
 		return false;
 	}
 
@@ -764,7 +764,7 @@ oss_output_play(struct audio_output *ao, const void *chunk, size_t size,
 		if (ret < 0 && errno != EINTR) {
 			g_set_error(error, oss_output_quark(), errno,
 				    "Write error on %s: %s",
-				    od->device, g_strerror(errno));
+				    od->device, strerror(errno));
 			return 0;
 		}
 	}

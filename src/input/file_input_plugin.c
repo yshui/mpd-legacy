@@ -62,7 +62,7 @@ input_file_open(const char *filename,
 		if (errno != ENOENT && errno != ENOTDIR)
 			g_set_error(error_r, file_quark(), errno,
 				    "Failed to open \"%s\": %s",
-				    filename, g_strerror(errno));
+				    filename, strerror(errno));
 		return NULL;
 	}
 
@@ -70,7 +70,7 @@ input_file_open(const char *filename,
 	if (ret < 0) {
 		g_set_error(error_r, file_quark(), errno,
 			    "Failed to stat \"%s\": %s",
-			    filename, g_strerror(errno));
+			    filename, strerror(errno));
 		close(fd);
 		return NULL;
 	}
@@ -108,7 +108,7 @@ input_file_seek(struct input_stream *is, goffset offset, int whence,
 	offset = (goffset)lseek(fis->fd, (off_t)offset, whence);
 	if (offset < 0) {
 		g_set_error(error_r, file_quark(), errno,
-			    "Failed to seek: %s", g_strerror(errno));
+			    "Failed to seek: %s", strerror(errno));
 		return false;
 	}
 
@@ -126,7 +126,7 @@ input_file_read(struct input_stream *is, void *ptr, size_t size,
 	nbytes = read(fis->fd, ptr, size);
 	if (nbytes < 0) {
 		g_set_error(error_r, file_quark(), errno,
-			    "Failed to read: %s", g_strerror(errno));
+			    "Failed to read: %s", strerror(errno));
 		return 0;
 	}
 

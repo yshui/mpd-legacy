@@ -20,6 +20,8 @@
 #ifndef MPD_PLAYLIST_PLUGIN_H
 #define MPD_PLAYLIST_PLUGIN_H
 
+#include "log.h"
+
 #include <glib.h>
 
 #include <stdbool.h>

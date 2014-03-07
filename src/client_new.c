@@ -81,7 +81,7 @@ client_new(struct player_control *player_control,
 #endif	/* HAVE_WRAP */
 
 	if (client_list_is_full()) {
-		g_warning("Max Connections Reached!");
+		log_warning("Max Connections Reached!");
 		close_socket(fd);
 		return;
 	}

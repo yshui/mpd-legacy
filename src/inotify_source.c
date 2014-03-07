@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "inotify_source.h"
 #include "fifo_buffer.h"
 #include "fd_util.h"
@@ -27,6 +28,7 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <stdbool.h>
 
 #undef G_LOG_DOMAIN
@@ -75,7 +77,7 @@ mpd_inotify_in_event(GIOChannel *_source,
 	nbytes = read(source->fd, dest, length);
 	if (nbytes < 0)
 		MPD_ERROR("failed to read from inotify: %s",
-			  g_strerror(errno));
+			  strerror(errno));
 	if (nbytes == 0)
 		MPD_ERROR("end of file from inotify");
 
@@ -114,7 +116,7 @@ mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx,
 	if (source->fd < 0) {
 		g_set_error(error_r, mpd_inotify_quark(), errno,
 			    "inotify_init() has failed: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 		free(source);
 		return NULL;
 	}
@@ -150,7 +152,7 @@ mpd_inotify_source_add(struct mpd_inotify_source *source,
 	if (wd < 0)
 		g_set_error(error_r, mpd_inotify_quark(), errno,
 			    "inotify_add_watch() has failed: %s",
-			    g_strerror(errno));
+			    strerror(errno));
 
 	return wd;
 }
@@ -160,8 +162,8 @@ mpd_inotify_source_rm(struct mpd_inotify_source *source, unsigned wd)
 {
 	int ret = inotify_rm_watch(source->fd, wd);
 	if (ret < 0 && errno != EINVAL)
-		g_warning("inotify_rm_watch() has failed: %s",
-			  g_strerror(errno));
+		log_warning("inotify_rm_watch() has failed: %s",
+			  strerror(errno));
 
 	/* EINVAL may happen here when the file has been deleted; the
 	   kernel seems to auto-unregister deleted files */

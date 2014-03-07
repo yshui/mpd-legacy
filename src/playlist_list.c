@@ -37,6 +37,7 @@
 #include "conf.h"
 #include "mpd_error.h"
 #include "utils.h"
+#include "log.h"
 
 #include <assert.h>
 #include <string.h>
@@ -351,7 +352,7 @@ playlist_list_open_path(const char *path_fs, GMutex *mutex, GCond *cond,
 	is = input_stream_open(path_fs, mutex, cond, &error);
 	if (is == NULL) {
 		if (error != NULL) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 

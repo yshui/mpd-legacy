@@ -132,7 +132,7 @@ playlist_errno(GError **error_r)
 
 	default:
 		g_set_error_literal(error_r, g_file_error_quark(), errno,
-				    g_strerror(errno));
+				    strerror(errno));
 		break;
 	}
 }
@@ -187,7 +187,7 @@ spl_list(GError **error_r)
 	dir = opendir(parent_path_fs);
 	if (dir == NULL) {
 		g_set_error_literal(error_r, g_file_error_quark(), errno,
-				    g_strerror(errno));
+				    strerror(errno));
 		return NULL;
 	}
 

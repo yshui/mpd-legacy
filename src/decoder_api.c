@@ -65,13 +65,13 @@ decoder_initialized(struct decoder *decoder,
 	g_cond_signal(dc->client_cond);
 	decoder_unlock(dc);
 
-	g_debug("audio_format=%s, seekable=%s",
+	log_debug("audio_format=%s, seekable=%s",
 		audio_format_to_string(&dc->in_audio_format, &af_string),
 		seekable ? "true" : "false");
 
 	if (!audio_format_equals(&dc->in_audio_format,
 				 &dc->out_audio_format))
-		g_debug("converting to %s",
+		log_debug("converting to %s",
 			audio_format_to_string(&dc->out_audio_format,
 					       &af_string));
 }
@@ -288,7 +288,7 @@ size_t decoder_read(struct decoder *decoder,
 	assert(nbytes > 0 || error != NULL || input_stream_eof(is));
 
 	if (unlikely(nbytes == 0 && error != NULL)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 	}
 
@@ -410,7 +410,7 @@ decoder_data(struct decoder *decoder,
 			/* the PCM conversion has failed - stop
 			   playback, since we have no better way to
 			   bail out */
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			return DECODE_COMMAND_STOP;
 		}
 	}

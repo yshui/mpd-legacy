@@ -20,6 +20,7 @@
 #ifndef MPD_TAG_H
 #define MPD_TAG_H
 
+#include "log.h"
 
 #include <stdint.h>
 #include <stddef.h>

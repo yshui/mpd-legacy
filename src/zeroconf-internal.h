@@ -20,6 +20,8 @@
 #ifndef ZEROCONF_INTERNAL_H
 #define ZEROCONF_INTERNAL_H
 
+#include "log.h"
+
 /* The dns-sd service type qualifier to publish */
 #define SERVICE_TYPE		"_mpd._tcp"
 

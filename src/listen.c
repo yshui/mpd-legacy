@@ -71,8 +71,8 @@ listen_systemd_activation(GError **error_r)
 	int n = sd_listen_fds(true);
 	if (n <= 0) {
 		if (n < 0)
-			g_warning("sd_listen_fds() failed: %s",
-				  g_strerror(-n));
+			log_warning("sd_listen_fds() failed: %s",
+				  strerror(-n));
 		return false;
 	}
 
@@ -145,7 +145,7 @@ listen_global_init(GError **error_r)
 
 void listen_global_finish(void)
 {
-	g_debug("listen_global_finish called");
+	log_debug("listen_global_finish called");
 
 	assert(listen_socket != NULL);
 

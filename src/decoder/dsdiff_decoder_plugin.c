@@ -26,6 +26,7 @@
  * All functions common to both DSD decoders have been moved to dsdlib
  */
 
+#include "log.h"
 #include "config.h"
 #include "dsdiff_decoder_plugin.h"
 #include "decoder_api.h"
@@ -309,7 +310,7 @@ dsdiff_stream_decode(struct decoder *decoder, struct input_stream *is)
 	if (!audio_format_init_checked(&audio_format, metadata.sample_rate / 8,
 				       SAMPLE_FORMAT_DSD,
 				       metadata.channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return;
 	}

@@ -75,7 +75,7 @@ fluidsynth_init(const struct config_param *param)
 
 	sample_rate = config_get_block_unsigned(param, "sample_rate", 48000);
 	if (!audio_check_sample_rate(sample_rate, &error)) {
-		g_warning("%s\n", error->message);
+		log_warning("%s\n", error->message);
 		g_error_free(error);
 		return false;
 	}
@@ -126,7 +126,7 @@ fluidsynth_file_decode(struct decoder *decoder, const char *path_fs)
 
 	ret = fluid_synth_sfload(synth, soundfont_path, true);
 	if (ret < 0) {
-		g_warning("fluid_synth_sfload() failed");
+		log_warning("fluid_synth_sfload() failed");
 		delete_fluid_synth(synth);
 		delete_fluid_settings(settings);
 		return;
@@ -143,7 +143,7 @@ fluidsynth_file_decode(struct decoder *decoder, const char *path_fs)
 
 	ret = fluid_player_add(player, path_fs);
 	if (ret != 0) {
-		g_warning("fluid_player_add() failed");
+		log_warning("fluid_player_add() failed");
 		delete_fluid_player(player);
 		delete_fluid_synth(synth);
 		delete_fluid_settings(settings);
@@ -154,7 +154,7 @@ fluidsynth_file_decode(struct decoder *decoder, const char *path_fs)
 
 	ret = fluid_player_play(player);
 	if (ret != 0) {
-		g_warning("fluid_player_play() failed");
+		log_warning("fluid_player_play() failed");
 		delete_fluid_player(player);
 		delete_fluid_synth(synth);
 		delete_fluid_settings(settings);

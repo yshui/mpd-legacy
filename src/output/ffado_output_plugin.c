@@ -89,7 +89,7 @@ static struct audio_output *
 ffado_init(const struct config_param *param,
 	   GError **error_r)
 {
-	g_debug("using libffado version %s, API=%d",
+	log_debug("using libffado version %s, API=%d",
 		ffado_get_version(), ffado_get_api_version());
 
 	struct mpd_ffado_device *fd = g_new(struct mpd_ffado_device, 1);
@@ -175,7 +175,7 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 		return false;
 	}
 
-	g_debug("there are %d playback streams", num_streams);
+	log_debug("there are %d playback streams", num_streams);
 
 	fd->num_streams = 0;
 	for (int i = 0; i < num_streams; ++i) {
@@ -186,18 +186,18 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 		ffado_streaming_stream_type type =
 			ffado_streaming_get_playback_stream_type(fd->dev, i);
 		if (type != ffado_stream_type_audio) {
-			g_debug("stream %d name='%s': not an audio stream",
+			log_debug("stream %d name='%s': not an audio stream",
 				i, name);
 			continue;
 		}
 
 		if (fd->num_streams >= audio_format->channels) {
-			g_debug("stream %d name='%s': ignoring",
+			log_debug("stream %d name='%s': ignoring",
 				i, name);
 			continue;
 		}
 
-		g_debug("stream %d name='%s'", i, name);
+		log_debug("stream %d name='%s'", i, name);
 
 		struct mpd_ffado_stream *stream =
 			&fd->streams[fd->num_streams++];
@@ -218,7 +218,7 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 		return false;
 	}
 
-	g_debug("configured %d audio streams", fd->num_streams);
+	log_debug("configured %d audio streams", fd->num_streams);
 
 	if (ffado_streaming_prepare(fd->dev) != 0) {
 		g_set_error(error_r, ffado_output_quark(), 0,

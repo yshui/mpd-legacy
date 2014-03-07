@@ -54,7 +54,7 @@ output_mixer_get_volume(unsigned i)
 
 	volume = mixer_get_volume(mixer, &error);
 	if (volume < 0 && error != NULL) {
-		g_warning("Failed to read mixer for '%s': %s",
+		log_warning("Failed to read mixer for '%s': %s",
 			  output->name, error->message);
 		g_error_free(error);
 	}
@@ -103,7 +103,7 @@ output_mixer_set_volume(unsigned i, unsigned volume)
 
 	success = mixer_set_volume(mixer, volume, &error);
 	if (!success && error != NULL) {
-		g_warning("Failed to set mixer for '%s': %s",
+		log_warning("Failed to set mixer for '%s': %s",
 			  output->name, error->message);
 		g_error_free(error);
 	}

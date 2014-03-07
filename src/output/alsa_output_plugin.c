@@ -212,7 +212,7 @@ alsa_test_default_device(void)
 	int ret = snd_pcm_open(&handle, default_device,
 	                       SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
 	if (ret) {
-		g_message("Error opening default ALSA device: %s\n",
+		log_info("Error opening default ALSA device: %s\n",
 			  snd_strerror(-ret));
 		return false;
 	} else
@@ -411,9 +411,9 @@ configure_hw:
 		err = snd_pcm_hw_params_set_access(ad->pcm, hwparams,
 						   SND_PCM_ACCESS_MMAP_INTERLEAVED);
 		if (err < 0) {
-			g_warning("Cannot set mmap'ed mode on ALSA device \"%s\":  %s\n",
+			log_warning("Cannot set mmap'ed mode on ALSA device \"%s\":  %s\n",
 				  alsa_device(ad), snd_strerror(-err));
-			g_warning("Falling back to direct write mode\n");
+			log_warning("Falling back to direct write mode\n");
 			ad->use_mmap = false;
 		} else
 			ad->writei = snd_pcm_mmap_writei;
@@ -441,7 +441,7 @@ configure_hw:
 
 	snd_pcm_format_t format;
 	if (snd_pcm_hw_params_get_format(hwparams, &format) == 0)
-		g_debug("format=%s (%s)", snd_pcm_format_name(format),
+		log_debug("format=%s (%s)", snd_pcm_format_name(format),
 			snd_pcm_format_description(format));
 
 	err = snd_pcm_hw_params_set_channels_near(ad->pcm, hwparams,
@@ -471,7 +471,7 @@ configure_hw:
 	unsigned buffer_time_min, buffer_time_max;
 	snd_pcm_hw_params_get_buffer_time_min(hwparams, &buffer_time_min, 0);
 	snd_pcm_hw_params_get_buffer_time_max(hwparams, &buffer_time_max, 0);
-	g_debug("buffer: size=%u..%u time=%u..%u",
+	log_debug("buffer: size=%u..%u time=%u..%u",
 		(unsigned)buffer_size_min, (unsigned)buffer_size_max,
 		buffer_time_min, buffer_time_max);
 
@@ -481,7 +481,7 @@ configure_hw:
 	unsigned period_time_min, period_time_max;
 	snd_pcm_hw_params_get_period_time_min(hwparams, &period_time_min, 0);
 	snd_pcm_hw_params_get_period_time_max(hwparams, &period_time_max, 0);
-	g_debug("period: size=%u..%u time=%u..%u",
+	log_debug("period: size=%u..%u time=%u..%u",
 		(unsigned)period_size_min, (unsigned)period_size_max,
 		period_time_min, period_time_max);
 
@@ -502,7 +502,7 @@ configure_hw:
 	if (period_time_ro == 0 && buffer_time >= 10000) {
 		period_time_ro = period_time = buffer_time / 4;
 
-		g_debug("default period_time = buffer_time/4 = %u/4 = %u",
+		log_debug("default period_time = buffer_time/4 = %u/4 = %u",
 			buffer_time, period_time);
 	}
 
@@ -523,7 +523,7 @@ configure_hw:
 	} else if (err < 0)
 		goto error;
 	if (retry != MPD_ALSA_RETRY_NR)
-		g_debug("ALSA period_time set to %d\n", period_time);
+		log_debug("ALSA period_time set to %d\n", period_time);
 
 	cmd = "snd_pcm_hw_params_get_buffer_size";
 	err = snd_pcm_hw_params_get_buffer_size(hwparams, &alsa_buffer_size);
@@ -562,7 +562,7 @@ configure_hw:
 	if (err < 0)
 		goto error;
 
-	g_debug("buffer_size=%u period_size=%u",
+	log_debug("buffer_size=%u period_size=%u",
 		(unsigned)alsa_buffer_size, (unsigned)alsa_period_size);
 
 	if (alsa_period_size == 0)
@@ -664,7 +664,7 @@ alsa_open(struct audio_output *ao, struct audio_format *audio_format, GError **e
 		return false;
 	}
 
-	g_debug("opened %s type=%s", snd_pcm_name(ad->pcm),
+	log_debug("opened %s type=%s", snd_pcm_name(ad->pcm),
 		snd_pcm_type_name(snd_pcm_type(ad->pcm)));
 
 	success = alsa_setup_or_dsd(ad, audio_format, error);
@@ -683,9 +683,9 @@ static int
 alsa_recover(struct alsa_data *ad, int err)
 {
 	if (err == -EPIPE) {
-		g_debug("Underrun on ALSA device \"%s\"\n", alsa_device(ad));
+		log_debug("Underrun on ALSA device \"%s\"\n", alsa_device(ad));
 	} else if (err == -ESTRPIPE) {
-		g_debug("ALSA device \"%s\" was suspended\n", alsa_device(ad));
+		log_debug("ALSA device \"%s\" was suspended\n", alsa_device(ad));
 	}
 
 	switch (snd_pcm_state(ad->pcm)) {

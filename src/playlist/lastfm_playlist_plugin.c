@@ -51,7 +51,7 @@ lastfm_init(const struct config_param *param)
 	const char *passwd = config_get_block_string(param, "password", NULL);
 
 	if (user == NULL || passwd == NULL) {
-		g_debug("disabling the last.fm playlist plugin "
+		log_debug("disabling the last.fm playlist plugin "
 			"because account is not configured");
 		return false;
 	}
@@ -90,7 +90,7 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 	input_stream = input_stream_open(url, mutex, cond, &error);
 	if (input_stream == NULL) {
 		if (error != NULL) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 
@@ -106,7 +106,7 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 					   sizeof(buffer) - length, &error);
 		if (nbytes == 0) {
 			if (error != NULL) {
-				g_warning("%s", error->message);
+				log_warning("%s", error->message);
 				g_error_free(error);
 			}
 
@@ -178,7 +178,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	session = lastfm_find(response, "session");
 	g_free(response);
 	if (session == NULL) {
-		g_warning("last.fm handshake failed");
+		log_warning("last.fm handshake failed");
 		return NULL;
 	}
 
@@ -186,7 +186,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	g_free(session);
 	session = q;
 
-	g_debug("session='%s'", session);
+	log_debug("session='%s'", session);
 
 	/* "adjust" last.fm radio */
 
@@ -227,11 +227,11 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 
 	if (playlist->is == NULL) {
 		if (error != NULL) {
-			g_warning("Failed to load XSPF playlist: %s",
+			log_warning("Failed to load XSPF playlist: %s",
 				  error->message);
 			g_error_free(error);
 		} else
-			g_warning("Failed to load XSPF playlist");
+			log_warning("Failed to load XSPF playlist");
 		g_free(playlist);
 		return NULL;
 	}
@@ -253,7 +253,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	if (playlist->xspf == NULL) {
 		input_stream_close(playlist->is);
 		g_free(playlist);
-		g_warning("Failed to parse XSPF playlist");
+		log_warning("Failed to parse XSPF playlist");
 		return NULL;
 	}
 

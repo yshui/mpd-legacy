@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "text_input_stream.h"
 #include "input_stream.h"
 #include "fifo_buffer.h"
@@ -80,7 +81,7 @@ text_input_stream_read(struct text_input_stream *tis)
 			if (nbytes > 0)
 				fifo_buffer_append(tis->buffer, nbytes);
 			else if (error != NULL) {
-				g_warning("%s", error->message);
+				log_warning("%s", error->message);
 				g_error_free(error);
 				return NULL;
 			}

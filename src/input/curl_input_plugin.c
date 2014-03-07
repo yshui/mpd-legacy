@@ -257,7 +257,7 @@ curl_update_fds(void)
 	CURLMcode mcode = curl_multi_fdset(curl.multi, &rfds, &wfds,
 					   &efds, &max_fd);
 	if (mcode != CURLM_OK) {
-		g_warning("curl_multi_fdset() failed: %s\n",
+		log_warning("curl_multi_fdset() failed: %s\n",
 			  curl_multi_strerror(mcode));
 		return;
 	}
@@ -566,7 +566,7 @@ input_curl_source_prepare(GSource *source, gint *timeout_r)
 
 		curl.timeout = timeout2 >= 0;
 	} else
-		g_warning("curl_multi_timeout() failed: %s\n",
+		log_warning("curl_multi_timeout() failed: %s\n",
 			  curl_multi_strerror(mcode));
 #else
 	(void)timeout_r;
@@ -1028,7 +1028,7 @@ input_curl_headerfunction(void *ptr, size_t size, size_t nmemb, void *stream)
 		buffer[end - value] = 0;
 
 		icy_metaint = g_ascii_strtoull(buffer, NULL, 10);
-		g_debug("icy-metaint=%zu", icy_metaint);
+		log_debug("icy-metaint=%zu", icy_metaint);
 
 		if (icy_metaint > 0) {
 			icy_start(&c->icy_metadata, icy_metaint);

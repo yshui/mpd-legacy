@@ -172,7 +172,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	if ((ret = mpc_streaminfo_read(&info, &reader)) != ERROR_CODE_OK) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream\n");
+			log_warning("Not a valid musepack stream\n");
 		return;
 	}
 
@@ -180,14 +180,14 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	if (!mpc_decoder_initialize(&decoder, &info)) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream\n");
+			log_warning("Not a valid musepack stream\n");
 		return;
 	}
 #else
 	demux = mpc_demux_init(&reader);
 	if (demux == NULL) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream");
+			log_warning("Not a valid musepack stream");
 		return;
 	}
 
@@ -197,7 +197,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 	if (!audio_format_init_checked(&audio_format, info.sample_freq,
 				       SAMPLE_FORMAT_S24_P32,
 				       info.channels, &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 #ifndef MPC_IS_OLD_API
 		mpc_demux_exit(demux);
@@ -256,7 +256,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 		frame.buffer = (MPC_SAMPLE_FORMAT *)sample_buffer;
 		status = mpc_demux_decode(demux, &frame);
 		if (status != MPC_STATUS_OK) {
-			g_warning("Failed to decode sample");
+			log_warning("Failed to decode sample");
 			break;
 		}
 

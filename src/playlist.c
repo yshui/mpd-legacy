@@ -88,7 +88,7 @@ playlist_queue_song_order(struct playlist *playlist, struct player_control *pc,
 
 	song = queue_get_order(&playlist->queue, order);
 	uri = song_get_uri(song);
-	g_debug("queue song %i:\"%s\"", playlist->queued, uri);
+	log_debug("queue song %i:\"%s\"", playlist->queued, uri);
 	free(uri);
 
 	pc_enqueue_song(pc, song);
@@ -196,7 +196,7 @@ playlist_play_order(struct playlist *playlist, struct player_control *pc,
 	song = queue_get_order(&playlist->queue, orderNum);
 
 	uri = song_get_uri(song);
-	g_debug("play %i:\"%s\"", orderNum, uri);
+	log_debug("play %i:\"%s\"", orderNum, uri);
 	free(uri);
 
 	pc_play(pc, song);

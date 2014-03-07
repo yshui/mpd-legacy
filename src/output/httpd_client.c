@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "httpd_client.h"
 #include "httpd_internal.h"
 #include "fifo_buffer.h"
@@ -210,7 +211,7 @@ httpd_client_handle_line(struct httpd_client *client, const char *line)
 	if (client->state == REQUEST) {
 		if (strncmp(line, "GET /", 5) != 0) {
 			/* only GET is supported */
-			g_warning("malformed request line from client");
+			log_warning("malformed request line from client");
 			return false;
 		}
 
@@ -355,7 +356,7 @@ httpd_client_send_response(struct httpd_client *client)
 	case G_IO_STATUS_ERROR:
 		/* I/O error */
 
-		g_warning("failed to write to client: %s", error->message);
+		log_warning("failed to write to client: %s", error->message);
 		g_error_free(error);
 
 		httpd_client_close(client);
@@ -390,7 +391,7 @@ httpd_client_received(struct httpd_client *client)
 
 		if (client->state == RESPONSE) {
 			if (!fifo_buffer_is_empty(client->input)) {
-				g_warning("unexpected input from client");
+				log_warning("unexpected input from client");
 				return false;
 			}
 
@@ -421,14 +422,14 @@ httpd_client_read(struct httpd_client *client)
 						 sizeof(buffer), &bytes_read,
 						 NULL);
 		if (status == G_IO_STATUS_NORMAL)
-			g_warning("unexpected input from client");
+			log_warning("unexpected input from client");
 
 		return false;
 	}
 
 	p = fifo_buffer_write(client->input, &max_length);
 	if (p == NULL) {
-		g_warning("buffer overflow");
+		log_warning("buffer overflow");
 		return false;
 	}
 
@@ -449,7 +450,7 @@ httpd_client_read(struct httpd_client *client)
 
 	case G_IO_STATUS_ERROR:
 		/* I/O error */
-		g_warning("failed to read from client: %s",
+		log_warning("failed to read from client: %s",
 			  error->message);
 		g_error_free(error);
 		return false;
@@ -718,7 +719,7 @@ httpd_client_out_event(GIOChannel *source,
 	case G_IO_STATUS_ERROR:
 		/* I/O error */
 
-		g_warning("failed to write to client: %s", error->message);
+		log_warning("failed to write to client: %s", error->message);
 		g_error_free(error);
 
 		httpd_client_close(client);

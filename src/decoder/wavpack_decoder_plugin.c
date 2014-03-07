@@ -156,7 +156,7 @@ wavpack_decode(struct decoder *decoder, WavpackContext *wpc, bool can_seek)
 				       WavpackGetSampleRate(wpc),
 				       sample_format,
 				       WavpackGetNumChannels(wpc), &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		return;
 	}
@@ -296,7 +296,7 @@ wavpack_scan_file(const char *fname,
 
 	wpc = WavpackOpenFileInput(fname, error, OPEN_TAGS, 0);
 	if (wpc == NULL) {
-		g_warning(
+		log_warning(
 			"failed to open WavPack file \"%s\": %s\n",
 			fname, error
 		);
@@ -534,7 +534,7 @@ wavpack_streamdecode(struct decoder * decoder, struct input_stream *is)
 	);
 
 	if (wpc == NULL) {
-		g_warning("failed to open WavPack stream: %s\n", error);
+		log_warning("failed to open WavPack stream: %s\n", error);
 		return;
 	}
 
@@ -560,7 +560,7 @@ wavpack_filedecode(struct decoder *decoder, const char *fname)
 		OPEN_TAGS | OPEN_WVC | OPEN_NORMALIZE, 23
 	);
 	if (wpc == NULL) {
-		g_warning(
+		log_warning(
 			"failed to open WavPack file \"%s\": %s\n",
 			fname, error
 		);

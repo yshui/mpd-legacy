@@ -82,7 +82,7 @@ client_read(struct client *client)
 
 	p = fifo_buffer_write(client->input, &max_length);
 	if (p == NULL) {
-		g_warning("[%u] buffer overflow", client->num);
+		log_warning("[%u] buffer overflow", client->num);
 		return COMMAND_RETURN_CLOSE;
 	}
 
@@ -102,7 +102,7 @@ client_read(struct client *client)
 
 	case G_IO_STATUS_ERROR:
 		/* I/O error */
-		g_warning("failed to read from client %d: %s",
+		log_warning("failed to read from client %d: %s",
 			  client->num, error->message);
 		g_error_free(error);
 		return COMMAND_RETURN_CLOSE;

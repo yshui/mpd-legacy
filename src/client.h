@@ -20,6 +20,7 @@
 #ifndef MPD_CLIENT_H
 #define MPD_CLIENT_H
 
+#include "log.h"
 #include "macros.h"
 
 #include <glib.h>

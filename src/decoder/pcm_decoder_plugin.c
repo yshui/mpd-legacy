@@ -21,6 +21,7 @@
 #include "decoder/pcm_decoder_plugin.h"
 #include "decoder_api.h"
 #include "util/byte_reverse.h"
+#include "log.h"
 
 #include <glib.h>
 #include <unistd.h>
@@ -78,7 +79,7 @@ pcm_stream_decode(struct decoder *decoder, struct input_stream *is)
 						   &error)) {
 				decoder_command_finished(decoder);
 			} else {
-				g_warning("seeking failed: %s", error->message);
+				log_warning("seeking failed: %s", error->message);
 				g_error_free(error);
 				decoder_seek_error(decoder);
 			}

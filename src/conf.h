@@ -168,7 +168,7 @@ config_get_string(const char *name, const char *default_value);
  */
 MPD_MALLOC
 char *
-config_dup_path(const char *name, GError **error_r);
+config_dup_path(const char *name);
 
 MPD_PURE
 unsigned

@@ -92,7 +92,7 @@ input_mms_read(struct input_stream *is, void *ptr, size_t size,
 		if (ret < 0) {
 			g_set_error(error_r, mms_quark(), errno,
 				    "mmsx_read() failed: %s",
-				    g_strerror(errno));
+				    strerror(errno));
 		}
 
 		m->eof = true;

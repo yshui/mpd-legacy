@@ -258,7 +258,7 @@ xspf_open_stream(struct input_stream *is)
 		if (nbytes == 0) {
 			if (error != NULL) {
 				g_markup_parse_context_free(context);
-				g_warning("%s", error->message);
+				log_warning("%s", error->message);
 				g_error_free(error);
 				return NULL;
 			}
@@ -269,7 +269,7 @@ xspf_open_stream(struct input_stream *is)
 		success = g_markup_parse_context_parse(context, buffer, nbytes,
 						       &error);
 		if (!success) {
-			g_warning("XML parser failed: %s", error->message);
+			log_warning("XML parser failed: %s", error->message);
 			g_error_free(error);
 			g_markup_parse_context_free(context);
 			return NULL;
@@ -278,7 +278,7 @@ xspf_open_stream(struct input_stream *is)
 
 	success = g_markup_parse_context_end_parse(context, &error);
 	if (!success) {
-		g_warning("XML parser failed: %s", error->message);
+		log_warning("XML parser failed: %s", error->message);
 		g_error_free(error);
 		g_markup_parse_context_free(context);
 		return NULL;

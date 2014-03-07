@@ -102,7 +102,7 @@ import_id3_string(bool is_id3v1, const id3_ucs4_t *ucs4)
 						"utf-8", encoding,
 						NULL, NULL, NULL, NULL);
 		if (utf8 == NULL) {
-			g_debug("Unable to convert %s string to UTF-8: '%s'",
+			log_debug("Unable to convert %s string to UTF-8: '%s'",
 				encoding, isostr);
 			free(isostr);
 			return NULL;
@@ -532,7 +532,7 @@ tag_id3_riff_aiff_load(FILE *file)
 	buffer = malloc(size);
 	ret = fread(buffer, size, 1, file);
 	if (ret != 1) {
-		g_warning("Failed to read RIFF chunk");
+		log_warning("Failed to read RIFF chunk");
 		free(buffer);
 		return NULL;
 	}
@@ -549,7 +549,7 @@ tag_id3_load(const char *path_fs, GError **error_r)
 	if (file == NULL) {
 		g_set_error(error_r, g_file_error_quark(), errno,
 			    "Failed to open file %s: %s",
-			    path_fs, g_strerror(errno));
+			    path_fs, strerror(errno));
 		return NULL;
 	}
 
@@ -572,7 +572,7 @@ tag_id3_scan(const char *path_fs,
 	struct id3_tag *tag = tag_id3_load(path_fs, &error);
 	if (tag == NULL) {
 		if (error != NULL) {
-			g_warning("%s", error->message);
+			log_warning("%s", error->message);
 			g_error_free(error);
 		}
 

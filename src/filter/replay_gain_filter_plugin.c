@@ -88,7 +88,7 @@ replay_gain_filter_update(struct replay_gain_filter *filter)
 	if (filter->mode != REPLAY_GAIN_OFF) {
 		float scale = replay_gain_tuple_scale(&filter->info.tuples[filter->mode],
 		    replay_gain_preamp, replay_gain_missing_preamp, replay_gain_limit);
-		g_debug("scale=%f\n", (double)scale);
+		log_debug("scale=%f\n", (double)scale);
 
 		filter->volume = pcm_float_to_volume(scale);
 	} else
@@ -103,7 +103,7 @@ replay_gain_filter_update(struct replay_gain_filter *filter)
 
 		GError *error = NULL;
 		if (!mixer_set_volume(filter->mixer, volume, &error)) {
-			g_warning("Failed to update hardware mixer: %s",
+			log_warning("Failed to update hardware mixer: %s",
 				  error->message);
 			g_error_free(error);
 		}
@@ -170,7 +170,7 @@ replay_gain_filter_filter(struct filter *_filter,
 	rg_mode = replay_gain_get_real_mode();
 
 	if (filter->mode != rg_mode) {
-		g_debug("replay gain mode has changed %d->%d\n", filter->mode, rg_mode);
+		log_debug("replay gain mode has changed %d->%d\n", filter->mode, rg_mode);
 		filter->mode = rg_mode;
 		replay_gain_filter_update(filter);
 	}

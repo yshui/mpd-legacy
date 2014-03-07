@@ -234,7 +234,7 @@ httpd_listen_in_event(int fd, const struct sockaddr *address,
 
 		if (!hosts_access(&req)) {
 			/* tcp wrappers says no */
-			g_warning("libwrap refused connection (libwrap=%s) from %s",
+			log_warning("libwrap refused connection (libwrap=%s) from %s",
 			      progname, hostaddr);
 			g_free(hostaddr);
 			close_socket(fd);
@@ -260,7 +260,7 @@ httpd_listen_in_event(int fd, const struct sockaddr *address,
 		else
 			close_socket(fd);
 	} else if (fd < 0 && errno != EINTR) {
-		g_warning("accept() failed: %s", g_strerror(errno));
+		log_warning("accept() failed: %s", strerror(errno));
 	}
 
 	g_mutex_unlock(httpd->mutex);
@@ -439,7 +439,7 @@ httpd_client_check_queue(gpointer data, gpointer user_data)
 	struct httpd_client *client = data;
 
 	if (httpd_client_queue_size(client) > 256 * 1024) {
-		g_debug("client is too slow, flushing its queue");
+		log_debug("client is too slow, flushing its queue");
 		httpd_client_cancel(client);
 	}
 }

@@ -18,6 +18,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "conf.h"
 #include "utils.h"
 #include "string_util.h"
@@ -209,7 +210,7 @@ config_param_check(gpointer data, gpointer user_data)
 		struct block_param *bp = &param->block_params[i];
 
 		if (!bp->used)
-			g_warning("option '%s' on line %i was not recognized",
+			log_warning("option '%s' on line %i was not recognized",
 				  bp->name, bp->line);
 	}
 }
@@ -345,12 +346,12 @@ config_read_file(const char *file, GError **error_r)
 	struct config_entry *entry;
 	struct config_param *param;
 
-	g_debug("loading file %s", file);
+	log_debug("loading file %s", file);
 
 	if (!(fp = fopen(file, "r"))) {
 		g_set_error(error_r, config_quark(), errno,
 			    "Failed to open %s: %s",
-			    file, g_strerror(errno));
+			    file, strerror(errno));
 		return false;
 	}
 
@@ -504,20 +505,19 @@ config_get_string(const char *name, const char *default_value)
 }
 
 char *
-config_dup_path(const char *name, GError **error_r)
+config_dup_path(const char *name)
 {
-	assert(error_r != NULL);
-	assert(*error_r == NULL);
-
 	const struct config_param *param = config_get_param(name);
 	if (param == NULL)
 		return NULL;
 
-	char *path = parsePath(param->value, error_r);
-	if (unlikely(path == NULL))
-		g_prefix_error(error_r,
-			       "Invalid path in \"%s\" at line %i: ",
-			       name, param->line);
+	GError *error = NULL;
+	char *path = parsePath(param->value, &error);
+	if (unlikely(path == NULL)) {
+		log_err("Invalid path in \"%s\" at line %i: %s",
+			       name, param->line, error->message);
+		g_error_free(error);
+	}
 
 	return path;
 }

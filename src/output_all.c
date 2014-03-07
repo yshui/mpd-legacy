@@ -334,7 +334,7 @@ audio_output_all_open(const struct audio_format *audio_format,
 	}
 
 	if (!enabled)
-		g_warning("All audio outputs are disabled");
+		log_warning("All audio outputs are disabled");
 
 	if (!ret)
 		/* close all devices if there was an error */

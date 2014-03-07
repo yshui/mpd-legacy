@@ -88,7 +88,7 @@ gme_container_scan(const char *path_fs, const unsigned int tnum)
 
 	gme_err = gme_open_file(path_fs, &emu, GME_SAMPLE_RATE);
 	if (gme_err != NULL) {
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 		return NULL;
 	}
 
@@ -126,12 +126,12 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 	gme_err = gme_open_file(path_container, &emu, GME_SAMPLE_RATE);
 	g_free(path_container);
 	if (gme_err != NULL) {
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 		return;
 	}
 
 	if((gme_err = gme_track_info(emu, &ti, song_num)) != NULL){
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 		gme_delete(emu);
 		return;
 	}
@@ -146,7 +146,7 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 	if (!audio_format_init_checked(&audio_format, GME_SAMPLE_RATE,
 				       SAMPLE_FORMAT_S16, GME_CHANNELS,
 				       &error)) {
-		g_warning("%s", error->message);
+		log_warning("%s", error->message);
 		g_error_free(error);
 		gme_free_info(ti);
 		gme_delete(emu);
@@ -156,7 +156,7 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 	decoder_initialized(decoder, &audio_format, true, song_len);
 
 	if((gme_err = gme_start_track(emu, song_num)) != NULL)
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 
 	if(ti->length > 0)
 		gme_set_fade(emu, ti->length);
@@ -165,7 +165,7 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 	do {
 		gme_err = gme_play(emu, GME_BUFFER_SAMPLES, buf);
 		if (gme_err != NULL) {
-			g_warning("%s", gme_err);
+			log_warning("%s", gme_err);
 			return;
 		}
 		cmd = decoder_data(decoder, NULL, buf, sizeof(buf), 0);
@@ -173,7 +173,7 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 		if(cmd == DECODE_COMMAND_SEEK) {
 			float where = decoder_seek_where(decoder);
 			if((gme_err = gme_seek(emu, (int)where*1000)) != NULL)
-				g_warning("%s", gme_err);
+				log_warning("%s", gme_err);
 			decoder_command_finished(decoder);
 		}
 
@@ -199,11 +199,11 @@ gme_scan_file(const char *path_fs,
 	gme_err = gme_open_file(path_container, &emu, GME_SAMPLE_RATE);
 	g_free(path_container);
 	if (gme_err != NULL) {
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 		return false;
 	}
 	if((gme_err = gme_track_info(emu, &ti, song_num)) != NULL){
-		g_warning("%s", gme_err);
+		log_warning("%s", gme_err);
 		gme_delete(emu);
 		return false;
 	}

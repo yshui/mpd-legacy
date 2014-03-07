@@ -20,6 +20,7 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+#include "log.h"
 #include "macros.h"
 
 #include <glib.h>
