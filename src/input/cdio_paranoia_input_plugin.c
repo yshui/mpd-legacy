@@ -35,7 +35,14 @@
 #include <glib.h>
 #include <assert.h>
 
-#include <cdio/paranoia.h>
+#ifdef HAVE_CDIO_PARANOIA_H
+# include <cdio/paranoia.h>
+#else
+# ifdef HAVE_CDIO_PARANOIA_PARANOIA_H
+#  include <cdio/paranoia/paranoia.h>
+# endif
+#endif
+
 #include <cdio/cd_types.h>
 
 struct input_cdio_paranoia {
