@@ -656,6 +656,7 @@ endif
 
 if ENABLE_VORBIS_ENCODER
 libencoder_plugins_a_SOURCES += src/encoder/vorbis_encoder.c
+ENCODER_LIBS += $(VORBIS_LIBS)
 endif
 
 if ENABLE_LAME_ENCODER
