@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "main"
+
 #include "config.h"
 #include "main.h"
 #include "daemon.h"
@@ -141,31 +143,30 @@ glue_mapper_init(void)
  * succeeded, and the caller should create the database after the
  * process has been daemonized.
  */
-static bool
+static int
 glue_db_init_and_load(void)
 {
 	const struct config_param *path = config_get_param(CONF_DB_FILE);
 
-	GError *error = NULL;
-	bool ret;
+	int ret;
 
 	if (!mapper_has_music_directory()) {
 		if (path != NULL)
 			log_info("Found " CONF_DB_FILE " setting without "
 				  CONF_MUSIC_DIR " - disabling database");
-		db_init(NULL, NULL);
-		return true;
+		db_init(NULL);
+		return MPD_SUCCESS;
 	}
 
 	if (path == NULL)
 		MPD_ERROR(CONF_DB_FILE " setting missing");
 
-	if (!db_init(path, &error))
-		MPD_ERROR("%s", error->message);
+	if (db_init(path) != MPD_SUCCESS)
+		MPD_ERROR("Failed to init database");
 
-	ret = db_load(&error);
-	if (!ret)
-		MPD_ERROR("%s", error->message);
+	ret = db_load();
+	if (ret != MPD_SUCCESS)
+		MPD_ERROR("Failed to init database");
 
 	/* run database update after daemonization? */
 	return db_exists();
@@ -178,29 +179,29 @@ static void
 glue_sticker_init(void)
 {
 #ifdef ENABLE_SQLITE
-	GError *error = NULL;
 	char *sticker_file = config_dup_path(CONF_STICKER_FILE);
 	if (sticker_file == NULL)
 		MPD_ERROR("Failed to init sticker\n");
 
-	if (!sticker_global_init(sticker_file, &error))
-		MPD_ERROR("%s", error->message);
+	int ret = sticker_global_init(sticker_file);
+	if (ret != MPD_SUCCESS && ret != -MPD_DISABLED)
+		MPD_ERROR("Failed to init sticker");
 
 	free(sticker_file);
 #endif
 }
 
-static bool
+static int
 glue_state_file_init(void)
 {
 	char *path = config_dup_path(CONF_STATE_FILE);
-	if (path == NULL)
-		return false;
+	if (IS_ERR_OR_NULL(path))
+		return path ? PTR_ERR(path) : MPD_UNKNOWN;
 
 	state_file_init(path, global_player_control);
 	free(path);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 /**
@@ -312,7 +313,7 @@ int mpd_main(int argc, char *argv[])
 	clock_t start;
 	bool create_db;
 	GError *error = NULL;
-	bool success;
+	int ret;
 
 	daemonize_close_stdin();
 
@@ -332,10 +333,9 @@ int mpd_main(int argc, char *argv[])
 	tag_pool_init();
 	config_global_init();
 
-	success = parse_cmdline(argc, argv, &options, &error);
-	if (!success) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	ret = parse_cmdline(argc, argv, &options);
+	if (ret != MPD_SUCCESS) {
+		log_warning("Failed to parse cmdline");
 		return EXIT_FAILURE;
 	}
 
@@ -353,10 +353,9 @@ int mpd_main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	success = listen_global_init(&error);
-	if (!success) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	ret = listen_global_init();
+	if (ret != MPD_SUCCESS) {
+		log_warning("Failed to init listen");
 		return EXIT_FAILURE;
 	}
 
@@ -373,7 +372,7 @@ int mpd_main(int argc, char *argv[])
 	path_global_init();
 
 	if (!glue_mapper_init()) {
-		log_warning("Can't initialize mapper");
+		log_err("Can't initialize mapper");
 		return EXIT_FAILURE;
 	}
 
@@ -384,9 +383,9 @@ int mpd_main(int argc, char *argv[])
 	archive_plugin_init_all();
 #endif
 
-	if (!pcm_resample_global_init(&error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	ret = pcm_resample_global_init();
+	if (ret != MPD_SUCCESS) {
+		log_err("Failed to init pcm_resample");
 		return EXIT_FAILURE;
 	}
 
@@ -405,9 +404,9 @@ int mpd_main(int argc, char *argv[])
 	client_manager_init();
 	replay_gain_global_init();
 
-	if (!input_stream_global_init(&error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	ret = input_stream_global_init();
+	if (ret != MPD_SUCCESS) {
+		log_err("Failed to init input stream");
 		return EXIT_FAILURE;
 	}
 
@@ -419,9 +418,9 @@ int mpd_main(int argc, char *argv[])
 
 	initSigHandlers();
 
-	if (!io_thread_start(&error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	ret = io_thread_start();
+	if (ret != MPD_SUCCESS) {
+		log_err("Failed to init I/O thread");
 		return EXIT_FAILURE;
 	}
 
@@ -437,16 +436,16 @@ int mpd_main(int argc, char *argv[])
 			MPD_ERROR("directory update failed");
 	}
 
-	if (!glue_state_file_init())
+	if (glue_state_file_init() != MPD_SUCCESS)
 		return EXIT_FAILURE;
 
-	success = config_get_bool(CONF_AUTO_UPDATE, false);
+	bool auto_update = config_get_bool(CONF_AUTO_UPDATE, false);
 #ifdef ENABLE_INOTIFY
-	if (success && mapper_has_music_directory())
+	if (auto_update && mapper_has_music_directory())
 		mpd_inotify_init(config_get_unsigned(CONF_AUTO_UPDATE_DEPTH,
 						     G_MAXUINT));
 #else
-	if (success)
+	if (auto_update)
 		log_warning("inotify: auto_update was disabled. enable during compilation phase");
 #endif
 

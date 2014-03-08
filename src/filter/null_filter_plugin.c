@@ -36,8 +36,7 @@ struct null_filter {
 };
 
 static struct filter *
-null_filter_init(const struct config_param *param,
-		 GError **error_r)
+null_filter_init(const struct config_param *param)
 {
 	struct null_filter *filter = g_new(struct null_filter, 1);
 
@@ -54,8 +53,7 @@ null_filter_finish(struct filter *_filter)
 }
 
 static const struct audio_format *
-null_filter_open(struct filter *_filter, struct audio_format *audio_format,
-		 GError **error_r)
+null_filter_open(struct filter *_filter, struct audio_format *audio_format)
 {
 	struct null_filter *filter = (struct null_filter *)_filter;
 	(void)filter;
@@ -73,7 +71,7 @@ null_filter_close(struct filter *_filter)
 static const void *
 null_filter_filter(struct filter *_filter,
 		   const void *src, size_t src_size,
-		   size_t *dest_size_r, GError **error_r)
+		   size_t *dest_size_r)
 {
 	struct null_filter *filter = (struct null_filter *)_filter;
 	(void)filter;

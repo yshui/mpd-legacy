@@ -60,7 +60,6 @@ text_input_stream_free(struct text_input_stream *tis)
 const char *
 text_input_stream_read(struct text_input_stream *tis)
 {
-	GError *error = NULL;
 	void *dest;
 	const char *src, *p;
 	size_t length, nbytes;
@@ -76,13 +75,12 @@ text_input_stream_read(struct text_input_stream *tis)
 			   newline character */
 			--length;
 
-			nbytes = input_stream_lock_read(tis->is, dest, length,
-							&error);
-			if (nbytes > 0)
+			ssize_t ret = input_stream_lock_read(tis->is, dest, length);
+			if (ret > 0) {
+				nbytes = ret;
 				fifo_buffer_append(tis->buffer, nbytes);
-			else if (error != NULL) {
-				log_warning("%s", error->message);
-				g_error_free(error);
+			} else if (ret < 0) {
+				log_warning("%s", strerror(-nbytes));
 				return NULL;
 			}
 		} else

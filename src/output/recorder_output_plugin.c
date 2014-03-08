@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: recorder"
+
+#include "log.h"
 #include "config.h"
 #include "recorder_output_plugin.h"
 #include "output_api.h"
@@ -58,23 +61,14 @@ struct recorder_output {
 	char buffer[32768];
 };
 
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-recorder_output_quark(void)
-{
-	return g_quark_from_static_string("recorder_output");
-}
-
 static struct audio_output *
-recorder_output_init(const struct config_param *param, GError **error_r)
+recorder_output_init(const struct config_param *param)
 {
-	struct recorder_output *recorder = g_new(struct recorder_output, 1);
-	if (!ao_base_init(&recorder->base, &recorder_output_plugin, param,
-			  error_r)) {
-		g_free(recorder);
-		return NULL;
+	struct recorder_output *recorder = tmalloc(struct recorder_output, 1);
+	int ret = ao_base_init(&recorder->base, &recorder_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(recorder);
+		return ERR_PTR(ret);
 	}
 
 	/* read configuration */
@@ -84,30 +78,32 @@ recorder_output_init(const struct config_param *param, GError **error_r)
 	const struct encoder_plugin *encoder_plugin =
 		encoder_plugin_get(encoder_name);
 	if (encoder_plugin == NULL) {
-		g_set_error(error_r, recorder_output_quark(), 0,
-			    "No such encoder: %s", encoder_name);
+		log_err("No such encoder: %s", encoder_name);
+		ret = -MPD_INVAL;
 		goto failure;
 	}
 
 	recorder->path = config_get_block_string(param, "path", NULL);
 	if (recorder->path == NULL) {
-		g_set_error(error_r, recorder_output_quark(), 0,
-			    "'path' not configured");
+		log_err("'path' not configured");
+		ret = -MPD_MISS_VALUE;
 		goto failure;
 	}
 
 	/* initialize encoder */
 
-	recorder->encoder = encoder_init(encoder_plugin, param, error_r);
-	if (recorder->encoder == NULL)
+	recorder->encoder = encoder_init(encoder_plugin, param);
+	if (IS_ERR(recorder->encoder)) {
+		ret = PTR_ERR(recorder->encoder);
 		goto failure;
+	}
 
 	return &recorder->base;
 
 failure:
 	ao_base_finish(&recorder->base);
-	g_free(recorder);
-	return NULL;
+	free(recorder);
+	return ERR_PTR(ret);
 }
 
 static void
@@ -120,10 +116,9 @@ recorder_output_finish(struct audio_output *ao)
 	g_free(recorder);
 }
 
-static bool
+static int
 recorder_write_to_file(struct recorder_output *recorder,
-		       const void *_data, size_t length,
-		       GError **error_r)
+		       const void *_data, size_t length)
 {
 	assert(length > 0);
 
@@ -139,14 +134,12 @@ recorder_write_to_file(struct recorder_output *recorder,
 				return true;
 		} else if (nbytes == 0) {
 			/* shouldn't happen for files */
-			g_set_error(error_r, recorder_output_quark(), 0,
-				    "write() returned 0");
-			return false;
+			log_err("write() returned 0");
+			return -MPD_ACCESS;
 		} else if (errno != EINTR) {
-			g_set_error(error_r, recorder_output_quark(), 0,
-				    "Failed to write to '%s': %s",
+			log_err("Failed to write to '%s': %s",
 				    recorder->path, strerror(errno));
-			return false;
+			return -MPD_ACCESS;
 		}
 	}
 }
@@ -154,9 +147,8 @@ recorder_write_to_file(struct recorder_output *recorder,
 /**
  * Writes pending data from the encoder to the output file.
  */
-static bool
-recorder_output_encoder_to_file(struct recorder_output *recorder,
-				GError **error_r)
+static int
+recorder_output_encoder_to_file(struct recorder_output *recorder)
 {
 	assert(recorder->fd >= 0);
 
@@ -166,20 +158,19 @@ recorder_output_encoder_to_file(struct recorder_output *recorder,
 		size_t size = encoder_read(recorder->encoder, recorder->buffer,
 					   sizeof(recorder->buffer));
 		if (size == 0)
-			return true;
+			return MPD_SUCCESS;
 
 		/* write everything into the file */
 
-		if (!recorder_write_to_file(recorder, recorder->buffer, size,
-					    error_r))
-			return false;
+		int ret = recorder_write_to_file(recorder, recorder->buffer, size);
+		if (ret != MPD_SUCCESS)
+			return ret;
 	}
 }
 
-static bool
+static int
 recorder_output_open(struct audio_output *ao,
-		     struct audio_format *audio_format,
-		     GError **error_r)
+		     struct audio_format *audio_format)
 {
 	struct recorder_output *recorder = (struct recorder_output *)ao;
 
@@ -189,25 +180,26 @@ recorder_output_open(struct audio_output *ao,
 				    O_CREAT|O_WRONLY|O_TRUNC|O_BINARY,
 				    0666);
 	if (recorder->fd < 0) {
-		g_set_error(error_r, recorder_output_quark(), 0,
-			    "Failed to create '%s': %s",
+		log_err("Failed to create '%s': %s",
 			    recorder->path, strerror(errno));
-		return false;
+		return -MPD_ACCESS;
 	}
 
 	/* open the encoder */
 
-	if (!encoder_open(recorder->encoder, audio_format, error_r)) {
+	int ret = encoder_open(recorder->encoder, audio_format);
+	if (ret != MPD_SUCCESS) {
 		close(recorder->fd);
 		unlink(recorder->path);
-		return false;
+		return ret;
 	}
 
-	if (!recorder_output_encoder_to_file(recorder, error_r)) {
+	ret = recorder_output_encoder_to_file(recorder);
+	if (ret != MPD_SUCCESS) {
 		encoder_close(recorder->encoder);
 		close(recorder->fd);
 		unlink(recorder->path);
-		return false;
+		return ret;
 	}
 
 	return true;
@@ -220,8 +212,10 @@ recorder_output_close(struct audio_output *ao)
 
 	/* flush the encoder and write the rest to the file */
 
-	if (encoder_end(recorder->encoder, NULL))
-		recorder_output_encoder_to_file(recorder, NULL);
+	if (encoder_end(recorder->encoder) == MPD_SUCCESS)
+		recorder_output_encoder_to_file(recorder);
+	else
+		log_err("Encoder error");
 
 	/* now really close everything */
 
@@ -231,13 +225,12 @@ recorder_output_close(struct audio_output *ao)
 }
 
 static size_t
-recorder_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		     GError **error_r)
+recorder_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct recorder_output *recorder = (struct recorder_output *)ao;
 
-	return encoder_write(recorder->encoder, chunk, size, error_r) &&
-		recorder_output_encoder_to_file(recorder, error_r)
+	return encoder_write(recorder->encoder, chunk, size) >= 0 &&
+		recorder_output_encoder_to_file(recorder) == MPD_SUCCESS
 		? size : 0;
 }
 

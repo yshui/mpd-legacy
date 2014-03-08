@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "input: mms"
+
+#include "log.h"
 #include "config.h"
 #include "input/mms_input_plugin.h"
 #include "input_internal.h"
@@ -39,16 +42,9 @@ struct input_mms {
 	bool eof;
 };
 
-static inline GQuark
-mms_quark(void)
-{
-	return g_quark_from_static_string("mms");
-}
-
 static struct input_stream *
 input_mms_open(const char *url,
-	       GMutex *mutex, GCond *cond,
-	       GError **error_r)
+	       GMutex *mutex, GCond *cond)
 {
 	struct input_mms *m;
 
@@ -56,7 +52,7 @@ input_mms_open(const char *url,
 	    !g_str_has_prefix(url, "mmsh://") &&
 	    !g_str_has_prefix(url, "mmst://") &&
 	    !g_str_has_prefix(url, "mmsu://"))
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 
 	m = g_new(struct input_mms, 1);
 	input_stream_init(&m->base, &input_plugin_mms, url,
@@ -64,9 +60,9 @@ input_mms_open(const char *url,
 
 	m->mms = mmsx_connect(NULL, NULL, url, 128 * 1024);
 	if (m->mms == NULL) {
-		g_free(m);
-		g_set_error(error_r, mms_quark(), 0, "mmsx_connect() failed");
-		return NULL;
+		free(m);
+		log_err("mmsx_connect() failed");
+		return ERR_PTR(-MPD_3RD);
 	}
 
 	m->eof = false;
@@ -80,9 +76,8 @@ input_mms_open(const char *url,
 	return &m->base;
 }
 
-static size_t
-input_mms_read(struct input_stream *is, void *ptr, size_t size,
-	       GError **error_r)
+static ssize_t
+input_mms_read(struct input_stream *is, void *ptr, size_t size)
 {
 	struct input_mms *m = (struct input_mms *)is;
 	int ret;
@@ -90,13 +85,12 @@ input_mms_read(struct input_stream *is, void *ptr, size_t size,
 	ret = mmsx_read(NULL, m->mms, ptr, size);
 	if (ret <= 0) {
 		if (ret < 0) {
-			g_set_error(error_r, mms_quark(), errno,
-				    "mmsx_read() failed: %s",
+			log_err("mmsx_read() failed: %s",
 				    strerror(errno));
 		}
 
 		m->eof = true;
-		return false;
+		return -MPD_3RD;
 	}
 
 	is->offset += ret;
@@ -122,12 +116,11 @@ input_mms_eof(struct input_stream *is)
 	return m->eof;
 }
 
-static bool
+static int
 input_mms_seek(struct input_stream *is,
-	       goffset offset, int whence,
-	       GError **error_r)
+	       goffset offset, int whence)
 {
-	return false;
+	return -MPD_NIMPL;
 }
 
 const struct input_plugin input_plugin_mms = {

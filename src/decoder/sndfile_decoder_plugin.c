@@ -17,15 +17,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "sndfile"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
 #include "tag_handler.h"
 
 #include <sndfile.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "sndfile"
 
 static sf_count_t
 sndfile_vio_get_filelen(void *user_data)
@@ -41,7 +41,7 @@ sndfile_vio_seek(sf_count_t offset, int whence, void *user_data)
 	struct input_stream *is = user_data;
 	bool success;
 
-	success = input_stream_lock_seek(is, offset, whence, NULL);
+	success = input_stream_lock_seek(is, offset, whence) == MPD_SUCCESS;
 	if (!success)
 		return -1;
 
@@ -52,15 +52,11 @@ static sf_count_t
 sndfile_vio_read(void *ptr, sf_count_t count, void *user_data)
 {
 	struct input_stream *is = user_data;
-	GError *error = NULL;
-	size_t nbytes;
+	ssize_t nbytes;
 
-	nbytes = input_stream_lock_read(is, ptr, count, &error);
-	if (nbytes == 0 && error != NULL) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	nbytes = input_stream_lock_read(is, ptr, count);
+	if (nbytes < 0)
 		return -1;
-	}
 
 	return nbytes;
 }
@@ -115,7 +111,6 @@ time_to_frame(float t, const struct audio_format *audio_format)
 static void
 sndfile_stream_decode(struct decoder *decoder, struct input_stream *is)
 {
-	GError *error = NULL;
 	SNDFILE *sf;
 	SF_INFO info;
 	struct audio_format audio_format;
@@ -135,13 +130,10 @@ sndfile_stream_decode(struct decoder *decoder, struct input_stream *is)
 	/* for now, always read 32 bit samples.  Later, we could lower
 	   MPD's CPU usage by reading 16 bit samples with
 	   sf_readf_short() on low-quality source files. */
-	if (!audio_format_init_checked(&audio_format, info.samplerate,
+	if (audio_format_init_checked(&audio_format, info.samplerate,
 				       SAMPLE_FORMAT_S32,
-				       info.channels, &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+				       info.channels) != MPD_SUCCESS)
 		return;
-	}
 
 	decoder_initialized(decoder, &audio_format, info.seekable,
 			    frame_to_time(info.frames, &audio_format));

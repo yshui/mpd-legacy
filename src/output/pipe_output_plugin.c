@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: pipe"
+
+#include "log.h"
 #include "config.h"
 #include "pipe_output_plugin.h"
 #include "output_api.h"
@@ -31,31 +34,21 @@ struct pipe_output {
 	FILE *fh;
 };
 
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-pipe_output_quark(void)
-{
-	return g_quark_from_static_string("pipe_output");
-}
-
 static struct audio_output *
-pipe_output_init(const struct config_param *param,
-		 GError **error)
+pipe_output_init(const struct config_param *param)
 {
 	struct pipe_output *pd = g_new(struct pipe_output, 1);
 
-	if (!ao_base_init(&pd->base, &pipe_output_plugin, param, error)) {
-		g_free(pd);
-		return NULL;
+	int ret = ao_base_init(&pd->base, &pipe_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(pd);
+		return ERR_PTR(ret);
 	}
 
 	pd->cmd = config_dup_block_string(param, "command", NULL);
 	if (pd->cmd == NULL) {
-		g_set_error(error, pipe_output_quark(), 0,
-			    "No \"command\" parameter specified");
-		return NULL;
+		log_err("No \"command\" parameter specified");
+		return ERR_PTR(-MPD_MISS_VALUE);
 	}
 
 	return &pd->base;
@@ -71,22 +64,20 @@ pipe_output_finish(struct audio_output *ao)
 	g_free(pd);
 }
 
-static bool
+static int
 pipe_output_open(struct audio_output *ao,
-		 struct audio_format *audio_format,
-		 GError **error)
+		 struct audio_format *audio_format)
 {
 	struct pipe_output *pd = (struct pipe_output *)ao;
 
 	pd->fh = popen(pd->cmd, "w");
 	if (pd->fh == NULL) {
-		g_set_error(error, pipe_output_quark(), errno,
-			    "Error opening pipe \"%s\": %s",
+		log_err("Error opening pipe \"%s\": %s",
 			    pd->cmd, strerror(errno));
-		return false;
+		return -MPD_ACCESS;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -98,15 +89,14 @@ pipe_output_close(struct audio_output *ao)
 }
 
 static size_t
-pipe_output_play(struct audio_output *ao, const void *chunk, size_t size, GError **error)
+pipe_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct pipe_output *pd = (struct pipe_output *)ao;
 	size_t ret;
 
 	ret = fwrite(chunk, 1, size, pd->fh);
 	if (ret == 0)
-		g_set_error(error, pipe_output_quark(), errno,
-			    "Write error on pipe: %s", strerror(errno));
+		log_err("Write error on pipe: %s", strerror(errno));
 
 	return ret;
 }

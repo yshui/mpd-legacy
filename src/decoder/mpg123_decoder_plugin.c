@@ -57,7 +57,6 @@ static bool
 mpd_mpg123_open(mpg123_handle *handle, const char *path_fs,
 		struct audio_format *audio_format)
 {
-	GError *gerror = NULL;
 	char *path_dup;
 	int error;
 	int channels, encoding;
@@ -89,12 +88,9 @@ mpd_mpg123_open(mpg123_handle *handle, const char *path_fs,
 		return false;
 	}
 
-	if (!audio_format_init_checked(audio_format, rate, SAMPLE_FORMAT_S16,
-				       channels, &gerror)) {
-		log_warning("%s", gerror->message);
-		g_error_free(gerror);
+	if (audio_format_init_checked(audio_format, rate, SAMPLE_FORMAT_S16,
+				       channels) != MPD_SUCCESS)
 		return false;
-	}
 
 	return true;
 }

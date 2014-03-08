@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output_init"
+
+#include "log.h"
 #include "config.h"
 #include "output_control.h"
 #include "output_api.h"
@@ -47,7 +50,7 @@
 #define AUDIO_FILTERS		"filters"
 
 static const struct audio_output_plugin *
-audio_output_detect(GError **error)
+audio_output_detect(void)
 {
 	log_warning("Attempt to detect audio output device");
 
@@ -61,8 +64,7 @@ audio_output_detect(GError **error)
 			return plugin;
 	}
 
-	g_set_error(error, audio_output_quark(), 0,
-		    "Unable to detect an audio device");
+	log_err("Unable to detect an audio device");
 	return NULL;
 }
 
@@ -94,8 +96,7 @@ static struct mixer *
 audio_output_load_mixer(struct audio_output *ao,
 			const struct config_param *param,
 			const struct mixer_plugin *plugin,
-			struct filter *filter_chain,
-			GError **error_r)
+			struct filter *filter_chain)
 {
 	struct mixer *mixer;
 
@@ -108,11 +109,11 @@ audio_output_load_mixer(struct audio_output *ao,
 		if (plugin == NULL)
 			return NULL;
 
-		return mixer_new(plugin, ao, param, error_r);
+		return mixer_new(plugin, ao, param);
 
 	case MIXER_TYPE_SOFTWARE:
-		mixer = mixer_new(&software_mixer_plugin, NULL, NULL, NULL);
-		assert(mixer != NULL);
+		mixer = mixer_new(&software_mixer_plugin, NULL, NULL);
+		assert(!IS_ERR_OR_NULL(mixer));
 
 		filter_chain_append(filter_chain,
 				    software_mixer_get_filter(mixer));
@@ -123,10 +124,10 @@ audio_output_load_mixer(struct audio_output *ao,
 	return NULL;
 }
 
-bool
+int
 ao_base_init(struct audio_output *ao,
 	     const struct audio_output_plugin *plugin,
-	     const struct config_param *param, GError **error_r)
+	     const struct config_param *param)
 {
 	assert(ao != NULL);
 	assert(plugin != NULL);
@@ -135,27 +136,24 @@ ao_base_init(struct audio_output *ao,
 	assert(plugin->close != NULL);
 	assert(plugin->play != NULL);
 
-	GError *error = NULL;
-
 	if (param) {
 		const char *p;
 
 		ao->name = config_get_block_string(param, AUDIO_OUTPUT_NAME,
 						   NULL);
 		if (ao->name == NULL) {
-			g_set_error(error_r, audio_output_quark(), 0,
-				    "Missing \"name\" configuration");
-			return false;
+			log_err("Missing \"name\" configuration");
+			return -MPD_INVAL;
 		}
 
 		p = config_get_block_string(param, AUDIO_OUTPUT_FORMAT,
 						 NULL);
 		if (p != NULL) {
-			bool success =
+			int ret =
 				audio_format_parse(&ao->config_audio_format,
-						   p, true, error_r);
-			if (!success)
-				return false;
+						   p, true);
+			if (ret != MPD_SUCCESS)
+				return ret;
 		} else
 			audio_format_clear(&ao->config_audio_format);
 	} else {
@@ -184,24 +182,21 @@ ao_base_init(struct audio_output *ao,
 
 	if (config_get_bool(CONF_VOLUME_NORMALIZATION, false)) {
 		struct filter *normalize_filter =
-			filter_new(&normalize_filter_plugin, NULL, NULL);
+			filter_new(&normalize_filter_plugin, NULL);
 		assert(normalize_filter != NULL);
 
 		filter_chain_append(ao->filter,
 				    autoconvert_filter_new(normalize_filter));
 	}
 
-	filter_chain_parse(ao->filter,
-	                   config_get_block_string(param, AUDIO_FILTERS, ""),
-	                   &error
-	);
+	int ret = filter_chain_parse(ao->filter,
+	                   config_get_block_string(param, AUDIO_FILTERS, ""));
 
 	// It's not really fatal - Part of the filter chain has been set up already
 	// and even an empty one will work (if only with unexpected behaviour)
-	if (error != NULL) {
-		log_warning("Failed to initialize filter chain for '%s': %s",
-			  ao->name, error->message);
-		g_error_free(error);
+	if (ret != MPD_SUCCESS) {
+		log_warning("Failed to initialize filter chain for '%s'",
+			  ao->name);
 	}
 
 	ao->thread = NULL;
@@ -215,12 +210,11 @@ ao_base_init(struct audio_output *ao,
 
 	/* done */
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-audio_output_setup(struct audio_output *ao, const struct config_param *param,
-		   GError **error_r)
+static int
+audio_output_setup(struct audio_output *ao, const struct config_param *param)
 {
 
 	/* create the replay_gain filter */
@@ -231,14 +225,14 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param,
 
 	if (strcmp(replay_gain_handler, "none") != 0) {
 		ao->replay_gain_filter = filter_new(&replay_gain_filter_plugin,
-						    param, NULL);
-		assert(ao->replay_gain_filter != NULL);
+						    param);
+		assert(!IS_ERR_OR_NULL(ao->replay_gain_filter));
 
 		ao->replay_gain_serial = 0;
 
 		ao->other_replay_gain_filter = filter_new(&replay_gain_filter_plugin,
-							  param, NULL);
-		assert(ao->other_replay_gain_filter != NULL);
+							  param);
+		assert(!IS_ERR_OR_NULL(ao->other_replay_gain_filter));
 
 		ao->other_replay_gain_serial = 0;
 	} else {
@@ -248,15 +242,12 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param,
 
 	/* set up the mixer */
 
-	GError *error = NULL;
 	ao->mixer = audio_output_load_mixer(ao, param,
 					    ao->plugin->mixer_plugin,
-					    ao->filter, &error);
-	if (ao->mixer == NULL && error != NULL) {
-		log_warning("Failed to initialize hardware mixer for '%s': %s",
-			  ao->name, error->message);
-		g_error_free(error);
-	}
+					    ao->filter);
+	if (IS_ERR_OR_NULL(ao->mixer))
+		log_warning("Failed to initialize hardware mixer for '%s'",
+			  ao->name);
 
 	/* use the hardware mixer for replay gain? */
 
@@ -268,25 +259,23 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param,
 			log_warning("No such mixer for output '%s'", ao->name);
 	} else if (strcmp(replay_gain_handler, "software") != 0 &&
 		   ao->replay_gain_filter != NULL) {
-		g_set_error(error_r, audio_output_quark(), 0,
-			    "Invalid \"replay_gain_handler\" value");
-		return false;
+		log_err("Invalid \"replay_gain_handler\" value");
+		return -MPD_INVAL;
 	}
 
 	/* the "convert" filter must be the last one in the chain */
 
-	ao->convert_filter = filter_new(&convert_filter_plugin, NULL, NULL);
-	assert(ao->convert_filter != NULL);
+	ao->convert_filter = filter_new(&convert_filter_plugin, NULL);
+	assert(!IS_ERR_OR_NULL(ao->convert_filter));
 
 	filter_chain_append(ao->filter, ao->convert_filter);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 struct audio_output *
 audio_output_new(const struct config_param *param,
-		 struct player_control *pc,
-		 GError **error_r)
+		 struct player_control *pc)
 {
 	const struct audio_output_plugin *plugin;
 
@@ -295,36 +284,35 @@ audio_output_new(const struct config_param *param,
 
 		p = config_get_block_string(param, AUDIO_OUTPUT_TYPE, NULL);
 		if (p == NULL) {
-			g_set_error(error_r, audio_output_quark(), 0,
-				    "Missing \"type\" configuration");
-			return false;
+			log_err("Missing \"type\" configuration");
+			return ERR_PTR(-MPD_INVAL);
 		}
 
 		plugin = audio_output_plugin_get(p);
-		if (plugin == NULL) {
-			g_set_error(error_r, audio_output_quark(), 0,
-				    "No such audio output plugin: %s", p);
-			return false;
+		if (IS_ERR_OR_NULL(plugin)) {
+			log_err("No such audio output plugin: %s", p);
+			return ERR_PTR(-MPD_NOENT);
 		}
 	} else {
 		log_warning("No \"%s\" defined in config file\n",
 			  CONF_AUDIO_OUTPUT);
 
-		plugin = audio_output_detect(error_r);
-		if (plugin == NULL)
+		plugin = audio_output_detect();
+		if (IS_ERR_OR_NULL(plugin))
 			return false;
 
 		log_info("Successfully detected a %s audio device",
 			  plugin->name);
 	}
 
-	struct audio_output *ao = ao_plugin_init(plugin, param, error_r);
-	if (ao == NULL)
-		return NULL;
+	struct audio_output *ao = ao_plugin_init(plugin, param);
+	if (IS_ERR_OR_NULL(ao))
+		return ao;
 
-	if (!audio_output_setup(ao, param, error_r)) {
+	int ret = audio_output_setup(ao, param);
+	if (ret != MPD_SUCCESS) {
 		ao_plugin_finish(ao);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	ao->player_control = pc;

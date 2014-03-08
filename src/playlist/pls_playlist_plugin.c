@@ -107,7 +107,7 @@ static struct playlist_provider *
 pls_open_stream(struct input_stream *is)
 {
 	GError *error = NULL;
-	size_t nbytes;
+	ssize_t nbytes;
 	char buffer[1024];
 	bool success;
 	GKeyFile *keyfile;
@@ -115,14 +115,11 @@ pls_open_stream(struct input_stream *is)
 	GString *kf_data = g_string_new("");
 
 	do {
-		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer),
-						&error);
-		if (nbytes == 0) {
-			if (error != NULL) {
+		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer));
+		if (nbytes <= 0) {
+			if (nbytes < 0) {
 				g_string_free(kf_data, TRUE);
-				log_warning("%s", error->message);
-				g_error_free(error);
-				return NULL;
+				return ERR_PTR(nbytes);
 			}
 
 			break;

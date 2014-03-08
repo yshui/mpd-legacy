@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "encoder: flac"
+
+#include "log.h"
 #include "config.h"
 #include "encoder_api.h"
 #include "encoder_plugin.h"
@@ -49,16 +52,9 @@ struct flac_encoder {
 
 extern const struct encoder_plugin flac_encoder_plugin;
 
-
-static inline GQuark
-flac_encoder_quark(void)
-{
-	return g_quark_from_static_string("flac_encoder");
-}
-
 static bool
 flac_encoder_configure(struct flac_encoder *encoder,
-		const struct config_param *param, GError **error)
+		const struct config_param *param)
 {
 	encoder->compression = config_get_block_unsigned(param,
 						"compression", 5);
@@ -67,7 +63,7 @@ flac_encoder_configure(struct flac_encoder *encoder,
 }
 
 static struct encoder *
-flac_encoder_init(const struct config_param *param, GError **error)
+flac_encoder_init(const struct config_param *param)
 {
 	struct flac_encoder *encoder;
 
@@ -75,10 +71,10 @@ flac_encoder_init(const struct config_param *param, GError **error)
 	encoder_struct_init(&encoder->encoder, &flac_encoder_plugin);
 
 	/* load configuration from "param" */
-	if (!flac_encoder_configure(encoder, param, error)) {
+	if (!flac_encoder_configure(encoder, param)) {
 		/* configuration has failed, roll back and return error */
-		g_free(encoder);
-		return NULL;
+		free(encoder);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	return &encoder->encoder;
@@ -94,42 +90,37 @@ flac_encoder_finish(struct encoder *_encoder)
 	g_free(encoder);
 }
 
-static bool
-flac_encoder_setup(struct flac_encoder *encoder, unsigned bits_per_sample,
-		   GError **error)
+static int
+flac_encoder_setup(struct flac_encoder *encoder, unsigned bits_per_sample)
 {
 #if !defined(FLAC_API_VERSION_CURRENT) || FLAC_API_VERSION_CURRENT <= 7
 #else
 	if ( !FLAC__stream_encoder_set_compression_level(encoder->fse,
 					encoder->compression)) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "error setting flac compression to %d",
+		log_err("error setting flac compression to %d",
 			    encoder->compression);
-		return false;
+		return -MPD_3RD;
 	}
 #endif
 	if ( !FLAC__stream_encoder_set_channels(encoder->fse,
 					encoder->audio_format.channels)) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "error setting flac channels num to %d",
+		log_err("error setting flac channels num to %d",
 			    encoder->audio_format.channels);
-		return false;
+		return -MPD_3RD;
 	}
 	if ( !FLAC__stream_encoder_set_bits_per_sample(encoder->fse,
 							bits_per_sample)) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "error setting flac bit format to %d",
+		log_err("error setting flac bit format to %d",
 			    bits_per_sample);
-		return false;
+		return -MPD_3RD;
 	}
 	if ( !FLAC__stream_encoder_set_sample_rate(encoder->fse,
 					encoder->audio_format.sample_rate)) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "error setting flac sample rate to %d",
+		log_err("error setting flac sample rate to %d",
 			    encoder->audio_format.sample_rate);
-		return false;
+		return -MPD_3RD;
 	}
-	return true;
+	return MPD_SUCCESS;
 }
 
 static FLAC__StreamEncoderWriteStatus
@@ -162,9 +153,8 @@ flac_encoder_close(struct encoder *_encoder)
 	fifo_buffer_free(encoder->output_buffer);
 }
 
-static bool
-flac_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
-		     GError **error)
+static int
+flac_encoder_open(struct encoder *_encoder, struct audio_format *audio_format)
 {
 	struct flac_encoder *encoder = (struct flac_encoder *)_encoder;
 	unsigned bits_per_sample;
@@ -193,14 +183,14 @@ flac_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
 	/* allocate the encoder */
 	encoder->fse = FLAC__stream_encoder_new();
 	if (encoder->fse == NULL) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "flac_new() failed");
-		return false;
+		log_err("flac_new() failed");
+		return -MPD_3RD;
 	}
 
-	if (!flac_encoder_setup(encoder, bits_per_sample, error)) {
+	int ret = flac_encoder_setup(encoder, bits_per_sample);
+	if (ret != MPD_SUCCESS) {
 		FLAC__stream_encoder_delete(encoder->fse);
-		return false;
+		return ret;
 	}
 
 	pcm_buffer_init(&encoder->expand_buffer);
@@ -219,11 +209,10 @@ flac_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
 		init_status = FLAC__stream_encoder_init(encoder->fse);
 
 		if (init_status != FLAC__STREAM_ENCODER_OK) {
-			g_set_error(error, flac_encoder_quark(), 0,
-			    "failed to initialize encoder: %s\n",
+			log_err("failed to initialize encoder: %s\n",
 			    FLAC__StreamEncoderStateString[init_status]);
 			flac_encoder_close(_encoder);
-			return false;
+			return -MPD_3RD;
 		}
 	}
 #else
@@ -235,26 +224,25 @@ flac_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
 			    NULL, NULL, NULL, encoder);
 
 		if(init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
-			g_set_error(error, flac_encoder_quark(), 0,
-			    "failed to initialize encoder: %s\n",
+			log_err("failed to initialize encoder: %s\n",
 			    FLAC__StreamEncoderInitStatusString[init_status]);
 			flac_encoder_close(_encoder);
-			return false;
+			return -MPD_3RD;
 		}
 	}
 #endif
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 
-static bool
-flac_encoder_flush(struct encoder *_encoder, GError **error)
+static int
+flac_encoder_flush(struct encoder *_encoder)
 {
 	struct flac_encoder *encoder = (struct flac_encoder *)_encoder;
 
 	(void) FLAC__stream_encoder_finish(encoder->fse);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static inline void
@@ -275,10 +263,9 @@ pcm16_to_flac(int32_t *out, const int16_t *in, unsigned num_samples)
 	}
 }
 
-static bool
+static ssize_t
 flac_encoder_write(struct encoder *_encoder,
-		      const void *data, size_t length,
-		      GError **error)
+		      const void *data, size_t length)
 {
 	struct flac_encoder *encoder = (struct flac_encoder *)_encoder;
 	unsigned num_frames, num_samples;
@@ -315,12 +302,11 @@ flac_encoder_write(struct encoder *_encoder,
 
 	if (!FLAC__stream_encoder_process_interleaved(encoder->fse, buffer,
 							num_frames)) {
-		g_set_error(error, flac_encoder_quark(), 0,
-			    "flac encoder process failed");
-		return false;
+		log_err("flac encoder process failed");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static size_t

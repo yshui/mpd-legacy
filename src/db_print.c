@@ -45,16 +45,15 @@ typedef struct _SearchStats {
 	unsigned long playTime;
 } SearchStats;
 
-static bool
-print_visitor_directory(const struct directory *directory, void *data,
-			GError **error_r)
+static int
+print_visitor_directory(const struct directory *directory, void *data)
 {
 	struct client *client = data;
 
 	if (!directory_is_root(directory))
 		client_printf(client, "directory: %s\n", directory_get_path(directory));
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -69,9 +68,8 @@ print_playlist_in_directory(struct client *client,
 			      directory_get_path(directory), name_utf8);
 }
 
-static bool
-print_visitor_song(struct song *song, void *data,
-		   GError **error_r)
+static int
+print_visitor_song(struct song *song, void *data)
 {
 	assert(song != NULL);
 	assert(song->parent != NULL);
@@ -84,12 +82,11 @@ print_visitor_song(struct song *song, void *data,
 		print_playlist_in_directory(client, song->parent,
 					    song->uri);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-print_visitor_song_info(struct song *song, void *data,
-			GError **error_r)
+static int
+print_visitor_song_info(struct song *song, void *data)
 {
 	assert(song != NULL);
 	assert(song->parent != NULL);
@@ -102,23 +99,22 @@ print_visitor_song_info(struct song *song, void *data,
 		print_playlist_in_directory(client, song->parent,
 					    song->uri);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
+static int
 print_visitor_playlist(const struct playlist_metadata *playlist,
-		       const struct directory *directory, void *ctx,
-		       GError **error_r)
+		       const struct directory *directory, void *ctx)
 {
 	struct client *client = ctx;
 	print_playlist_in_directory(client, directory, playlist->name);
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
+static int
 print_visitor_playlist_info(const struct playlist_metadata *playlist,
 			    const struct directory *directory,
-			    void *ctx, GError **error_r)
+			    void *ctx)
 {
 	struct client *client = ctx;
 	print_playlist_in_directory(client, directory, playlist->name);
@@ -139,7 +135,7 @@ print_visitor_playlist_info(const struct playlist_metadata *playlist,
 		 );
 	client_printf(client, "Last-Modified: %s\n", timestamp);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor print_visitor = {
@@ -154,12 +150,12 @@ static const struct db_visitor print_info_visitor = {
 	.playlist = print_visitor_playlist_info,
 };
 
-bool
+int
 db_selection_print(struct client *client, const struct db_selection *selection,
-		   bool full, GError **error_r)
+		   bool full)
 {
 	return db_visit(selection, full ? &print_info_visitor : &print_visitor,
-			client, error_r);
+			client);
 }
 
 struct search_data {
@@ -167,26 +163,24 @@ struct search_data {
 	const struct locate_item_list *criteria;
 };
 
-static bool
-search_visitor_song(struct song *song, void *_data,
-		    GError **error_r)
+static int
+search_visitor_song(struct song *song, void *_data)
 {
 	struct search_data *data = _data;
 
 	if (locate_song_search(song, data->criteria))
 		song_print_info(data->client, song);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor search_visitor = {
 	.song = search_visitor_song,
 };
 
-bool
+int
 searchForSongsIn(struct client *client, const char *name,
-		 const struct locate_item_list *criteria,
-		 GError **error_r)
+		 const struct locate_item_list *criteria)
 {
 	struct locate_item_list *new_list
 		= locate_item_list_casefold(criteria);
@@ -195,40 +189,38 @@ searchForSongsIn(struct client *client, const char *name,
 	data.client = client;
 	data.criteria = new_list;
 
-	bool success = db_walk(name, &search_visitor, &data, error_r);
+	int ret = db_walk(name, &search_visitor, &data);
 
 	locate_item_list_free(new_list);
 
-	return success;
+	return ret;
 }
 
-static bool
-find_visitor_song(struct song *song, void *_data,
-		  GError **error_r)
+static int
+find_visitor_song(struct song *song, void *_data)
 {
 	struct search_data *data = _data;
 
 	if (locate_song_match(song, data->criteria))
 		song_print_info(data->client, song);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor find_visitor = {
 	.song = find_visitor_song,
 };
 
-bool
+int
 findSongsIn(struct client *client, const char *name,
-	    const struct locate_item_list *criteria,
-	    GError **error_r)
+	    const struct locate_item_list *criteria)
 {
 	struct search_data data;
 
 	data.client = client;
 	data.criteria = criteria;
 
-	return db_walk(name, &find_visitor, &data, error_r);
+	return db_walk(name, &find_visitor, &data);
 }
 
 static void printSearchStats(struct client *client, SearchStats *stats)
@@ -237,9 +229,8 @@ static void printSearchStats(struct client *client, SearchStats *stats)
 	client_printf(client, "playtime: %li\n", stats->playTime);
 }
 
-static bool
-stats_visitor_song(struct song *song, void *data,
-		   GError **error_r)
+static int
+stats_visitor_song(struct song *song, void *data)
 {
 	SearchStats *stats = data;
 
@@ -248,17 +239,16 @@ stats_visitor_song(struct song *song, void *data,
 		stats->playTime += song_get_duration(song);
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor stats_visitor = {
 	.song = stats_visitor_song,
 };
 
-bool
+int
 searchStatsForSongsIn(struct client *client, const char *name,
-		      const struct locate_item_list *criteria,
-		      GError **error_r)
+		      const struct locate_item_list *criteria)
 {
 	SearchStats stats;
 
@@ -266,28 +256,28 @@ searchStatsForSongsIn(struct client *client, const char *name,
 	stats.numberOfSongs = 0;
 	stats.playTime = 0;
 
-	if (!db_walk(name, &stats_visitor, &stats, error_r))
-		return false;
+	int ret = db_walk(name, &stats_visitor, &stats);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	printSearchStats(client, &stats);
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-printAllIn(struct client *client, const char *uri_utf8, GError **error_r)
+int
+printAllIn(struct client *client, const char *uri_utf8)
 {
 	struct db_selection selection;
 	db_selection_init(&selection, uri_utf8, true);
-	return db_selection_print(client, &selection, false, error_r);
+	return db_selection_print(client, &selection, false);
 }
 
-bool
-printInfoForAllIn(struct client *client, const char *uri_utf8,
-		  GError **error_r)
+int
+printInfoForAllIn(struct client *client, const char *uri_utf8)
 {
 	struct db_selection selection;
 	db_selection_init(&selection, uri_utf8, true);
-	return db_selection_print(client, &selection, true, error_r);
+	return db_selection_print(client, &selection, true);
 }
 
 static ListCommandItem *
@@ -338,9 +328,8 @@ struct list_tags_data {
 	struct strset *set;
 };
 
-static bool
-unique_tags_visitor_song(struct song *song, void *_data,
-			 GError **error_r)
+static int
+unique_tags_visitor_song(struct song *song, void *_data)
 {
 	struct list_tags_data *data = _data;
 	ListCommandItem *item = data->item;
@@ -348,17 +337,16 @@ unique_tags_visitor_song(struct song *song, void *_data,
 	if (locate_song_match(song, item->criteria))
 		visitTag(data->client, data->set, song, item->tagType);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor unique_tags_visitor = {
 	.song = unique_tags_visitor_song,
 };
 
-bool
+int
 listAllUniqueTags(struct client *client, int type,
-		  const struct locate_item_list *criteria,
-		  GError **error_r)
+		  const struct locate_item_list *criteria)
 {
 	ListCommandItem *item = newListCommandItem(type, criteria);
 	struct list_tags_data data = {
@@ -370,9 +358,10 @@ listAllUniqueTags(struct client *client, int type,
 		data.set = strset_new();
 	}
 
-	if (!db_walk("", &unique_tags_visitor, &data, error_r)) {
+	int ret = db_walk("", &unique_tags_visitor, &data);
+	if (ret != MPD_SUCCESS) {
 		freeListCommandItem(item);
-		return false;
+		return ret;
 	}
 
 	if (type >= 0 && type <= TAG_NUM_OF_ITEM_TYPES) {
@@ -390,5 +379,5 @@ listAllUniqueTags(struct client *client, int type,
 
 	freeListCommandItem(item);
 
-	return true;
+	return MPD_SUCCESS;
 }

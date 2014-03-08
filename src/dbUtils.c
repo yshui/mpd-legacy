@@ -27,60 +27,54 @@
 
 #include <glib.h>
 
-static bool
-add_to_queue_song(struct song *song, void *ctx, GError **error_r)
+static int
+add_to_queue_song(struct song *song, void *ctx)
 {
 	struct player_control *pc = ctx;
 
-	enum playlist_result result =
+	int result =
 		playlist_append_song(&g_playlist, pc, song, NULL);
-	if (result != PLAYLIST_RESULT_SUCCESS) {
-		g_set_error(error_r, playlist_quark(), result,
-			    "Playlist error");
-		return false;
+	if (result != MPD_SUCCESS) {
+		log_err("Failed to add song to queue.");
+		return result;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor add_to_queue_visitor = {
 	.song = add_to_queue_song,
 };
 
-bool
-addAllIn(struct player_control *pc, const char *uri, GError **error_r)
+int
+addAllIn(struct player_control *pc, const char *uri)
 {
-	return db_walk(uri, &add_to_queue_visitor, pc, error_r);
+	return db_walk(uri, &add_to_queue_visitor, pc);
 }
 
 struct add_data {
 	const char *path;
 };
 
-static bool
-add_to_spl_song(struct song *song, void *ctx, GError **error_r)
+static int
+add_to_spl_song(struct song *song, void *ctx)
 {
 	struct add_data *data = ctx;
-
-	if (!spl_append_song(data->path, song, error_r))
-		return false;
-
-	return true;
+	return spl_append_song(data->path, song);
 }
 
 static const struct db_visitor add_to_spl_visitor = {
 	.song = add_to_spl_song,
 };
 
-bool
-addAllInToStoredPlaylist(const char *uri_utf8, const char *path_utf8,
-			 GError **error_r)
+int
+addAllInToStoredPlaylist(const char *uri_utf8, const char *path_utf8)
 {
 	struct add_data data = {
 		.path = path_utf8,
 	};
 
-	return db_walk(uri_utf8, &add_to_spl_visitor, &data, error_r);
+	return db_walk(uri_utf8, &add_to_spl_visitor, &data);
 }
 
 struct find_add_data {
@@ -88,68 +82,58 @@ struct find_add_data {
 	const struct locate_item_list *criteria;
 };
 
-static bool
-find_add_song(struct song *song, void *ctx, GError **error_r)
+static int
+find_add_song(struct song *song, void *ctx)
 {
 	struct find_add_data *data = ctx;
 
 	if (!locate_song_match(song, data->criteria))
 		return true;
 
-	enum playlist_result result =
+	int result =
 		playlist_append_song(&g_playlist, data->pc,
 				     song, NULL);
-	if (result != PLAYLIST_RESULT_SUCCESS) {
-		g_set_error(error_r, playlist_quark(), result,
-			    "Playlist error");
-		return false;
+	if (result != MPD_SUCCESS) {
+		log_err("Failed to add songs to queue.");
+		return result;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor find_add_visitor = {
 	.song = find_add_song,
 };
 
-bool
+int
 findAddIn(struct player_control *pc, const char *name,
-	  const struct locate_item_list *criteria, GError **error_r)
+	  const struct locate_item_list *criteria)
 {
 	struct find_add_data data;
 	data.pc = pc;
 	data.criteria = criteria;
 
-	return db_walk(name, &find_add_visitor, &data, error_r);
+	return db_walk(name, &find_add_visitor, &data);
 }
 
-static bool
-searchadd_visitor_song(struct song *song, void *_data, GError **error_r)
+static int
+searchadd_visitor_song(struct song *song, void *_data)
 {
 	struct find_add_data *data = _data;
 
 	if (!locate_song_search(song, data->criteria))
-		return true;
+		return MPD_SUCCESS;
 
-	enum playlist_result result =
-		playlist_append_song(&g_playlist, data->pc, song, NULL);
-	if (result != PLAYLIST_RESULT_SUCCESS) {
-		g_set_error(error_r, playlist_quark(), result,
-			    "Playlist error");
-		return false;
-	}
-
-	return true;
+	return playlist_append_song(&g_playlist, data->pc, song, NULL);
 }
 
 static const struct db_visitor searchadd_visitor = {
 	.song = searchadd_visitor_song,
 };
 
-bool
+int
 search_add_songs(struct player_control *pc, const char *uri,
-		 const struct locate_item_list *criteria,
-		 GError **error_r)
+		 const struct locate_item_list *criteria)
 {
 	struct locate_item_list *new_list =
 		locate_item_list_casefold(criteria);
@@ -158,7 +142,7 @@ search_add_songs(struct player_control *pc, const char *uri,
 		.criteria = new_list,
 	};
 
-	bool success = db_walk(uri, &searchadd_visitor, &data, error_r);
+	int success = db_walk(uri, &searchadd_visitor, &data);
 
 	locate_item_list_free(new_list);
 
@@ -170,29 +154,24 @@ struct search_add_playlist_data {
 	const struct locate_item_list *criteria;
 };
 
-static bool
-searchaddpl_visitor_song(struct song *song, void *_data,
-			 GError **error_r)
+static int
+searchaddpl_visitor_song(struct song *song, void *_data)
 {
 	struct search_add_playlist_data *data = _data;
 
 	if (!locate_song_search(song, data->criteria))
-		return true;
+		return MPD_SUCCESS;
 
-	if (!spl_append_song(data->playlist, song, error_r))
-		return false;
-
-	return true;
+	return spl_append_song(data->playlist, song);
 }
 
 static const struct db_visitor searchaddpl_visitor = {
 	.song = searchaddpl_visitor_song,
 };
 
-bool
+int
 search_add_to_playlist(const char *uri, const char *path_utf8,
-		       const struct locate_item_list *criteria,
-		       GError **error_r)
+		       const struct locate_item_list *criteria)
 {
 	struct locate_item_list *new_list
 		= locate_item_list_casefold(criteria);
@@ -201,7 +180,7 @@ search_add_to_playlist(const char *uri, const char *path_utf8,
 		.criteria = new_list,
 	};
 
-	bool success = db_walk(uri, &searchaddpl_visitor, &data, error_r);
+	int success = db_walk(uri, &searchaddpl_visitor, &data);
 
 	locate_item_list_free(new_list);
 

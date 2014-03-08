@@ -16,6 +16,11 @@
 # define MPD_PURE __attribute__((__pure__))
 # define MPD_MALLOC __attribute__((__malloc__))
 # define MPD_CONST __attribute__((__const__))
+# if defined(__GNUC__)
+#  define MPD_FORCE
+# else
+#  define MPD_FORCE
+# endif
 
 # define likely(expr) (__builtin_expect (!!(expr), 1))
 # define unlikely(expr) (__builtin_expect (!!(expr), 0))
@@ -37,3 +42,11 @@
 #endif
 
 #define tmalloc(type, nmemb) calloc((nmemb), sizeof(type))
+
+#define check_and_return(ret, log_level, ...) { \
+	int __tmp = ret; \
+	if (__tmp != MPD_SUCCESS) { \
+		log_meta(log_level, __VA_ARGS__); \
+		return __tmp; \
+	} \
+}

@@ -45,10 +45,9 @@ struct mixer_plugin {
 	 * no configuration
 	 * @param error_r location to store the error occurring, or
 	 * NULL to ignore errors
-	 * @return a mixer object, or NULL on error
+	 * @return a mixer object, or error code
 	 */
-	struct mixer *(*init)(void *ao, const struct config_param *param,
-			      GError **error_r);
+	struct mixer *(*init)(void *ao, const struct config_param *param);
 
 	/**
 	 * Finish and free mixer data
@@ -60,9 +59,9 @@ struct mixer_plugin {
 	 *
 	 * @param error_r location to store the error occurring, or
 	 * NULL to ignore errors
-	 * @return true on success, false on error
+	 * @return error code
 	 */
-	bool (*open)(struct mixer *data, GError **error_r);
+	int (*open)(struct mixer *data);
 
 	/**
 	 * Close mixer device
@@ -74,10 +73,10 @@ struct mixer_plugin {
 	 *
 	 * @param error_r location to store the error occurring, or
 	 * NULL to ignore errors
-	 * @return the current volume (0..100 including) or -1 if
-	 * unavailable or on error (error_r set, mixer will be closed)
+	 * @return the current volume (0..100 including) or negative
+	 * error code (mixer will be closed)
 	 */
-	int (*get_volume)(struct mixer *mixer, GError **error_r);
+	int (*get_volume)(struct mixer *mixer);
 
 	/**
 	 * Sets the volume.
@@ -85,10 +84,9 @@ struct mixer_plugin {
 	 * @param error_r location to store the error occurring, or
 	 * NULL to ignore errors
 	 * @param volume the new volume (0..100 including)
-	 * @return true on success, false on error
+	 * @return error code
 	 */
-	bool (*set_volume)(struct mixer *mixer, unsigned volume,
-			   GError **error_r);
+	int (*set_volume)(struct mixer *mixer, unsigned volume);
 
 	/**
 	 * If true, then the mixer is automatically opened, even if

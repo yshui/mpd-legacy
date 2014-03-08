@@ -35,14 +35,13 @@ struct config_param;
 
 struct mixer *
 mixer_new(const struct mixer_plugin *plugin, void *ao,
-	  const struct config_param *param,
-	  GError **error_r);
+	  const struct config_param *param);
 
 void
 mixer_free(struct mixer *mixer);
 
-bool
-mixer_open(struct mixer *mixer, GError **error_r);
+int
+mixer_open(struct mixer *mixer);
 
 void
 mixer_close(struct mixer *mixer);
@@ -55,9 +54,9 @@ void
 mixer_auto_close(struct mixer *mixer);
 
 int
-mixer_get_volume(struct mixer *mixer, GError **error_r);
+mixer_get_volume(struct mixer *mixer);
 
-bool
-mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r);
+int
+mixer_set_volume(struct mixer *mixer, unsigned volume);
 
 #endif

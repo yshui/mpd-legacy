@@ -139,7 +139,6 @@ wavpack_bits_to_sample_format(bool is_float, int bytes_per_sample)
 static void
 wavpack_decode(struct decoder *decoder, WavpackContext *wpc, bool can_seek)
 {
-	GError *error = NULL;
 	bool is_float;
 	enum sample_format sample_format;
 	struct audio_format audio_format;
@@ -152,14 +151,12 @@ wavpack_decode(struct decoder *decoder, WavpackContext *wpc, bool can_seek)
 		wavpack_bits_to_sample_format(is_float,
 					      WavpackGetBytesPerSample(wpc));
 
-	if (!audio_format_init_checked(&audio_format,
-				       WavpackGetSampleRate(wpc),
-				       sample_format,
-				       WavpackGetNumChannels(wpc), &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	if (audio_format_init_checked(&audio_format,
+			WavpackGetSampleRate(wpc),
+			sample_format,
+			WavpackGetNumChannels(wpc))
+			!= MPD_SUCCESS)
 		return;
-	}
 
 	if (is_float) {
 		format_samples = format_samples_float;
@@ -400,18 +397,20 @@ wavpack_input_get_pos(void *id)
 	return wpin(id)->is->offset;
 }
 
+/* Can't find description for these two functions in wavpack documents.
+ */
 static int
 wavpack_input_set_pos_abs(void *id, uint32_t pos)
 {
-	return input_stream_lock_seek(wpin(id)->is, pos, SEEK_SET, NULL)
-		? 0 : -1;
+	return input_stream_lock_seek(wpin(id)->is, pos, SEEK_SET) == MPD_SUCCESS ?
+		0 : -1;
 }
 
 static int
 wavpack_input_set_pos_rel(void *id, int32_t delta, int mode)
 {
-	return input_stream_lock_seek(wpin(id)->is, delta, mode, NULL)
-		? 0 : -1;
+	return input_stream_lock_seek(wpin(id)->is, delta, mode) == MPD_SUCCESS ?
+		0 : -1;
 }
 
 static int
@@ -478,11 +477,11 @@ wavpack_open_wvc(struct decoder *decoder, const char *uri,
 		return false;
 
 	wvc_url = g_strconcat(uri, "c", NULL);
-	is_wvc = input_stream_open(wvc_url, mutex, cond, NULL);
-	g_free(wvc_url);
+	is_wvc = input_stream_open(wvc_url, mutex, cond);
+	free(wvc_url);
 
-	if (is_wvc == NULL)
-		return NULL;
+	if (IS_ERR(is_wvc))
+		return is_wvc;
 
 	/*
 	 * And we try to buffer in order to get know
@@ -491,7 +490,7 @@ wavpack_open_wvc(struct decoder *decoder, const char *uri,
 	nbytes = decoder_read(
 		decoder, is_wvc, &first_byte, sizeof(first_byte)
 	);
-	if (nbytes == 0) {
+	if (nbytes <= 0) {
 		input_stream_close(is_wvc);
 		return NULL;
 	}

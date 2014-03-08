@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: mpcdec"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
@@ -33,8 +36,6 @@
 #include <assert.h>
 #include <unistd.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "mpcdec"
 
 struct mpc_decoder_data {
 	struct input_stream *is;
@@ -62,7 +63,7 @@ mpc_seek_cb(cb_first_arg, mpc_int32_t offset)
 {
 	struct mpc_decoder_data *data = (struct mpc_decoder_data *) cb_data;
 
-	return input_stream_lock_seek(data->is, offset, SEEK_SET, NULL);
+	return input_stream_lock_seek(data->is, offset, SEEK_SET) == MPD_SUCCESS;
 }
 
 static mpc_int32_t
@@ -144,7 +145,6 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 #endif
 	mpc_reader reader;
 	mpc_streaminfo info;
-	GError *error = NULL;
 	struct audio_format audio_format;
 
 	struct mpc_decoder_data data;
@@ -194,11 +194,9 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 	mpc_demux_get_info(demux, &info);
 #endif
 
-	if (!audio_format_init_checked(&audio_format, info.sample_freq,
+	if (audio_format_init_checked(&audio_format, info.sample_freq,
 				       SAMPLE_FORMAT_S24_P32,
-				       info.channels, &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+				       info.channels) != MPD_SUCCESS) {
 #ifndef MPC_IS_OLD_API
 		mpc_demux_exit(demux);
 #endif

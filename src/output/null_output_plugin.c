@@ -35,13 +35,14 @@ struct null_data {
 };
 
 static struct audio_output *
-null_init(const struct config_param *param, GError **error_r)
+null_init(const struct config_param *param)
 {
 	struct null_data *nd = g_new(struct null_data, 1);
 
-	if (!ao_base_init(&nd->base, &null_output_plugin, param, error_r)) {
-		g_free(nd);
-		return NULL;
+	int ret = ao_base_init(&nd->base, &null_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(nd);
+		return ERR_PTR(ret);
 	}
 
 	nd->sync = config_get_block_bool(param, "sync", true);
@@ -58,16 +59,15 @@ null_finish(struct audio_output *ao)
 	g_free(nd);
 }
 
-static bool
-null_open(struct audio_output *ao, struct audio_format *audio_format,
-	  GError **error)
+static int
+null_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct null_data *nd = (struct null_data *)ao;
 
 	if (nd->sync)
 		nd->timer = timer_new(audio_format);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -90,8 +90,7 @@ null_delay(struct audio_output *ao)
 }
 
 static size_t
-null_play(struct audio_output *ao, const void *chunk, size_t size,
-	  GError **error)
+null_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct null_data *nd = (struct null_data *)ao;
 	struct timer *timer = nd->timer;

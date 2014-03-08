@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: httpd"
+
+#include "log.h"
 #include "config.h"
 #include "httpd_output_plugin.h"
 #include "httpd_internal.h"
@@ -41,24 +44,12 @@
 #include <tcpd.h>
 #endif
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "httpd_output"
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-httpd_output_quark(void)
-{
-	return g_quark_from_static_string("httpd_output");
-}
-
 /**
  * Check whether there is at least one client.
  *
  * Caller must lock the mutex.
  */
-G_GNUC_PURE
+MPD_PURE
 static bool
 httpd_output_has_clients(const struct httpd_output *httpd)
 {
@@ -68,7 +59,7 @@ httpd_output_has_clients(const struct httpd_output *httpd)
 /**
  * Check whether there is at least one client.
  */
-G_GNUC_PURE
+MPD_PURE
 static bool
 httpd_output_lock_has_clients(const struct httpd_output *httpd)
 {
@@ -82,16 +73,16 @@ static void
 httpd_listen_in_event(int fd, const struct sockaddr *address,
 		      size_t address_length, int uid, void *ctx);
 
-static bool
-httpd_output_bind(struct httpd_output *httpd, GError **error_r)
+static int
+httpd_output_bind(struct httpd_output *httpd)
 {
 	httpd->open = false;
 
 	g_mutex_lock(httpd->mutex);
-	bool success = server_socket_open(httpd->server_socket, error_r);
+	int ret = server_socket_open(httpd->server_socket);
 	g_mutex_unlock(httpd->mutex);
 
-	return success;
+	return ret;
 }
 
 static void
@@ -105,13 +96,13 @@ httpd_output_unbind(struct httpd_output *httpd)
 }
 
 static struct audio_output *
-httpd_output_init(const struct config_param *param,
-		  GError **error)
+httpd_output_init(const struct config_param *param)
 {
 	struct httpd_output *httpd = g_new(struct httpd_output, 1);
-	if (!ao_base_init(&httpd->base, &httpd_output_plugin, param, error)) {
-		g_free(httpd);
-		return NULL;
+	int ret = ao_base_init(&httpd->base, &httpd_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(httpd);
+		return ERR_PTR(ret);
 	}
 
 	/* read configuration */
@@ -129,11 +120,10 @@ httpd_output_init(const struct config_param *param,
 	const struct encoder_plugin *encoder_plugin =
 		encoder_plugin_get(encoder_name);
 	if (encoder_plugin == NULL) {
-		g_set_error(error, httpd_output_quark(), 0,
-			    "No such encoder: %s", encoder_name);
+		log_err("No such encoder: %s", encoder_name);
 		ao_base_finish(&httpd->base);
-		g_free(httpd);
-		return NULL;
+		free(httpd);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	httpd->clients_max = config_get_block_unsigned(param,"max_clients", 0);
@@ -144,15 +134,15 @@ httpd_output_init(const struct config_param *param,
 
 	const char *bind_to_address =
 		config_get_block_string(param, "bind_to_address", NULL);
-	bool success = bind_to_address != NULL &&
+	ret = bind_to_address != NULL &&
 		strcmp(bind_to_address, "any") != 0
 		? server_socket_add_host(httpd->server_socket, bind_to_address,
-					 port, error)
-		: server_socket_add_port(httpd->server_socket, port, error);
-	if (!success) {
+					 port)
+		: server_socket_add_port(httpd->server_socket, port);
+	if (ret != MPD_SUCCESS) {
 		ao_base_finish(&httpd->base);
-		g_free(httpd);
-		return NULL;
+		free(httpd);
+		return ERR_PTR(ret);
 	}
 
 	/* initialize metadata */
@@ -161,11 +151,11 @@ httpd_output_init(const struct config_param *param,
 
 	/* initialize encoder */
 
-	httpd->encoder = encoder_init(encoder_plugin, param, error);
-	if (httpd->encoder == NULL) {
+	httpd->encoder = encoder_init(encoder_plugin, param);
+	if (IS_ERR(httpd->encoder)) {
 		ao_base_finish(&httpd->base);
-		g_free(httpd);
-		return NULL;
+		free(httpd);
+		return (void *)httpd->encoder;
 	}
 
 	/* determine content type */
@@ -277,7 +267,7 @@ httpd_output_read_page(struct httpd_output *httpd)
 		/* we have fed a lot of input into the encoder, but it
 		   didn't give anything back yet - flush now to avoid
 		   buffer underruns */
-		encoder_flush(httpd->encoder, NULL);
+		encoder_flush(httpd->encoder);
 		httpd->unflushed_input = 0;
 	}
 
@@ -300,13 +290,13 @@ httpd_output_read_page(struct httpd_output *httpd)
 	return page_new_copy(httpd->buffer, size);
 }
 
-static bool
+static int
 httpd_output_encoder_open(struct httpd_output *httpd,
-			  struct audio_format *audio_format,
-			  GError **error)
+			  struct audio_format *audio_format)
 {
-	if (!encoder_open(httpd->encoder, audio_format, error))
-		return false;
+	int ret = encoder_open(httpd->encoder, audio_format);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	/* we have to remember the encoder header, i.e. the first
 	   bytes of encoder output after opening it, because it has to
@@ -315,15 +305,15 @@ httpd_output_encoder_open(struct httpd_output *httpd,
 
 	httpd->unflushed_input = 0;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-httpd_output_enable(struct audio_output *ao, GError **error_r)
+static int
+httpd_output_enable(struct audio_output *ao)
 {
 	struct httpd_output *httpd = (struct httpd_output *)ao;
 
-	return httpd_output_bind(httpd, error_r);
+	return httpd_output_bind(httpd);
 }
 
 static void
@@ -334,9 +324,8 @@ httpd_output_disable(struct audio_output *ao)
 	httpd_output_unbind(httpd);
 }
 
-static bool
-httpd_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		  GError **error)
+static int
+httpd_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct httpd_output *httpd = (struct httpd_output *)ao;
 
@@ -344,9 +333,10 @@ httpd_output_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	/* open the encoder */
 
-	if (!httpd_output_encoder_open(httpd, audio_format, error)) {
+	int ret = httpd_output_encoder_open(httpd, audio_format);
+	if (ret != MPD_SUCCESS) {
 		g_mutex_unlock(httpd->mutex);
-		return false;
+		return ret;
 	}
 
 	/* initialize other attributes */
@@ -358,7 +348,7 @@ httpd_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	httpd->open = true;
 
 	g_mutex_unlock(httpd->mutex);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -484,28 +474,28 @@ httpd_output_encoder_to_clients(struct httpd_output *httpd)
 	}
 }
 
-static bool
+static int
 httpd_output_encode_and_play(struct httpd_output *httpd,
-			     const void *chunk, size_t size, GError **error)
+			     const void *chunk, size_t size)
 {
-	if (!encoder_write(httpd->encoder, chunk, size, error))
-		return false;
+	int ret = encoder_write(httpd->encoder, chunk, size);
+	if (ret < 0)
+		return ret;
 
 	httpd->unflushed_input += size;
 
 	httpd_output_encoder_to_clients(httpd);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static size_t
-httpd_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		  GError **error_r)
+httpd_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct httpd_output *httpd = (struct httpd_output *)ao;
 
 	if (httpd_output_lock_has_clients(httpd)) {
-		if (!httpd_output_encode_and_play(httpd, chunk, size, error_r))
+		if (httpd_output_encode_and_play(httpd, chunk, size) != MPD_SUCCESS)
 			return 0;
 	}
 
@@ -523,8 +513,7 @@ httpd_output_pause(struct audio_output *ao)
 
 	if (httpd_output_lock_has_clients(httpd)) {
 		static const char silence[1020];
-		return httpd_output_play(ao, silence, sizeof(silence),
-					 NULL) > 0;
+		return httpd_output_play(ao, silence, sizeof(silence)) > 0;
 	} else {
 		return true;
 	}
@@ -551,13 +540,13 @@ httpd_output_tag(struct audio_output *ao, const struct tag *tag)
 
 		/* flush the current stream, and end it */
 
-		encoder_pre_tag(httpd->encoder, NULL);
+		encoder_pre_tag(httpd->encoder);
 		httpd_output_encoder_to_clients(httpd);
 
 		/* send the tag to the encoder - which starts a new
 		   stream now */
 
-		encoder_tag(httpd->encoder, tag, NULL);
+		encoder_tag(httpd->encoder, tag);
 
 		/* the first page generated by the encoder will now be
 		   used as the new "header" page, which is sent to all

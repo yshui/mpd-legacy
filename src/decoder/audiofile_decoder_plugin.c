@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: audiofile"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
@@ -28,8 +31,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "audiofile"
 
 /* pick 1020 since its devisible for 8,16,24, and 32-bit audio */
 #define CHUNK_SIZE		1020
@@ -52,15 +53,11 @@ static ssize_t
 audiofile_file_read(AFvirtualfile *vfile, void *data, size_t length)
 {
 	struct input_stream *is = (struct input_stream *) vfile->closure;
-	GError *error = NULL;
 	size_t nbytes;
 
-	nbytes = input_stream_lock_read(is, data, length, &error);
-	if (nbytes == 0 && error != NULL) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	nbytes = input_stream_lock_read(is, data, length);
+	if (nbytes <= 0)
 		return -1;
-	}
 
 	return nbytes;
 }
@@ -92,7 +89,7 @@ audiofile_file_seek(AFvirtualfile *vfile, AFfileoffset offset, int is_relative)
 {
 	struct input_stream *is = (struct input_stream *) vfile->closure;
 	int whence = (is_relative ? SEEK_CUR : SEEK_SET);
-	if (input_stream_lock_seek(is, offset, whence, NULL)) {
+	if (input_stream_lock_seek(is, offset, whence) == MPD_SUCCESS) {
 		return is->offset;
 	} else {
 		return -1;
@@ -155,7 +152,6 @@ audiofile_setup_sample_format(AFfilehandle af_fp)
 static void
 audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 {
-	GError *error = NULL;
 	AFvirtualfile *vf;
 	int fs, frame_count;
 	AFfilehandle af_fp;
@@ -179,13 +175,11 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 		return;
 	}
 
-	if (!audio_format_init_checked(&audio_format,
+	if (audio_format_init_checked(&audio_format,
 				       afGetRate(af_fp, AF_DEFAULT_TRACK),
 				       audiofile_setup_sample_format(af_fp),
-				       afGetVirtualChannels(af_fp, AF_DEFAULT_TRACK),
-				       &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+				       afGetVirtualChannels(af_fp, AF_DEFAULT_TRACK)) !=
+				       MPD_SUCCESS) {
 		afCloseFile(af_fp);
 		return;
 	}

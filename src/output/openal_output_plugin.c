@@ -17,11 +17,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: openal"
+
+#include "log.h"
 #include "config.h"
 #include "openal_output_plugin.h"
 #include "output_api.h"
-
-#include <glib.h>
 
 #ifndef HAVE_OSX
 #include <AL/al.h>
@@ -30,9 +31,6 @@
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
 #endif
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "openal"
 
 /* should be enough for buffer size = 2048 */
 #define NUM_BUFFERS 16
@@ -49,12 +47,6 @@ struct openal_data {
 	ALenum format;
 	ALuint frequency;
 };
-
-static inline GQuark
-openal_output_quark(void)
-{
-	return g_quark_from_static_string("openal_output");
-}
 
 static ALenum
 openal_audio_format(struct audio_format *audio_format)
@@ -104,34 +96,31 @@ openal_is_playing(const struct openal_data *od)
 	return openal_get_source_i(od, AL_SOURCE_STATE) == AL_PLAYING;
 }
 
-static bool
-openal_setup_context(struct openal_data *od,
-		     GError **error)
+static int
+openal_setup_context(struct openal_data *od)
 {
 	od->device = alcOpenDevice(od->device_name);
 
 	if (od->device == NULL) {
-		g_set_error(error, openal_output_quark(), 0,
-			    "Error opening OpenAL device \"%s\"\n",
+		log_err("Error opening OpenAL device \"%s\"\n",
 			    od->device_name);
-		return false;
+		return -MPD_3RD;
 	}
 
 	od->context = alcCreateContext(od->device, NULL);
 
 	if (od->context == NULL) {
-		g_set_error(error, openal_output_quark(), 0,
-			    "Error creating context for \"%s\"\n",
+		log_err("Error creating context for \"%s\"\n",
 			    od->device_name);
 		alcCloseDevice(od->device);
-		return false;
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct audio_output *
-openal_init(const struct config_param *param, GError **error_r)
+openal_init(const struct config_param *param)
 {
 	const char *device_name = config_get_block_string(param, "device", NULL);
 	struct openal_data *od;
@@ -141,9 +130,10 @@ openal_init(const struct config_param *param, GError **error_r)
 	}
 
 	od = g_new(struct openal_data, 1);
-	if (!ao_base_init(&od->base, &openal_output_plugin, param, error_r)) {
-		g_free(od);
-		return NULL;
+	int ret = ao_base_init(&od->base, &openal_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(od);
+		return ERR_PTR(ret);
 	}
 
 	od->device_name = device_name;
@@ -157,43 +147,40 @@ openal_finish(struct audio_output *ao)
 	struct openal_data *od = (struct openal_data *)ao;
 
 	ao_base_finish(&od->base);
-	g_free(od);
+	free(od);
 }
 
-static bool
-openal_open(struct audio_output *ao, struct audio_format *audio_format,
-	    GError **error)
+static int
+openal_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct openal_data *od = (struct openal_data *)ao;
 
 	od->format = openal_audio_format(audio_format);
 
-	if (!openal_setup_context(od, error)) {
-		return false;
-	}
+	int ret = openal_setup_context(od);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	alcMakeContextCurrent(od->context);
 	alGenBuffers(NUM_BUFFERS, od->buffers);
 
 	if (alGetError() != AL_NO_ERROR) {
-		g_set_error(error, openal_output_quark(), 0,
-			    "Failed to generate buffers");
-		return false;
+		log_err("Failed to generate buffers");
+		return -MPD_3RD;
 	}
 
 	alGenSources(1, &od->source);
 
 	if (alGetError() != AL_NO_ERROR) {
-		g_set_error(error, openal_output_quark(), 0,
-			    "Failed to generate source");
+		log_err("Failed to generate source");
 		alDeleteBuffers(NUM_BUFFERS, od->buffers);
-		return false;
+		return -MPD_3RD;
 	}
 
 	od->filled = 0;
 	od->frequency = audio_format->sample_rate;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -222,8 +209,7 @@ openal_delay(struct audio_output *ao)
 }
 
 static size_t
-openal_play(struct audio_output *ao, const void *chunk, size_t size,
-	    GError **error)
+openal_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct openal_data *od = (struct openal_data *)ao;
 	ALuint buffer;

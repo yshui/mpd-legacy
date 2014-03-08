@@ -97,24 +97,24 @@ struct despotify_session *mpd_despotify_get_session(void)
 
 	if (user == NULL || passwd == NULL) {
 		log_debug("disabling despotify because account is not configured");
-		return NULL;
+		return ERR_PTR(-MPD_DISABLED);
 	}
 		if (!despotify_init()) {
 		log_debug("Can't initialize despotify\n");
-		return false;
+		return ERR_PTR(-MPD_3RD);
 	}
 
 	g_session = despotify_init_client(callback, NULL,
 			high_bitrate, true);
 	if (!g_session) {
 		log_debug("Can't initialize despotify client\n");
-		return false;
+		return ERR_PTR(-MPD_3RD);
 	}
 
     if (!despotify_authenticate(g_session, user, passwd)) {
     	log_debug("Can't authenticate despotify session\n");
     	despotify_exit(g_session);
-    	return false;
+    	return ERR_PTR(-MPD_PERM);
     }
 
 	return g_session;

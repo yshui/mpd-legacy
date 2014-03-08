@@ -40,16 +40,11 @@ playlist_open_remote(const char *uri, GMutex *mutex, GCond *cond,
 		return playlist;
 	}
 
-	GError *error = NULL;
-	struct input_stream *is = input_stream_open(uri, mutex, cond, &error);
-	if (is == NULL) {
-		if (error != NULL) {
-			log_warning("Failed to open %s: %s",
-				  uri, error->message);
-			g_error_free(error);
-		}
+	struct input_stream *is = input_stream_open(uri, mutex, cond);
+	if (IS_ERR(is)) {
+		log_warning("Failed to open %s", uri);
 
-		return NULL;
+		return (void *)is;
 	}
 
 	playlist = playlist_list_open_stream(is, uri);

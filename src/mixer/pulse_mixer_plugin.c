@@ -49,15 +49,6 @@ struct pulse_mixer {
 
 };
 
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-pulse_mixer_quark(void)
-{
-	return g_quark_from_static_string("pulse_mixer");
-}
-
 static void
 pulse_mixer_offline(struct pulse_mixer *pm)
 {
@@ -150,16 +141,14 @@ pulse_mixer_on_change(struct pulse_mixer *pm,
 }
 
 static struct mixer *
-pulse_mixer_init(void *ao, const struct config_param *param,
-		 GError **error_r)
+pulse_mixer_init(void *ao, const struct config_param *param)
 {
 	struct pulse_mixer *pm;
 	struct pulse_output *po = ao;
 
 	if (ao == NULL) {
-		g_set_error(error_r, pulse_mixer_quark(), 0,
-			    "The pulse mixer cannot work without the audio output");
-		return false;
+		log_err("The pulse mixer cannot work without the audio output");
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	pm = g_new(struct pulse_mixer,1);
@@ -186,7 +175,7 @@ pulse_mixer_finish(struct mixer *data)
 }
 
 static int
-pulse_mixer_get_volume(struct mixer *mixer, GError **error_r)
+pulse_mixer_get_volume(struct mixer *mixer)
 {
 	struct pulse_mixer *pm = (struct pulse_mixer *) mixer;
 	int ret;
@@ -195,37 +184,36 @@ pulse_mixer_get_volume(struct mixer *mixer, GError **error_r)
 
 	ret = pm->online
 		? (int)((100*(pa_cvolume_avg(&pm->volume)+1))/PA_VOLUME_NORM)
-		: -1;
+		: -MPD_DISABLED;
 
 	pulse_output_unlock(pm->output);
 
 	return ret;
 }
 
-static bool
-pulse_mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r)
+static int
+pulse_mixer_set_volume(struct mixer *mixer, unsigned volume)
 {
 	struct pulse_mixer *pm = (struct pulse_mixer *) mixer;
 	struct pa_cvolume cvolume;
-	bool success;
 
 	pulse_output_lock(pm->output);
 
 	if (!pm->online) {
 		pulse_output_unlock(pm->output);
-		g_set_error(error_r, pulse_mixer_quark(), 0, "disconnected");
-		return false;
+		log_warning("Disconnected from pulse.");
+		return -MPD_3RD;
 	}
 
 	pa_cvolume_set(&cvolume, pm->volume.channels,
 		       (pa_volume_t)volume * PA_VOLUME_NORM / 100 + 0.5);
-	success = pulse_output_set_volume(pm->output, &cvolume, error_r);
-	if (success)
+	int ret = pulse_output_set_volume(pm->output, &cvolume);
+	if (ret == MPD_SUCCESS)
 		pm->volume = cvolume;
 
 	pulse_output_unlock(pm->output);
 
-	return success;
+	return ret;
 }
 
 const struct mixer_plugin pulse_mixer_plugin = {

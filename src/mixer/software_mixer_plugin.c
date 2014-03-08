@@ -39,15 +39,14 @@ struct software_mixer {
 
 static struct mixer *
 software_mixer_init(void *ao,
-		    const struct config_param *param,
-		    GError **error_r)
+		    const struct config_param *param)
 {
 	struct software_mixer *sm = g_new(struct software_mixer, 1);
 
 	mixer_init(&sm->base, &software_mixer_plugin);
 
-	sm->filter = filter_new(&volume_filter_plugin, NULL, NULL);
-	assert(sm->filter != NULL);
+	sm->filter = filter_new(&volume_filter_plugin, NULL);
+	assert(!IS_ERR(sm->filter));
 
 	sm->volume = 100;
 
@@ -59,20 +58,19 @@ software_mixer_finish(struct mixer *data)
 {
 	struct software_mixer *sm = (struct software_mixer *)data;
 
-	g_free(sm);
+	free(sm);
 }
 
 static int
-software_mixer_get_volume(struct mixer *mixer, GError **error_r)
+software_mixer_get_volume(struct mixer *mixer)
 {
 	struct software_mixer *sm = (struct software_mixer *)mixer;
 
 	return sm->volume;
 }
 
-static bool
-software_mixer_set_volume(struct mixer *mixer, unsigned volume,
-			  GError **error_r)
+static int
+software_mixer_set_volume(struct mixer *mixer, unsigned volume)
 {
 	struct software_mixer *sm = (struct software_mixer *)mixer;
 
@@ -87,7 +85,7 @@ software_mixer_set_volume(struct mixer *mixer, unsigned volume,
 					     (54.5981500331F - 1));
 
 	volume_filter_set(sm->filter, volume);
-	return true;
+	return MPD_SUCCESS;
 }
 
 const struct mixer_plugin software_mixer_plugin = {

@@ -55,8 +55,7 @@ struct convert_filter {
 };
 
 static struct filter *
-convert_filter_init(const struct config_param *param,
-		    GError **error_r)
+convert_filter_init(const struct config_param *param)
 {
 	struct convert_filter *filter = g_new(struct convert_filter, 1);
 
@@ -71,8 +70,7 @@ convert_filter_finish(struct filter *filter)
 }
 
 static const struct audio_format *
-convert_filter_open(struct filter *_filter, struct audio_format *audio_format,
-		    GError **error_r)
+convert_filter_open(struct filter *_filter, struct audio_format *audio_format)
 {
 	struct convert_filter *filter = (struct convert_filter *)_filter;
 
@@ -99,10 +97,9 @@ convert_filter_close(struct filter *_filter)
 
 static const void *
 convert_filter_filter(struct filter *_filter, const void *src, size_t src_size,
-		     size_t *dest_size_r, GError **error_r)
+		     size_t *dest_size_r)
 {
 	struct convert_filter *filter = (struct convert_filter *)_filter;
-	const void *dest;
 
 	if (audio_format_equals(&filter->in_audio_format,
 				&filter->out_audio_format)) {
@@ -111,14 +108,9 @@ convert_filter_filter(struct filter *_filter, const void *src, size_t src_size,
 		return src;
 	}
 
-	dest = pcm_convert(&filter->state, &filter->in_audio_format,
+	return pcm_convert(&filter->state, &filter->in_audio_format,
 			   src, src_size,
-			   &filter->out_audio_format, dest_size_r,
-			   error_r);
-	if (dest == NULL)
-		return NULL;
-
-	return dest;
+			   &filter->out_audio_format, dest_size_r);
 }
 
 const struct filter_plugin convert_filter_plugin = {

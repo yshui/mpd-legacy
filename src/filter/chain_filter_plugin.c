@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter: chain"
+
+#include "log.h"
 #include "config.h"
 #include "conf.h"
 #include "filter/chain_filter_plugin.h"
@@ -34,15 +37,8 @@ struct filter_chain {
 	GSList *children;
 };
 
-static inline GQuark
-filter_quark(void)
-{
-	return g_quark_from_static_string("filter");
-}
-
 static struct filter *
-chain_filter_init(const struct config_param *param,
-		  GError **error_r)
+chain_filter_init(const struct config_param *param)
 {
 	struct filter_chain *chain = g_new(struct filter_chain, 1);
 
@@ -100,33 +96,30 @@ chain_close_until(struct filter_chain *chain, const struct filter *until)
 
 static const struct audio_format *
 chain_open_child(struct filter *filter,
-		 const struct audio_format *prev_audio_format,
-		 GError **error_r)
+		 const struct audio_format *prev_audio_format)
 {
 	struct audio_format conv_audio_format = *prev_audio_format;
 	const struct audio_format *next_audio_format;
 
-	next_audio_format = filter_open(filter, &conv_audio_format, error_r);
-	if (next_audio_format == NULL)
-		return NULL;
+	next_audio_format = filter_open(filter, &conv_audio_format);
+	if (IS_ERR(next_audio_format))
+		return next_audio_format;
 
 	if (!audio_format_equals(&conv_audio_format, prev_audio_format)) {
 		struct audio_format_string s;
 
 		filter_close(filter);
-		g_set_error(error_r, filter_quark(), 0,
-			    "Audio format not supported by filter '%s': %s",
+		log_err("Audio format not supported by filter '%s': %s",
 			    filter->plugin->name,
 			    audio_format_to_string(prev_audio_format, &s));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	return next_audio_format;
 }
 
 static const struct audio_format *
-chain_filter_open(struct filter *_filter, struct audio_format *in_audio_format,
-		  GError **error_r)
+chain_filter_open(struct filter *_filter, struct audio_format *in_audio_format)
 {
 	struct filter_chain *chain = (struct filter_chain *)_filter;
 	const struct audio_format *audio_format = in_audio_format;
@@ -134,11 +127,11 @@ chain_filter_open(struct filter *_filter, struct audio_format *in_audio_format,
 	for (GSList *i = chain->children; i != NULL; i = g_slist_next(i)) {
 		struct filter *filter = i->data;
 
-		audio_format = chain_open_child(filter, audio_format, error_r);
-		if (audio_format == NULL) {
+		audio_format = chain_open_child(filter, audio_format);
+		if (IS_ERR(audio_format)) {
 			/* rollback, close all children */
 			chain_close_until(chain, filter);
-			return NULL;
+			return audio_format;
 		}
 	}
 
@@ -165,7 +158,7 @@ chain_filter_close(struct filter *_filter)
 static const void *
 chain_filter_filter(struct filter *_filter,
 		    const void *src, size_t src_size,
-		    size_t *dest_size_r, GError **error_r)
+		    size_t *dest_size_r)
 {
 	struct filter_chain *chain = (struct filter_chain *)_filter;
 
@@ -174,9 +167,9 @@ chain_filter_filter(struct filter *_filter,
 
 		/* feed the output of the previous filter as input
 		   into the current one */
-		src = filter_filter(filter, src, src_size, &src_size, error_r);
-		if (src == NULL)
-			return NULL;
+		src = filter_filter(filter, src, src_size, &src_size);
+		if (IS_ERR(src))
+			return src;
 	}
 
 	/* return the output of the last filter */
@@ -196,9 +189,9 @@ const struct filter_plugin chain_filter_plugin = {
 struct filter *
 filter_chain_new(void)
 {
-	struct filter *filter = filter_new(&chain_filter_plugin, NULL, NULL);
+	struct filter *filter = filter_new(&chain_filter_plugin, NULL);
 	/* chain_filter_init() never fails */
-	assert(filter != NULL);
+	assert(!IS_ERR(filter));
 
 	return filter;
 }

@@ -47,19 +47,19 @@
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "ffmpeg"
 
-static GLogLevelFlags
-level_ffmpeg_to_glib(int level)
+static int
+level_ffmpeg_to_mpd(int level)
 {
 	if (level <= AV_LOG_FATAL)
-		return G_LOG_LEVEL_CRITICAL;
+		return LOG_ERR;
 
 	if (level <= AV_LOG_ERROR)
-		return G_LOG_LEVEL_WARNING;
+		return LOG_WARNING;
 
 	if (level <= AV_LOG_INFO)
-		return G_LOG_LEVEL_MESSAGE;
+		return LOG_INFO;
 
-	return G_LOG_LEVEL_DEBUG;
+	return LOG_DEBUG;
 }
 
 static void
@@ -72,9 +72,9 @@ mpd_ffmpeg_log_callback(void *ptr, int level,
 		cls = *(const AVClass *const*)ptr;
 
 	if (cls != NULL) {
-		char *domain = g_strconcat(G_LOG_DOMAIN, "/", cls->item_name(ptr), NULL);
-		g_logv(domain, level_ffmpeg_to_glib(level), fmt, vl);
-		g_free(domain);
+		char *fmt2 = g_strconcat(cls->item_name(ptr), ":", fmt, NULL);
+		log_metav(level_ffmpeg_to_mpd(level), fmt2, vl);
+		free(fmt2);
 	}
 }
 
@@ -107,7 +107,7 @@ mpd_ffmpeg_stream_seek(void *opaque, int64_t pos, int whence)
 	if (whence == AVSEEK_SIZE)
 		return stream->input->size;
 
-	if (!input_stream_lock_seek(stream->input, pos, whence, NULL))
+	if (input_stream_lock_seek(stream->input, pos, whence) != MPD_SUCCESS)
 		return -1;
 
 	return stream->input->offset;
@@ -445,8 +445,8 @@ ffmpeg_probe(struct decoder *decoder, struct input_stream *is)
 	unsigned char *buffer = g_malloc(BUFFER_SIZE);
 	size_t nbytes = decoder_read(decoder, is, buffer, BUFFER_SIZE);
 	if (nbytes <= PADDING ||
-	    !input_stream_lock_seek(is, 0, SEEK_SET, NULL)) {
-		g_free(buffer);
+	    input_stream_lock_seek(is, 0, SEEK_SET) != MPD_SUCCESS) {
+		free(buffer);
 		return NULL;
 	}
 
@@ -547,14 +547,12 @@ ffmpeg_decode(struct decoder *decoder, struct input_stream *input)
 	if (sample_format == SAMPLE_FORMAT_UNDEFINED)
 		return;
 
-	GError *error = NULL;
 	struct audio_format audio_format;
-	if (!audio_format_init_checked(&audio_format,
+	if (audio_format_init_checked(&audio_format,
 				       codec_context->sample_rate,
 				       sample_format,
-				       codec_context->channels, &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+				       codec_context->channels) !=
+				       MPD_SUCCESS) {
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,17,0)
 		avformat_close_input(&format_context);
 #else

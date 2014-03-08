@@ -56,8 +56,8 @@ struct pcm_resample_state {
 	struct pcm_buffer buffer;
 };
 
-bool
-pcm_resample_global_init(GError **error_r);
+int
+pcm_resample_global_init(void);
 
 /**
  * Initializes a pcm_resample_state object.
@@ -86,15 +86,14 @@ pcm_resample_reset(struct pcm_resample_state *state);
  * @param src_size the size of #src in bytes
  * @param dest_rate the requested destination sample rate
  * @param dest_size_r returns the number of bytes of the destination buffer
- * @return the destination buffer
+ * @return the destination buffer or error code
  */
 const float *
 pcm_resample_float(struct pcm_resample_state *state,
 		   unsigned channels,
 		   unsigned src_rate,
 		   const float *src_buffer, size_t src_size,
-		   unsigned dest_rate, size_t *dest_size_r,
-		   GError **error_r);
+		   unsigned dest_rate, size_t *dest_size_r);
 
 /**
  * Resamples 16 bit PCM data.
@@ -106,15 +105,14 @@ pcm_resample_float(struct pcm_resample_state *state,
  * @param src_size the size of #src in bytes
  * @param dest_rate the requested destination sample rate
  * @param dest_size_r returns the number of bytes of the destination buffer
- * @return the destination buffer
+ * @return the destination buffer or error code
  */
 const int16_t *
 pcm_resample_16(struct pcm_resample_state *state,
 		unsigned channels,
 		unsigned src_rate,
 		const int16_t *src_buffer, size_t src_size,
-		unsigned dest_rate, size_t *dest_size_r,
-		GError **error_r);
+		unsigned dest_rate, size_t *dest_size_r);
 
 /**
  * Resamples 32 bit PCM data.
@@ -126,15 +124,14 @@ pcm_resample_16(struct pcm_resample_state *state,
  * @param src_size the size of #src in bytes
  * @param dest_rate the requested destination sample rate
  * @param dest_size_r returns the number of bytes of the destination buffer
- * @return the destination buffer
+ * @return the destination buffer or error code
  */
 const int32_t *
 pcm_resample_32(struct pcm_resample_state *state,
 		unsigned channels,
 		unsigned src_rate,
 		const int32_t *src_buffer, size_t src_size,
-		unsigned dest_rate, size_t *dest_size_r,
-		GError **error_r);
+		unsigned dest_rate, size_t *dest_size_r);
 
 /**
  * Resamples 24 bit PCM data.
@@ -146,21 +143,20 @@ pcm_resample_32(struct pcm_resample_state *state,
  * @param src_size the size of #src in bytes
  * @param dest_rate the requested destination sample rate
  * @param dest_size_r returns the number of bytes of the destination buffer
- * @return the destination buffer
+ * @return the destination buffer or error code
  */
 static inline const int32_t *
 pcm_resample_24(struct pcm_resample_state *state,
 		unsigned channels,
 		unsigned src_rate,
 		const int32_t *src_buffer, size_t src_size,
-		unsigned dest_rate, size_t *dest_size_r,
-		GError **error_r)
+		unsigned dest_rate, size_t *dest_size_r)
 {
 	/* reuse the 32 bit code - the resampler code doesn't care if
 	   the upper 8 bits are actually used */
 	return pcm_resample_32(state, channels,
 			       src_rate, src_buffer, src_size,
-			       dest_rate, dest_size_r, error_r);
+			       dest_rate, dest_size_r);
 }
 
 #endif

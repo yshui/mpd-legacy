@@ -22,6 +22,9 @@
  *
  */
 
+#define LOG_DOMAIN "audio_parser"
+
+#include "log.h"
 #include "config.h"
 #include "audio_parser.h"
 #include "audio_format.h"
@@ -31,45 +34,39 @@
 #include <string.h>
 #include <stdlib.h>
 
-/**
- * The GLib quark used for errors reported by this library.
- */
-static inline GQuark
-audio_parser_quark(void)
-{
-	return g_quark_from_static_string("audio_parser");
-}
-
-static bool
+static int
 parse_sample_rate(const char *src, bool mask, uint32_t *sample_rate_r,
-		  const char **endptr_r, GError **error_r)
+		  const char **endptr_r)
 {
 	unsigned long value;
 	char *endptr;
+	int ret;
 
 	if (mask && *src == '*') {
 		*sample_rate_r = 0;
 		*endptr_r = src + 1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	value = strtoul(src, &endptr, 10);
 	if (endptr == src) {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Failed to parse the sample rate");
-		return false;
-	} else if (!audio_check_sample_rate(value, error_r))
-		return false;
+		log_err("Failed to parse the sample rate");
+		return -MPD_INVAL;
+	} else {
+		ret = audio_check_sample_rate(value);
+		if (ret != MPD_SUCCESS)
+			return ret;
+	}
 
 	*sample_rate_r = value;
 	*endptr_r = endptr;
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
+static int
 parse_sample_format(const char *src, bool mask,
 		    enum sample_format *sample_format_r,
-		    const char **endptr_r, GError **error_r)
+		    const char **endptr_r)
 {
 	unsigned long value;
 	char *endptr;
@@ -78,26 +75,25 @@ parse_sample_format(const char *src, bool mask,
 	if (mask && *src == '*') {
 		*sample_format_r = SAMPLE_FORMAT_UNDEFINED;
 		*endptr_r = src + 1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	if (*src == 'f') {
 		*sample_format_r = SAMPLE_FORMAT_FLOAT;
 		*endptr_r = src + 1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	if (memcmp(src, "dsd", 3) == 0) {
 		*sample_format_r = SAMPLE_FORMAT_DSD;
 		*endptr_r = src + 3;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	value = strtoul(src, &endptr, 10);
 	if (endptr == src) {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Failed to parse the sample format");
-		return false;
+		log_err("Failed to parse the sample format");
+		return -MPD_INVAL;
 	}
 
 	switch (value) {
@@ -122,47 +118,49 @@ parse_sample_format(const char *src, bool mask,
 		break;
 
 	default:
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Invalid sample format: %lu", value);
-		return false;
+		log_err("Invalid sample format: %lu", value);
+		return -MPD_INVAL;
 	}
 
 	assert(audio_valid_sample_format(sample_format));
 
 	*sample_format_r = sample_format;
 	*endptr_r = endptr;
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
+static int
 parse_channel_count(const char *src, bool mask, uint8_t *channels_r,
-		    const char **endptr_r, GError **error_r)
+		    const char **endptr_r)
 {
 	unsigned long value;
 	char *endptr;
+	int ret;
 
 	if (mask && *src == '*') {
 		*channels_r = 0;
 		*endptr_r = src + 1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	value = strtoul(src, &endptr, 10);
 	if (endptr == src) {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Failed to parse the channel count");
-		return false;
-	} else if (!audio_check_channel_count(value, error_r))
-		return false;
+		log_err("Failed to parse the channel count");
+		return -MPD_INVAL;
+	} else {
+		ret = audio_check_channel_count(value);
+		if (ret != MPD_SUCCESS)
+			return ret;
+	}
 
 	*channels_r = value;
 	*endptr_r = endptr;
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
+int
 audio_format_parse(struct audio_format *dest, const char *src,
-		   bool mask, GError **error_r)
+		   bool mask)
 {
 	uint32_t rate = 0;
 	enum sample_format sample_format = SAMPLE_FORMAT_UNDEFINED;
@@ -172,40 +170,40 @@ audio_format_parse(struct audio_format *dest, const char *src,
 
 	/* parse sample rate */
 
-	if (!parse_sample_rate(src, mask, &rate, &src, error_r))
-		return false;
+	int ret = parse_sample_rate(src, mask, &rate, &src);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	if (*src++ != ':') {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Sample format missing");
-		return false;
+		log_err("Sample format missing");
+		return -MPD_MISS_VALUE;
 	}
 
 	/* parse sample format */
 
-	if (!parse_sample_format(src, mask, &sample_format, &src, error_r))
-		return false;
+	ret = parse_sample_format(src, mask, &sample_format, &src);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	if (*src++ != ':') {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Channel count missing");
-		return false;
+		log_err("Channel count missing");
+		return -MPD_MISS_VALUE;
 	}
 
 	/* parse channel count */
 
-	if (!parse_channel_count(src, mask, &channels, &src, error_r))
-		return false;
+	ret = parse_channel_count(src, mask, &channels, &src);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	if (*src != 0) {
-		g_set_error(error_r, audio_parser_quark(), 0,
-			    "Extra data after channel count: %s", src);
-		return false;
+		log_err("Extra data after channel count: %s", src);
+		return -MPD_INVAL;
 	}
 
 	audio_format_init(dest, rate, sample_format, channels);
 	assert(mask ? audio_format_mask_valid(dest)
 	       : audio_format_valid(dest));
 
-	return true;
+	return MPD_SUCCESS;
 }

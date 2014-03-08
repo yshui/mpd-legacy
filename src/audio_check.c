@@ -17,58 +17,64 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "audio_format: check"
+
+#include "log.h"
 #include "audio_check.h"
 #include "audio_format.h"
 
 #include <assert.h>
 
-bool
-audio_check_sample_rate(unsigned long sample_rate, GError **error_r)
+int
+audio_check_sample_rate(unsigned long sample_rate)
 {
 	if (!audio_valid_sample_rate(sample_rate)) {
-		g_set_error(error_r, audio_format_quark(), 0,
-			    "Invalid sample rate: %lu", sample_rate);
-		return false;
+		log_err("Invalid sample rate: %lu", sample_rate);
+		return -MPD_INVAL;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-audio_check_sample_format(enum sample_format sample_format, GError **error_r)
+int
+audio_check_sample_format(enum sample_format sample_format)
 {
 	if (!audio_valid_sample_format(sample_format)) {
-		g_set_error(error_r, audio_format_quark(), 0,
-			    "Invalid sample format: %u", sample_format);
-		return false;
+		log_err("Invalid sample format: %u", sample_format);
+		return -MPD_INVAL;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-audio_check_channel_count(unsigned channels, GError **error_r)
+int
+audio_check_channel_count(unsigned channels)
 {
 	if (!audio_valid_channel_count(channels)) {
-		g_set_error(error_r, audio_format_quark(), 0,
-			    "Invalid channel count: %u", channels);
-		return false;
+		log_err("Invalid channel count: %u", channels);
+		return -MPD_INVAL;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
+int
 audio_format_init_checked(struct audio_format *af, unsigned long sample_rate,
-			  enum sample_format sample_format, unsigned channels,
-			  GError **error_r)
+			  enum sample_format sample_format, unsigned channels)
 {
-	if (audio_check_sample_rate(sample_rate, error_r) &&
-	    audio_check_sample_format(sample_format, error_r) &&
-	    audio_check_channel_count(channels, error_r)) {
-		audio_format_init(af, sample_rate, sample_format, channels);
-		assert(audio_format_valid(af));
-		return true;
-	} else
-		return false;
+	int ret = audio_check_sample_rate(sample_rate);
+	if (ret != MPD_SUCCESS)
+		return ret;
+
+	ret = audio_check_sample_format(sample_format);
+	if (ret != MPD_SUCCESS)
+		return ret;
+
+	ret = audio_check_channel_count(channels);
+	if (ret != MPD_SUCCESS)
+		return ret;
+
+	audio_format_init(af, sample_rate, sample_format, channels);
+	assert(audio_format_valid(af));
+	return MPD_SUCCESS;
 }

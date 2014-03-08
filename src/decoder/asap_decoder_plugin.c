@@ -175,7 +175,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	float song_len;
 	struct audio_format audio_format;
-	enum decoder_command cmd;
+	enum decoder_command cmd = DECODE_COMMAND_STOP;
 	unsigned char asap_buf[ASAP_BUFFER_LEN];
 
 	if(length > 0){
@@ -189,12 +189,9 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	/* initialize the MPD decoder */
 
-	GError *error = NULL;
-	if (!audio_format_init_checked(&audio_format, ASAP_SAMPLE_RATE,
-				       SAMPLE_FORMAT_S16, ASAPInfo_GetChannels(asap_info),
-				       &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	if (audio_format_init_checked(&audio_format, ASAP_SAMPLE_RATE,
+			SAMPLE_FORMAT_S16, ASAPInfo_GetChannels(asap_info))
+			!= MPD_SUCCESS) {
 		free(buf);
 		ASAP_Delete(asap);
 		ASAPInfo_Delete(asap_info);
@@ -217,7 +214,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 		}
 
 	} while(cmd != DECODE_COMMAND_STOP);
-	fprintf(stderr, "asap decode end due to %d\n", cmd);
+	log_info("asap decode end due to %d\n", cmd);
 
 	ASAP_Delete(asap);
 	ASAPInfo_Delete(asap_info);

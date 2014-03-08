@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output_thread"
+
 #include "config.h"
 #include "output_thread.h"
 #include "output_api.h"
@@ -50,27 +52,23 @@ static void ao_command_finished(struct audio_output *ao)
 	g_mutex_lock(ao->mutex);
 }
 
-static bool
+static int
 ao_enable(struct audio_output *ao)
 {
-	GError *error = NULL;
-	bool success;
-
 	if (ao->really_enabled)
 		return true;
 
 	g_mutex_unlock(ao->mutex);
-	success = ao_plugin_enable(ao, &error);
+	int ret = ao_plugin_enable(ao);
 	g_mutex_lock(ao->mutex);
-	if (!success) {
-		log_warning("Failed to enable \"%s\" [%s]: %s\n",
-			  ao->name, ao->plugin->name, error->message);
-		g_error_free(error);
-		return false;
+	if (ret != MPD_SUCCESS) {
+		log_warning("Failed to enable \"%s\" [%s]",
+			  ao->name, ao->plugin->name);
+		return ret;
 	}
 
 	ao->really_enabled = true;
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -93,21 +91,19 @@ ao_disable(struct audio_output *ao)
 
 static const struct audio_format *
 ao_filter_open(struct audio_output *ao,
-	       struct audio_format *audio_format,
-	       GError **error_r)
+	       struct audio_format *audio_format)
 {
 	assert(audio_format_valid(audio_format));
 
 	/* the replay_gain filter cannot fail here */
 	if (ao->replay_gain_filter != NULL)
-		filter_open(ao->replay_gain_filter, audio_format, error_r);
+		filter_open(ao->replay_gain_filter, audio_format);
 	if (ao->other_replay_gain_filter != NULL)
-		filter_open(ao->other_replay_gain_filter, audio_format,
-			    error_r);
+		filter_open(ao->other_replay_gain_filter, audio_format);
 
 	const struct audio_format *af
-		= filter_open(ao->filter, audio_format, error_r);
-	if (af == NULL) {
+		= filter_open(ao->filter, audio_format);
+	if (IS_ERR(af)) {
 		if (ao->replay_gain_filter != NULL)
 			filter_close(ao->replay_gain_filter);
 		if (ao->other_replay_gain_filter != NULL)
@@ -131,8 +127,6 @@ ao_filter_close(struct audio_output *ao)
 static void
 ao_open(struct audio_output *ao)
 {
-	bool success;
-	GError *error = NULL;
 	const struct audio_format *filter_audio_format;
 	struct audio_format_string af_string;
 
@@ -158,11 +152,10 @@ ao_open(struct audio_output *ao)
 
 	/* open the filter */
 
-	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format, &error);
-	if (filter_audio_format == NULL) {
-		log_warning("Failed to open filter for \"%s\" [%s]: %s",
-			  ao->name, ao->plugin->name, error->message);
-		g_error_free(error);
+	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format);
+	if (IS_ERR(filter_audio_format)) {
+		log_warning("Failed to open filter for \"%s\" [%s]",
+			  ao->name, ao->plugin->name);
 
 		ao->fail_timer = g_timer_new();
 		return;
@@ -175,15 +168,14 @@ ao_open(struct audio_output *ao)
 				&ao->config_audio_format);
 
 	g_mutex_unlock(ao->mutex);
-	success = ao_plugin_open(ao, &ao->out_audio_format, &error);
+	int ret = ao_plugin_open(ao, &ao->out_audio_format);
 	g_mutex_lock(ao->mutex);
 
 	assert(!ao->open);
 
-	if (!success) {
-		log_warning("Failed to open \"%s\" [%s]: %s",
-			  ao->name, ao->plugin->name, error->message);
-		g_error_free(error);
+	if (ret != MPD_SUCCESS) {
+		log_warning("Failed to open \"%s\" [%s]",
+			  ao->name, ao->plugin->name);
 
 		ao_filter_close(ao);
 		ao->fail_timer = g_timer_new();
@@ -235,14 +227,12 @@ static void
 ao_reopen_filter(struct audio_output *ao)
 {
 	const struct audio_format *filter_audio_format;
-	GError *error = NULL;
 
 	ao_filter_close(ao);
-	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format, &error);
-	if (filter_audio_format == NULL) {
-		log_warning("Failed to open filter for \"%s\" [%s]: %s",
-			  ao->name, ao->plugin->name, error->message);
-		g_error_free(error);
+	filter_audio_format = ao_filter_open(ao, &ao->in_audio_format);
+	if (IS_ERR(filter_audio_format)) {
+		log_warning("Failed to open filter for \"%s\" [%s]",
+			  ao->name, ao->plugin->name);
 
 		/* this is a little code duplication fro ao_close(),
 		   but we cannot call this function because we must
@@ -340,13 +330,11 @@ ao_chunk_data(struct audio_output *ao, const struct music_chunk *chunk,
 			*replay_gain_serial_p = chunk->replay_gain_serial;
 		}
 
-		GError *error = NULL;
 		data = filter_filter(replay_gain_filter, data, length,
-				     &length, &error);
+				     &length);
 		if (data == NULL) {
-			log_warning("\"%s\" [%s] failed to filter: %s",
-				  ao->name, ao->plugin->name, error->message);
-			g_error_free(error);
+			log_warning("\"%s\" [%s] failed to filter",
+				  ao->name, ao->plugin->name);
 			return NULL;
 		}
 	}
@@ -359,8 +347,6 @@ static const char *
 ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 		size_t *length_r)
 {
-	GError *error = NULL;
-
 	size_t length;
 	const char *data = ao_chunk_data(ao, chunk, ao->replay_gain_filter,
 					 &ao->replay_gain_serial, &length);
@@ -414,12 +400,11 @@ ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 
 	/* apply filter chain */
 
-	data = filter_filter(ao->filter, data, length, &length, &error);
-	if (data == NULL) {
-		log_warning("\"%s\" [%s] failed to filter: %s",
-			  ao->name, ao->plugin->name, error->message);
-		g_error_free(error);
-		return NULL;
+	data = filter_filter(ao->filter, data, length, &length);
+	if (IS_ERR_OR_NULL(data)) {
+		log_warning("\"%s\" [%s] failed to filter",
+			  ao->name, ao->plugin->name);
+		return data;
 	}
 
 	*length_r = length;
@@ -429,8 +414,6 @@ ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 static bool
 ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 {
-	GError *error = NULL;
-
 	assert(ao != NULL);
 	assert(ao->filter != NULL);
 
@@ -458,13 +441,12 @@ ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 			break;
 
 		g_mutex_unlock(ao->mutex);
-		nbytes = ao_plugin_play(ao, data, size, &error);
+		nbytes = ao_plugin_play(ao, data, size);
 		g_mutex_lock(ao->mutex);
-		if (nbytes == 0) {
+		if (nbytes <= 0) {
 			/* play()==0 means failure */
-			log_warning("\"%s\" [%s] failed to play: %s",
-				  ao->name, ao->plugin->name, error->message);
-			g_error_free(error);
+			log_warning("\"%s\" [%s] failed to play",
+				  ao->name, ao->plugin->name);
 
 			ao_close(ao, false);
 

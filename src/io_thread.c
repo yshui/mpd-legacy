@@ -18,6 +18,7 @@
  */
 
 #include "io_thread.h"
+#include "err.h"
 
 #include <assert.h>
 
@@ -65,20 +66,21 @@ io_thread_init(void)
 	io.loop = g_main_loop_new(io.context, false);
 }
 
-bool
-io_thread_start(GError **error_r)
+int
+io_thread_start(void)
 {
 	assert(io.context != NULL);
 	assert(io.loop != NULL);
 	assert(io.thread == NULL);
 
+	GError *error;
 	g_mutex_lock(io.mutex);
-	io.thread = g_thread_create(io_thread_func, NULL, true, error_r);
+	io.thread = g_thread_create(io_thread_func, NULL, true, &error);
 	g_mutex_unlock(io.mutex);
 	if (io.thread == NULL)
-		return false;
+		return -MPD_UNKNOWN;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 void

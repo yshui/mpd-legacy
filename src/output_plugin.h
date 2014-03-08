@@ -58,8 +58,7 @@ struct audio_output_plugin {
 	 * @return NULL on error, or an opaque pointer to the plugin's
 	 * data
 	 */
-	struct audio_output *(*init)(const struct config_param *param,
-				     GError **error);
+	struct audio_output *(*init)(const struct config_param *param);
 
 	/**
 	 * Free resources allocated by this device.
@@ -76,7 +75,7 @@ struct audio_output_plugin {
 	 * NULL to ignore errors
 	 * @return true on success, false on error
 	 */
-	bool (*enable)(struct audio_output *data, GError **error_r);
+	int (*enable)(struct audio_output *data);
 
 	/**
 	 * Disables the device.  It is closed before this method is
@@ -92,8 +91,7 @@ struct audio_output_plugin {
 	 * @param error location to store the error occurring, or NULL
 	 * to ignore errors
 	 */
-	bool (*open)(struct audio_output *data, struct audio_format *audio_format,
-		     GError **error);
+	int (*open)(struct audio_output *data, struct audio_format *audio_format);
 
 	/**
 	 * Close the device.
@@ -119,13 +117,10 @@ struct audio_output_plugin {
 	/**
 	 * Play a chunk of audio data.
 	 *
-	 * @param error location to store the error occurring, or NULL
-	 * to ignore errors
 	 * @return the number of bytes played, or 0 on error
 	 */
 	size_t (*play)(struct audio_output *data,
-		       const void *chunk, size_t size,
-		       GError **error);
+		       const void *chunk, size_t size);
 
 	/**
 	 * Wait until the device has finished playing.
@@ -171,21 +166,19 @@ ao_plugin_test_default_device(const struct audio_output_plugin *plugin)
 MPD_MALLOC
 struct audio_output *
 ao_plugin_init(const struct audio_output_plugin *plugin,
-	       const struct config_param *param,
-	       GError **error);
+	       const struct config_param *param);
 
 void
 ao_plugin_finish(struct audio_output *ao);
 
-bool
-ao_plugin_enable(struct audio_output *ao, GError **error_r);
+int
+ao_plugin_enable(struct audio_output *ao);
 
 void
 ao_plugin_disable(struct audio_output *ao);
 
-bool
-ao_plugin_open(struct audio_output *ao, struct audio_format *audio_format,
-	       GError **error);
+int
+ao_plugin_open(struct audio_output *ao, struct audio_format *audio_format);
 
 void
 ao_plugin_close(struct audio_output *ao);
@@ -198,8 +191,7 @@ void
 ao_plugin_send_tag(struct audio_output *ao, const struct tag *tag);
 
 size_t
-ao_plugin_play(struct audio_output *ao, const void *chunk, size_t size,
-	       GError **error);
+ao_plugin_play(struct audio_output *ao, const void *chunk, size_t size);
 
 void
 ao_plugin_drain(struct audio_output *ao);

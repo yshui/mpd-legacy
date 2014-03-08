@@ -33,8 +33,8 @@
 
 #ifdef HAVE_LIBSAMPLERATE
 
-bool
-pcm_resample_lsr_global_init(const char *converter, GError **error_r);
+int
+pcm_resample_lsr_global_init(const char *converter);
 
 void
 pcm_resample_lsr_init(struct pcm_resample_state *state);
@@ -50,16 +50,14 @@ pcm_resample_lsr_float(struct pcm_resample_state *state,
 		       unsigned channels,
 		       unsigned src_rate,
 		       const float *src_buffer, size_t src_size,
-		       unsigned dest_rate, size_t *dest_size_r,
-		       GError **error_r);
+		       unsigned dest_rate, size_t *dest_size_r);
 
 const int16_t *
 pcm_resample_lsr_16(struct pcm_resample_state *state,
 		    unsigned channels,
 		    unsigned src_rate,
 		    const int16_t *src_buffer, size_t src_size,
-		    unsigned dest_rate, size_t *dest_size_r,
-		    GError **error_r);
+		    unsigned dest_rate, size_t *dest_size_r);
 
 const int32_t *
 pcm_resample_lsr_32(struct pcm_resample_state *state,
@@ -67,8 +65,7 @@ pcm_resample_lsr_32(struct pcm_resample_state *state,
 		    unsigned src_rate,
 		    const int32_t *src_buffer,
 		    size_t src_size,
-		    unsigned dest_rate, size_t *dest_size_r,
-		    GError **error_r);
+		    unsigned dest_rate, size_t *dest_size_r);
 
 #endif
 

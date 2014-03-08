@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: jack"
+
+#include "log.h"
 #include "config.h"
 #include "jack_output_plugin.h"
 #include "output_api.h"
@@ -33,9 +36,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "jack"
 
 enum {
 	MAX_PORTS = 16,
@@ -81,15 +81,6 @@ struct jack_data {
 	 */
 	bool pause;
 };
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-jack_output_quark(void)
-{
-	return g_quark_from_static_string("jack_output");
-}
 
 /**
  * Determine the number of frames guaranteed to be available on all
@@ -234,8 +225,8 @@ mpd_jack_disconnect(struct jack_data *jd)
  * Connect the JACK client and performs some basic setup
  * (e.g. register callbacks).
  */
-static bool
-mpd_jack_connect(struct jack_data *jd, GError **error_r)
+static int
+mpd_jack_connect(struct jack_data *jd)
 {
 	jack_status_t status;
 
@@ -246,10 +237,9 @@ mpd_jack_connect(struct jack_data *jd, GError **error_r)
 	jd->client = jack_client_open(jd->name, jd->options, &status,
 				      jd->server_name);
 	if (jd->client == NULL) {
-		g_set_error(error_r, jack_output_quark(), 0,
-			    "Failed to connect to JACK server, status=%d",
+		log_err("Failed to connect to JACK server, status=%d",
 			    status);
-		return false;
+		return -MPD_ACCESS;
 	}
 
 	jack_set_process_callback(jd->client, mpd_jack_process, jd);
@@ -261,15 +251,14 @@ mpd_jack_connect(struct jack_data *jd, GError **error_r)
 						  JACK_DEFAULT_AUDIO_TYPE,
 						  JackPortIsOutput, 0);
 		if (jd->ports[i] == NULL) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "Cannot register output port \"%s\"",
+			log_err("Cannot register output port \"%s\"",
 				    jd->source_ports[i]);
 			mpd_jack_disconnect(jd);
-			return false;
+			return -MPD_ACCESS;
 		}
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static bool
@@ -279,15 +268,14 @@ mpd_jack_test_default_device(void)
 }
 
 static unsigned
-parse_port_list(int line, const char *source, char **dest, GError **error_r)
+parse_port_list(int line, const char *source, char **dest)
 {
 	char **list = g_strsplit(source, ",", 0);
 	unsigned n = 0;
 
 	for (n = 0; list[n] != NULL; ++n) {
 		if (n >= MAX_PORTS) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "too many port names in line %d",
+			log_err("too many port names in line %d",
 				    line);
 			return 0;
 		}
@@ -298,8 +286,7 @@ parse_port_list(int line, const char *source, char **dest, GError **error_r)
 	g_free(list);
 
 	if (n == 0) {
-		g_set_error(error_r, jack_output_quark(), 0,
-			    "at least one port name expected in line %d",
+		log_err("at least one port name expected in line %d",
 			    line);
 		return 0;
 	}
@@ -308,13 +295,14 @@ parse_port_list(int line, const char *source, char **dest, GError **error_r)
 }
 
 static struct audio_output *
-mpd_jack_init(const struct config_param *param, GError **error_r)
+mpd_jack_init(const struct config_param *param)
 {
 	struct jack_data *jd = g_new(struct jack_data, 1);
 
-	if (!ao_base_init(&jd->base, &jack_output_plugin, param, error_r)) {
-		g_free(jd);
-		return NULL;
+	int ret = ao_base_init(&jd->base, &jack_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(jd);
+		return ERR_PTR(ret);
 	}
 
 	const char *value;
@@ -340,9 +328,9 @@ mpd_jack_init(const struct config_param *param, GError **error_r)
 
 	value = config_get_block_string(param, "source_ports", "left,right");
 	jd->num_source_ports = parse_port_list(param->line, value,
-					       jd->source_ports, error_r);
+					       jd->source_ports);
 	if (jd->num_source_ports == 0)
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 
 	/* configure the destination ports */
 
@@ -358,9 +346,9 @@ mpd_jack_init(const struct config_param *param, GError **error_r)
 	if (value != NULL) {
 		jd->num_destination_ports =
 			parse_port_list(param->line, value,
-					jd->destination_ports, error_r);
+					jd->destination_ports);
 		if (jd->num_destination_ports == 0)
-			return NULL;
+			return ERR_PTR(-MPD_INVAL);
 	} else {
 		jd->num_destination_ports = 0;
 	}
@@ -399,15 +387,15 @@ mpd_jack_finish(struct audio_output *ao)
 	g_free(jd);
 }
 
-static bool
-mpd_jack_enable(struct audio_output *ao, GError **error_r)
+static int
+mpd_jack_enable(struct audio_output *ao)
 {
 	struct jack_data *jd = (struct jack_data *)ao;
 
 	for (unsigned i = 0; i < jd->num_source_ports; ++i)
 		jd->ringbuffer[i] = NULL;
 
-	return mpd_jack_connect(jd, error_r);
+	return mpd_jack_connect(jd);
 }
 
 static void
@@ -445,8 +433,8 @@ mpd_jack_stop(struct jack_data *jd)
 		jack_deactivate(jd->client);
 }
 
-static bool
-mpd_jack_start(struct jack_data *jd, GError **error_r)
+static int
+mpd_jack_start(struct jack_data *jd)
 {
 	const char *destination_ports[MAX_PORTS], **jports;
 	const char *duplicate_port = NULL;
@@ -470,10 +458,9 @@ mpd_jack_start(struct jack_data *jd, GError **error_r)
 	}
 
 	if ( jack_activate(jd->client) ) {
-		g_set_error(error_r, jack_output_quark(), 0,
-			    "cannot activate client");
+		log_err("cannot activate client");
 		mpd_jack_stop(jd);
-		return false;
+		return -MPD_3RD;
 	}
 
 	if (jd->num_destination_ports == 0) {
@@ -482,10 +469,9 @@ mpd_jack_start(struct jack_data *jd, GError **error_r)
 		jports = jack_get_ports(jd->client, NULL, NULL,
 					JackPortIsPhysical | JackPortIsInput);
 		if (jports == NULL) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "no ports found");
+			log_err("no ports found");
 			mpd_jack_stop(jd);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		assert(*jports != NULL);
@@ -537,15 +523,14 @@ mpd_jack_start(struct jack_data *jd, GError **error_r)
 		ret = jack_connect(jd->client, jack_port_name(jd->ports[i]),
 				   destination_ports[i]);
 		if (ret != 0) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "Not a valid JACK port: %s",
+			log_err("Not a valid JACK port: %s",
 				    destination_ports[i]);
 
 			if (jports != NULL)
 				free(jports);
 
 			mpd_jack_stop(jd);
-			return false;
+			return -MPD_INVAL;
 		}
 	}
 
@@ -557,47 +542,51 @@ mpd_jack_start(struct jack_data *jd, GError **error_r)
 		ret = jack_connect(jd->client, jack_port_name(jd->ports[0]),
 				   duplicate_port);
 		if (ret != 0) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "Not a valid JACK port: %s",
+			log_err("Not a valid JACK port: %s",
 				    duplicate_port);
 
 			if (jports != NULL)
 				free(jports);
 
 			mpd_jack_stop(jd);
-			return false;
+			return -MPD_INVAL;
 		}
 	}
 
 	if (jports != NULL)
 		free(jports);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-mpd_jack_open(struct audio_output *ao, struct audio_format *audio_format,
-	      GError **error_r)
+static int
+mpd_jack_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct jack_data *jd = (struct jack_data *)ao;
 
 	assert(jd != NULL);
 
 	jd->pause = false;
+	int ret;
 
 	if (jd->client != NULL && jd->shutdown)
 		mpd_jack_disconnect(jd);
 
-	if (jd->client == NULL && !mpd_jack_connect(jd, error_r))
-		return false;
+	if (jd->client == NULL)
+		return -MPD_ACCESS;
+
+	ret = mpd_jack_connect(jd);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	set_audioformat(jd, audio_format);
 	jd->audio_format = *audio_format;
 
-	if (!mpd_jack_start(jd, error_r))
-		return false;
+	ret = mpd_jack_start(jd);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -683,8 +672,7 @@ mpd_jack_write_samples(struct jack_data *jd, const void *src,
 }
 
 static size_t
-mpd_jack_play(struct audio_output *ao, const void *chunk, size_t size,
-	      GError **error_r)
+mpd_jack_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct jack_data *jd = (struct jack_data *)ao;
 	const size_t frame_size = audio_format_frame_size(&jd->audio_format);
@@ -697,8 +685,7 @@ mpd_jack_play(struct audio_output *ao, const void *chunk, size_t size,
 
 	while (true) {
 		if (jd->shutdown) {
-			g_set_error(error_r, jack_output_quark(), 0,
-				    "Refusing to play, because "
+			log_err("Refusing to play, because "
 				    "there is no client thread");
 			return 0;
 		}

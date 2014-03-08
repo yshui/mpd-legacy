@@ -41,12 +41,10 @@ resolver_quark(void)
  *
  * @param sa the sockaddr struct
  * @param length the length of #sa in bytes
- * @param error location to store the error occurring, or NULL to
- * ignore errors
  */
 MPD_MALLOC
 char *
-sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error);
+sockaddr_to_string(const struct sockaddr *sa, size_t length);
 
 /**
  * Resolve a specification in the form "host", "host:port",
@@ -56,11 +54,10 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error);
  * is given in the string (if applicable); pass 0 to go without a
  * default
  * @return an #addrinfo linked list that must be freed with
- * freeaddrinfo(), or NULL on error
+ * freeaddrinfo(), or error code
  */
 struct addrinfo *
 resolve_host_port(const char *host_port, unsigned default_port,
-		  int flags, int socktype,
-		  GError **error_r);
+		  int flags, int socktype);
 
 #endif

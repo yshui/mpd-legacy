@@ -25,31 +25,20 @@
 #include <glib.h>
 #include <stdbool.h>
 
-/**
- * The GLib quark used for errors reported by this library.
- */
-MPD_CONST
-static inline GQuark
-audio_format_quark(void)
-{
-	return g_quark_from_static_string("audio_format");
-}
+int
+audio_check_sample_rate(unsigned long sample_rate);
 
-bool
-audio_check_sample_rate(unsigned long sample_rate, GError **error_r);
+int
+audio_check_sample_format(enum sample_format);
 
-bool
-audio_check_sample_format(enum sample_format, GError **error_r);
-
-bool
-audio_check_channel_count(unsigned sample_format, GError **error_r);
+int
+audio_check_channel_count(unsigned sample_format);
 
 /**
  * Wrapper for audio_format_init(), which checks all attributes.
  */
-bool
+int
 audio_format_init_checked(struct audio_format *af, unsigned long sample_rate,
-			  enum sample_format sample_format, unsigned channels,
-			  GError **error_r);
+			  enum sample_format sample_format, unsigned channels);
 
 #endif

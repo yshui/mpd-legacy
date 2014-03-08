@@ -34,8 +34,7 @@ struct mpd_inotify_source;
  * @param a callback invoked for events received from the kernel
  */
 struct mpd_inotify_source *
-mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx,
-		       GError **error_r);
+mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx);
 
 void
 mpd_inotify_source_free(struct mpd_inotify_source *source);
@@ -43,12 +42,11 @@ mpd_inotify_source_free(struct mpd_inotify_source *source);
 /**
  * Adds a path to the notify list.
  *
- * @return a watch descriptor or -1 on error
+ * @return a watch descriptor or negative error code
  */
 int
 mpd_inotify_source_add(struct mpd_inotify_source *source,
-		       const char *path_fs, unsigned mask,
-		       GError **error_r);
+		       const char *path_fs, unsigned mask);
 
 /**
  * Removes a path from the notify list.

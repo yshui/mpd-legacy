@@ -59,21 +59,20 @@ tag_file_scan(const char *path_fs,
 		if (plugin->scan_stream != NULL) {
 			/* open the input_stream (if not already
 			   open) */
-			if (is == NULL) {
+			if (IS_ERR_OR_NULL(is)) {
 				mutex = g_mutex_new();
 				cond = g_cond_new();
-				is = input_stream_open(path_fs, mutex, cond,
-						       NULL);
+				is = input_stream_open(path_fs, mutex, cond);
 			}
 
 			/* now try the stream_tag() method */
-			if (is != NULL) {
+			if (!IS_ERR_OR_NULL(is)) {
 				if (decoder_plugin_scan_stream(plugin, is,
 							       handler,
 							       handler_ctx))
 					break;
 
-				input_stream_lock_seek(is, 0, SEEK_SET, NULL);
+				input_stream_lock_seek(is, 0, SEEK_SET);
 			}
 		}
 

@@ -76,12 +76,9 @@ static void * update_task(void *_path)
 	modified = update_walk(path, discard);
 
 	if (modified || !db_exists()) {
-		GError *error = NULL;
-		if (!db_save(&error)) {
-			log_warning("Failed to save database: %s",
-				  error->message);
-			g_error_free(error);
-		}
+		int ret = db_save();
+		if (ret != MPD_SUCCESS)
+			log_warning("Failed to save database");
 	}
 
 	if (*path != 0)

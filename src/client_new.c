@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "client"
+
+#include "log.h"
 #include "config.h"
 #include "client_internal.h"
 #include "fd_util.h"
@@ -39,8 +42,6 @@
 #include <tcpd.h>
 #endif
 
-
-#define LOG_LEVEL_SECURE G_LOG_LEVEL_INFO
 
 static const char GREETING[] = "OK MPD " PROTOCOL_VERSION "\n";
 
@@ -67,8 +68,7 @@ client_new(struct player_control *player_control,
 
 		if (!hosts_access(&req)) {
 			/* tcp wrappers says no */
-			g_log(G_LOG_DOMAIN, LOG_LEVEL_SECURE,
-			      "libwrap refused connection (libwrap=%s) from %s",
+			log_info("libwrap refused connection (libwrap=%s) from %s",
 			      progname, hostaddr);
 
 			free(hostaddr);
@@ -128,9 +128,8 @@ client_new(struct player_control *player_control,
 
 	client_list_add(client);
 
-	remote = sockaddr_to_string(sa, sa_length, NULL);
-	g_log(G_LOG_DOMAIN, LOG_LEVEL_SECURE,
-	      "[%u] opened from %s", client->num, remote);
+	remote = sockaddr_to_string(sa, sa_length);
+	log_info("[%u] opened from %s", client->num, remote);
 	free(remote);
 }
 
@@ -160,7 +159,6 @@ client_close(struct client *client)
 
 	fifo_buffer_free(client->input);
 
-	g_log(G_LOG_DOMAIN, LOG_LEVEL_SECURE,
-	      "[%u] closed", client->num);
+	log_info("[%u] closed", client->num);
 	free(client);
 }

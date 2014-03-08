@@ -96,12 +96,10 @@ update_archive_file2(struct directory *parent, const char *name,
 	char *path_fs = map_directory_child_fs(parent, name);
 
 	/* open archive */
-	GError *error = NULL;
-	struct archive_file *file = archive_file_open(plugin, path_fs, &error);
-	if (file == NULL) {
+	struct archive_file *file = archive_file_open(plugin, path_fs);
+	if (IS_ERR(file)) {
 		free(path_fs);
 		log_warning("%s", error->message);
-		g_error_free(error);
 		return;
 	}
 

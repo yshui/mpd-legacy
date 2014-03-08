@@ -68,8 +68,8 @@ flac_seek_cb(const FLAC__StreamDecoder *fd,
 	if (!data->input_stream->seekable)
 		return FLAC__STREAM_DECODER_SEEK_STATUS_UNSUPPORTED;
 
-	if (!input_stream_lock_seek(data->input_stream, offset, SEEK_SET,
-				    NULL))
+	if (input_stream_lock_seek(data->input_stream, offset, SEEK_SET)
+				    != MPD_SUCCESS)
 		return FLAC__STREAM_DECODER_SEEK_STATUS_ERROR;
 
 	return FLAC__STREAM_DECODER_SEEK_STATUS_OK;
@@ -438,7 +438,7 @@ oggflac_decode(struct decoder *decoder, struct input_stream *input_stream)
 
 	/* rewind the stream, because ogg_stream_type_detect() has
 	   moved it */
-	input_stream_lock_seek(input_stream, 0, SEEK_SET, NULL);
+	input_stream_lock_seek(input_stream, 0, SEEK_SET);
 
 	flac_decode_internal(decoder, input_stream, true);
 }

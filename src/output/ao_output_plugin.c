@@ -17,15 +17,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: ao"
+
+#include "log.h"
 #include "config.h"
 #include "ao_output_plugin.h"
 #include "output_api.h"
 
 #include <ao/ao.h>
 #include <glib.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "ao"
 
 /* An ao_sample_format, with all fields set to zero: */
 static const ao_sample_format OUR_AO_FORMAT_INITIALIZER;
@@ -41,14 +41,8 @@ struct ao_data {
 	ao_device *device;
 } AoData;
 
-static inline GQuark
-ao_output_quark(void)
-{
-	return g_quark_from_static_string("ao_output");
-}
-
 static void
-ao_output_error(GError **error_r)
+ao_output_error(void)
 {
 	const char *error;
 
@@ -76,20 +70,18 @@ ao_output_error(GError **error_r)
 	default:
 		error = strerror(errno);
 	}
-
-	g_set_error(error_r, ao_output_quark(), errno,
-		    "%s", error);
+	log_err(error);
 }
 
 static struct audio_output *
-ao_output_init(const struct config_param *param,
-	       GError **error)
+ao_output_init(const struct config_param *param)
 {
 	struct ao_data *ad = g_new(struct ao_data, 1);
 
-	if (!ao_base_init(&ad->base, &ao_output_plugin, param, error)) {
-		g_free(ad);
-		return NULL;
+	int ret = ao_base_init(&ad->base, &ao_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(ad);
+		return ERR_PTR(ret);
 	}
 
 	ao_info *ai;
@@ -111,20 +103,18 @@ ao_output_init(const struct config_param *param,
 		ad->driver = ao_driver_id(value);
 
 	if (ad->driver < 0) {
-		g_set_error(error, ao_output_quark(), 0,
-			    "\"%s\" is not a valid ao driver",
+		log_err("\"%s\" is not a valid ao driver",
 			    value);
 		ao_base_finish(&ad->base);
-		g_free(ad);
-		return NULL;
+		free(ad);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	if ((ai = ao_driver_info(ad->driver)) == NULL) {
-		g_set_error(error, ao_output_quark(), 0,
-			    "problems getting driver info");
+		log_err("problems getting driver info");
 		ao_base_finish(&ad->base);
-		g_free(ad);
-		return NULL;
+		free(ad);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	log_debug("using ao driver \"%s\" for \"%s\"\n", ai->short_name,
@@ -138,12 +128,11 @@ ao_output_init(const struct config_param *param,
 			gchar **key_value = g_strsplit(options[i], "=", 2);
 
 			if (key_value[0] == NULL || key_value[1] == NULL) {
-				g_set_error(error, ao_output_quark(), 0,
-					    "problems parsing options \"%s\"",
+				log_err("problems parsing options \"%s\"",
 					    options[i]);
 				ao_base_finish(&ad->base);
-				g_free(ad);
-				return NULL;
+				free(ad);
+				return ERR_PTR(-MPD_INVAL);
 			}
 
 			ao_append_option(&ad->options, key_value[0],
@@ -181,9 +170,8 @@ ao_output_close(struct audio_output *ao)
 	ao_close(ad->device);
 }
 
-static bool
-ao_output_open(struct audio_output *ao, struct audio_format *audio_format,
-	       GError **error)
+static int
+ao_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	ao_sample_format format = OUR_AO_FORMAT_INITIALIZER;
 	struct ao_data *ad = (struct ao_data *)ao;
@@ -213,11 +201,11 @@ ao_output_open(struct audio_output *ao, struct audio_format *audio_format,
 	ad->device = ao_open_live(ad->driver, &format, ad->options);
 
 	if (ad->device == NULL) {
-		ao_output_error(error);
-		return false;
+		ao_output_error();
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 /**
@@ -238,8 +226,7 @@ static int ao_play_deconst(ao_device *device, const void *output_samples,
 }
 
 static size_t
-ao_output_play(struct audio_output *ao, const void *chunk, size_t size,
-	       GError **error)
+ao_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct ao_data *ad = (struct ao_data *)ao;
 
@@ -247,7 +234,7 @@ ao_output_play(struct audio_output *ao, const void *chunk, size_t size,
 		size = ad->write_size;
 
 	if (ao_play_deconst(ad->device, chunk, size) == 0) {
-		ao_output_error(error);
+		ao_output_error();
 		return 0;
 	}
 

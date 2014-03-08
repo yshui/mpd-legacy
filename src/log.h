@@ -20,24 +20,32 @@
 #ifndef MPD_LOG_H
 #define MPD_LOG_H
 
+#ifndef LOG_DOMAIN
+# define LOG_PREFIX "(missing log domain, file: " __BASE_FILE__ ") "
+#else
+# define LOG_PREFIX (LOG_DOMAIN ": ")
+#endif
+
 #include "macros.h"
+#include "err.h"
 
 #include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef HAVE_SYSLOG
 #include <syslog.h>
 #else
 //Some loglevel definitions
-#define	LOG_EMERG	0
-#define	LOG_ALERT	1
-#define	LOG_CRIT	2
-#define	LOG_ERR		3
-#define	LOG_WARNING	4
-#define	LOG_NOTICE	5
-#define	LOG_INFO	6
-#define	LOG_DEBUG	7
+#define LOG_EMERG	0
+#define LOG_ALERT	1
+#define LOG_CRIT	2
+#define LOG_ERR		3
+#define LOG_WARNING	4
+#define LOG_NOTICE	5
+#define LOG_INFO	6
+#define LOG_DEBUG	7
 #endif
 
 
@@ -65,19 +73,24 @@ void setup_log_output(bool use_stdout);
 
 int cycle_log_files(void);
 
-static inline void log_meta(int log_level, const char *fmt, ...){
+static inline void log_metav(int log_level, const char *fmt, va_list args){
+	char *buf;
+	vasprintf(&buf, fmt, args);
+
+	char *buf2 = (char *)malloc(strlen(buf)+strlen(LOG_PREFIX)+1);
+	strcpy(buf2, LOG_PREFIX);
+	strcpy(buf2+strlen(LOG_PREFIX), buf);
+
+	log_handler(log_level, buf2);
+	free(buf);
+	free(buf2);
+}
+
+static inline void __attribute__ ((format(printf, 2, 3)))
+log_meta(int log_level, const char *fmt, ...){
 	va_list args;
 	va_start(args, fmt);
-	int len = vsnprintf(0, 0, fmt, args);
-	va_end(args);
-
-	va_start(args, fmt);
-	char *buf = (char *)malloc(len);
-	vsnprintf(buf, len, fmt, args);
-	va_end(args);
-
-	log_handler(log_level, buf);
-	free(buf);
+	log_metav(log_level, fmt, args);
 }
 
 #define log_debug(...) log_meta(LOG_DEBUG, __VA_ARGS__)

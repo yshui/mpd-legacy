@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define G_LOG_DOMAIN "output: oss"
+
+#include "log.h"
 #include "config.h"
 #include "oss_output_plugin.h"
 #include "output_api.h"
@@ -34,8 +37,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "oss"
 
 #if defined(__OpenBSD__) || defined(__NetBSD__)
 # include <soundcard.h>
@@ -78,15 +79,6 @@ struct oss_data {
 	 */
 	int oss_format;
 };
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-oss_output_quark(void)
-{
-	return g_quark_from_static_string("oss_output");
-}
 
 static struct oss_data *
 oss_data_new(void)
@@ -161,7 +153,7 @@ oss_output_test_default_device(void)
 }
 
 static struct audio_output *
-oss_open_default(GError **error)
+oss_open_default(void)
 {
 	int i;
 	int err[G_N_ELEMENTS(default_devices)];
@@ -171,10 +163,10 @@ oss_open_default(GError **error)
 		ret[i] = oss_stat_device(default_devices[i], &err[i]);
 		if (ret[i] == OSS_STAT_NO_ERROR) {
 			struct oss_data *od = oss_data_new();
-			if (!ao_base_init(&od->base, &oss_output_plugin, NULL,
-					  error)) {
-				g_free(od);
-				return NULL;
+			int tmp_ret = ao_base_init(&od->base, &oss_output_plugin, NULL);
+			if (tmp_ret != MPD_SUCCESS) {
+				free(od);
+				return ERR_PTR(tmp_ret);
 			}
 
 			od->device = default_devices[i];
@@ -203,28 +195,27 @@ oss_open_default(GError **error)
 		}
 	}
 
-	g_set_error(error, oss_output_quark(), 0,
-		    "error trying to open default OSS device");
-	return NULL;
+	log_err("error trying to open default OSS device");
+	return ERR_PTR(-MPD_ACCESS);
 }
 
 static struct audio_output *
-oss_output_init(const struct config_param *param, GError **error)
+oss_output_init(const struct config_param *param)
 {
 	const char *device = config_get_block_string(param, "device", NULL);
 	if (device != NULL) {
 		struct oss_data *od = oss_data_new();
-		if (!ao_base_init(&od->base, &oss_output_plugin, param,
-				  error)) {
-			g_free(od);
-			return NULL;
+		int ret = ao_base_init(&od->base, &oss_output_plugin, param);
+		if (ret != MPD_SUCCESS) {
+			free(od);
+			return ERR_PTR(ret);
 		}
 
 		od->device = device;
 		return &od->base;
 	}
 
-	return oss_open_default(error);
+	return oss_open_default();
 }
 
 static void
@@ -238,13 +229,13 @@ oss_output_finish(struct audio_output *ao)
 
 #ifdef AFMT_S24_PACKED
 
-static bool
-oss_output_enable(struct audio_output *ao, GError **error_r)
+static int
+oss_output_enable(struct audio_output *ao)
 {
 	struct oss_data *od = (struct oss_data *)ao;
 
 	pcm_export_init(&od->export);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -277,11 +268,11 @@ enum oss_setup_result {
 /**
  * Invoke an ioctl on the OSS file descriptor.  On success, SUCCESS is
  * returned.  If the parameter is not supported, UNSUPPORTED is
- * returned.  Any other failure returns ERROR and allocates a GError.
+ * returned.  Any other failure returns ERROR.
  */
 static enum oss_setup_result
-oss_try_ioctl_r(int fd, unsigned long request, int *value_r,
-		const char *msg, GError **error_r)
+oss_try_ioctl(int fd, unsigned long request, int *value_r,
+		const char *msg)
 {
 	assert(fd >= 0);
 	assert(value_r != NULL);
@@ -295,34 +286,21 @@ oss_try_ioctl_r(int fd, unsigned long request, int *value_r,
 	if (errno == EINVAL)
 		return UNSUPPORTED;
 
-	g_set_error(error_r, oss_output_quark(), errno,
-		    "%s: %s", msg, strerror(errno));
+	log_err("%s: %s", msg, strerror(errno));
 	return ERROR;
-}
-
-/**
- * Invoke an ioctl on the OSS file descriptor.  On success, SUCCESS is
- * returned.  If the parameter is not supported, UNSUPPORTED is
- * returned.  Any other failure returns ERROR and allocates a GError.
- */
-static enum oss_setup_result
-oss_try_ioctl(int fd, unsigned long request, int value,
-	      const char *msg, GError **error_r)
-{
-	return oss_try_ioctl_r(fd, request, &value, msg, error_r);
 }
 
 /**
  * Set up the channel number, and attempts to find alternatives if the
  * specified number is not supported.
  */
-static bool
-oss_setup_channels(int fd, struct audio_format *audio_format, GError **error_r)
+static int
+oss_setup_channels(int fd, struct audio_format *audio_format)
 {
 	const char *const msg = "Failed to set channel count";
 	int channels = audio_format->channels;
 	enum oss_setup_result result =
-		oss_try_ioctl_r(fd, SNDCTL_DSP_CHANNELS, &channels, msg, error_r);
+		oss_try_ioctl(fd, SNDCTL_DSP_CHANNELS, &channels, msg);
 	switch (result) {
 	case SUCCESS:
 		if (!audio_valid_channel_count(channels))
@@ -344,8 +322,8 @@ oss_setup_channels(int fd, struct audio_format *audio_format, GError **error_r)
 			continue;
 
 		channels = i;
-		result = oss_try_ioctl_r(fd, SNDCTL_DSP_CHANNELS, &channels,
-					 msg, error_r);
+		result = oss_try_ioctl(fd, SNDCTL_DSP_CHANNELS, &channels,
+					 msg);
 		switch (result) {
 		case SUCCESS:
 			if (!audio_valid_channel_count(channels))
@@ -362,23 +340,22 @@ oss_setup_channels(int fd, struct audio_format *audio_format, GError **error_r)
 		}
 	}
 
-	g_set_error(error_r, oss_output_quark(), EINVAL, "%s", msg);
-	return false;
+	log_err("error: %s", msg);
+	return -MPD_INVAL;
 }
 
 /**
  * Set up the sample rate, and attempts to find alternatives if the
  * specified sample rate is not supported.
  */
-static bool
-oss_setup_sample_rate(int fd, struct audio_format *audio_format,
-		      GError **error_r)
+static int
+oss_setup_sample_rate(int fd, struct audio_format *audio_format)
 {
 	const char *const msg = "Failed to set sample rate";
 	int sample_rate = audio_format->sample_rate;
 	enum oss_setup_result result =
-		oss_try_ioctl_r(fd, SNDCTL_DSP_SPEED, &sample_rate,
-				msg, error_r);
+		oss_try_ioctl(fd, SNDCTL_DSP_SPEED, &sample_rate,
+				msg);
 	switch (result) {
 	case SUCCESS:
 		if (!audio_valid_sample_rate(sample_rate))
@@ -400,8 +377,8 @@ oss_setup_sample_rate(int fd, struct audio_format *audio_format,
 		if (sample_rate == (int)audio_format->sample_rate)
 			continue;
 
-		result = oss_try_ioctl_r(fd, SNDCTL_DSP_SPEED, &sample_rate,
-					 msg, error_r);
+		result = oss_try_ioctl(fd, SNDCTL_DSP_SPEED, &sample_rate,
+					 msg);
 		switch (result) {
 		case SUCCESS:
 			if (!audio_valid_sample_rate(sample_rate))
@@ -418,8 +395,8 @@ oss_setup_sample_rate(int fd, struct audio_format *audio_format,
 		}
 	}
 
-	g_set_error(error_r, oss_output_quark(), EINVAL, "%s", msg);
-	return false;
+	log_err("error: %s", msg);
+	return -MPD_INVAL;
 }
 
 /**
@@ -502,20 +479,20 @@ sample_format_from_oss(int format)
 static enum oss_setup_result
 oss_probe_sample_format(int fd, enum sample_format sample_format,
 			enum sample_format *sample_format_r,
-			int *oss_format_r,
+			int *oss_format_r
 #ifdef AFMT_S24_PACKED
-			struct pcm_export_state *export,
+			struct pcm_export_state *export
 #endif
-			GError **error_r)
+			)
 {
 	int oss_format = sample_format_to_oss(sample_format);
 	if (oss_format == AFMT_QUERY)
 		return UNSUPPORTED;
 
 	enum oss_setup_result result =
-		oss_try_ioctl_r(fd, SNDCTL_DSP_SAMPLESIZE,
+		oss_try_ioctl(fd, SNDCTL_DSP_SAMPLESIZE,
 				&oss_format,
-				"Failed to set sample format", error_r);
+				"Failed to set sample format");
 
 #ifdef AFMT_S24_PACKED
 	if (result == UNSUPPORTED && sample_format == SAMPLE_FORMAT_S24_P32) {
@@ -554,20 +531,20 @@ oss_probe_sample_format(int fd, enum sample_format sample_format,
  */
 static bool
 oss_setup_sample_format(int fd, struct audio_format *audio_format,
-			int *oss_format_r,
+			int *oss_format_r
 #ifdef AFMT_S24_PACKED
-			struct pcm_export_state *export,
+			struct pcm_export_state *export
 #endif
-			GError **error_r)
+			)
 {
 	enum sample_format mpd_format;
 	enum oss_setup_result result =
 		oss_probe_sample_format(fd, audio_format->format,
-					&mpd_format, oss_format_r,
+					&mpd_format, oss_format_r
 #ifdef AFMT_S24_PACKED
-					export,
+					export
 #endif
-					error_r);
+					);
 	switch (result) {
 	case SUCCESS:
 		audio_format->format = mpd_format;
@@ -601,11 +578,11 @@ oss_setup_sample_format(int fd, struct audio_format *audio_format,
 			continue;
 
 		result = oss_probe_sample_format(fd, mpd_format,
-						 &mpd_format, oss_format_r,
+						 &mpd_format, oss_format_r
 #ifdef AFMT_S24_PACKED
-						 export,
+						 export
 #endif
-						 error_r);
+						 );
 		switch (result) {
 		case SUCCESS:
 			audio_format->format = mpd_format;
@@ -619,103 +596,102 @@ oss_setup_sample_format(int fd, struct audio_format *audio_format,
 		}
 	}
 
-	g_set_error_literal(error_r, oss_output_quark(), EINVAL,
-			    "Failed to set sample format");
-	return false;
+	log_err("Failed to set sample format");
+	return false; //Should return EINVAL, but no one seems to care.
 }
 
 /**
  * Sets up the OSS device which was opened before.
  */
-static bool
-oss_setup(struct oss_data *od, struct audio_format *audio_format,
-	  GError **error_r)
+static int
+oss_setup(struct oss_data *od, struct audio_format *audio_format)
 {
-	return oss_setup_channels(od->fd, audio_format, error_r) &&
-		oss_setup_sample_rate(od->fd, audio_format, error_r) &&
-		oss_setup_sample_format(od->fd, audio_format, &od->oss_format,
+	int ret = oss_setup_channels(od->fd, audio_format);
+	if (ret != MPD_SUCCESS)
+		return ret;
+
+	ret = oss_setup_sample_rate(od->fd, audio_format);
+	if (ret != MPD_SUCCESS)
+		return ret;
+
+	return oss_setup_sample_format(od->fd, audio_format, &od->oss_format
 #ifdef AFMT_S24_PACKED
-					&od->export,
+					&od->export
 #endif
-					error_r);
+					);
 }
 
 /**
  * Reopen the device with the saved audio_format, without any probing.
  */
-static bool
-oss_reopen(struct oss_data *od, GError **error_r)
+static int
+oss_reopen(struct oss_data *od)
 {
 	assert(od->fd < 0);
 
 	od->fd = open_cloexec(od->device, O_WRONLY, 0);
 	if (od->fd < 0) {
-		g_set_error(error_r, oss_output_quark(), errno,
-			    "Error opening OSS device \"%s\": %s",
+		log_err("Error opening OSS device \"%s\": %s",
 			    od->device, strerror(errno));
-		return false;
+		return -MPD_ACCESS;
 	}
 
 	enum oss_setup_result result;
 
 	const char *const msg1 = "Failed to set channel count";
+	int tmp = od->audio_format.channels;
 	result = oss_try_ioctl(od->fd, SNDCTL_DSP_CHANNELS,
-			       od->audio_format.channels, msg1, error_r);
+			       &tmp, msg1);
 	if (result != SUCCESS) {
 		oss_close(od);
-		if (result == UNSUPPORTED)
-			g_set_error(error_r, oss_output_quark(), EINVAL,
-				    "%s", msg1);
-		return false;
+		log_err("ioctl error: %s", msg1);
+		return -MPD_INVAL;
 	}
 
 	const char *const msg2 = "Failed to set sample rate";
+	tmp = od->audio_format.sample_rate;
 	result = oss_try_ioctl(od->fd, SNDCTL_DSP_SPEED,
-			       od->audio_format.sample_rate, msg2, error_r);
+			       &tmp, msg2);
 	if (result != SUCCESS) {
 		oss_close(od);
-		if (result == UNSUPPORTED)
-			g_set_error(error_r, oss_output_quark(), EINVAL,
-				    "%s", msg2);
-		return false;
+		log_err("ioctl error: %s", msg2);
+		return -MPD_INVAL;
 	}
 
 	const char *const msg3 = "Failed to set sample format";
+	tmp = od->oss_format;
 	result = oss_try_ioctl(od->fd, SNDCTL_DSP_SAMPLESIZE,
-			       od->oss_format,
-			       msg3, error_r);
+			       &tmp,
+			       msg3);
 	if (result != SUCCESS) {
 		oss_close(od);
-		if (result == UNSUPPORTED)
-			g_set_error(error_r, oss_output_quark(), EINVAL,
-				    "%s", msg3);
-		return false;
+		log_err("ioctl error: %s", msg3);
+		return -MPD_INVAL;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-oss_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		GError **error)
+static int
+oss_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct oss_data *od = (struct oss_data *)ao;
 
 	od->fd = open_cloexec(od->device, O_WRONLY, 0);
 	if (od->fd < 0) {
-		g_set_error(error, oss_output_quark(), errno,
-			    "Error opening OSS device \"%s\": %s",
+		log_err("Error opening OSS device \"%s\": %s",
 			    od->device, strerror(errno));
-		return false;
+		return -MPD_ACCESS;
 	}
 
-	if (!oss_setup(od, audio_format, error)) {
+	int ret = oss_setup(od, audio_format);
+	if (ret != MPD_SUCCESS) {
 		oss_close(od);
-		return false;
+		return ret;
 	}
 
 	od->audio_format = *audio_format;
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -738,14 +714,13 @@ oss_output_cancel(struct audio_output *ao)
 }
 
 static size_t
-oss_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		GError **error)
+oss_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct oss_data *od = (struct oss_data *)ao;
 	ssize_t ret;
 
 	/* reopen the device since it was closed by dropBufferedAudio */
-	if (od->fd < 0 && !oss_reopen(od, error))
+	if (od->fd < 0 && oss_reopen(od) != MPD_SUCCESS)
 		return 0;
 
 #ifdef AFMT_S24_PACKED
@@ -762,10 +737,9 @@ oss_output_play(struct audio_output *ao, const void *chunk, size_t size,
 		}
 
 		if (ret < 0 && errno != EINTR) {
-			g_set_error(error, oss_output_quark(), errno,
-				    "Write error on %s: %s",
+			log_err("Write error on %s: %s",
 				    od->device, strerror(errno));
-			return 0;
+			return -MPD_ACCESS;
 		}
 	}
 }

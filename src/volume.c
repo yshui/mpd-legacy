@@ -97,7 +97,7 @@ static bool software_volume_change(unsigned volume)
 	return true;
 }
 
-static bool hardware_volume_change(unsigned volume)
+static int hardware_volume_change(unsigned volume)
 {
 	/* reset the cache */
 	last_hardware_volume = -1;
@@ -105,7 +105,7 @@ static bool hardware_volume_change(unsigned volume)
 	return mixer_all_set_volume(volume);
 }
 
-bool volume_level_change(unsigned volume)
+int volume_level_change(unsigned volume)
 {
 	assert(volume <= 100);
 

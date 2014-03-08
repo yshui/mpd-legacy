@@ -81,7 +81,7 @@ static int ogg_seek_cb(void *data, ogg_int64_t offset, int whence)
 
 	return vis->seekable &&
 		(!vis->decoder || decoder_get_command(vis->decoder) != DECODE_COMMAND_STOP) &&
-		input_stream_lock_seek(vis->input_stream, offset, whence, NULL)
+		input_stream_lock_seek(vis->input_stream, offset, whence) == MPD_SUCCESS
 		? 0 : -1;
 }
 
@@ -170,7 +170,6 @@ static void
 vorbis_stream_decode(struct decoder *decoder,
 		     struct input_stream *input_stream)
 {
-	GError *error = NULL;
 	OggVorbis_File vf;
 	struct vorbis_input_stream vis;
 	struct audio_format audio_format;
@@ -189,7 +188,7 @@ vorbis_stream_decode(struct decoder *decoder,
 
 	/* rewind the stream, because ogg_stream_type_detect() has
 	   moved it */
-	input_stream_lock_seek(input_stream, 0, SEEK_SET, NULL);
+	input_stream_lock_seek(input_stream, 0, SEEK_SET);
 
 	if (!vorbis_is_open(&vis, &vf, decoder, input_stream))
 		return;
@@ -200,13 +199,10 @@ vorbis_stream_decode(struct decoder *decoder,
 		return;
 	}
 
-	if (!audio_format_init_checked(&audio_format, vi->rate,
+	if (audio_format_init_checked(&audio_format, vi->rate,
 				       SAMPLE_FORMAT_S16,
-				       vi->channels, &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+				       vi->channels) != MPD_SUCCESS)
 		return;
-	}
 
 	total_time = ov_time_total(&vf, -1);
 	if (total_time < 0)

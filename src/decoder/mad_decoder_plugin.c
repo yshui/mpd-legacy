@@ -169,7 +169,8 @@ mp3_data_init(struct mp3_data *data, struct decoder *decoder,
 
 static bool mp3_seek(struct mp3_data *data, long offset)
 {
-	if (!input_stream_lock_seek(data->input_stream, offset, SEEK_SET, NULL))
+	if (input_stream_lock_seek(data->input_stream, offset, SEEK_SET)
+			!= MPD_SUCCESS)
 		return false;
 
 	mad_stream_buffer(&data->stream, data->input_buffer, 0);
@@ -1138,7 +1139,6 @@ static void
 mp3_decode(struct decoder *decoder, struct input_stream *input_stream)
 {
 	struct mp3_data data;
-	GError *error = NULL;
 	struct tag *tag = NULL;
 	struct audio_format audio_format;
 
@@ -1149,14 +1149,11 @@ mp3_decode(struct decoder *decoder, struct input_stream *input_stream)
 		return;
 	}
 
-	if (!audio_format_init_checked(&audio_format,
+	if (audio_format_init_checked(&audio_format,
 				       data.frame.header.samplerate,
 				       SAMPLE_FORMAT_S24_P32,
-				       MAD_NCHANNELS(&data.frame.header),
-				       &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
-
+				       MAD_NCHANNELS(&data.frame.header))
+				       != MPD_SUCCESS) {
 		if (tag != NULL)
 			tag_free(tag);
 		mp3_data_finish(&data);

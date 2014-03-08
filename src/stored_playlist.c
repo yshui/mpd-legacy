@@ -77,42 +77,43 @@ spl_valid_name(const char *name_utf8)
 }
 
 static const char *
-spl_map(GError **error_r)
+spl_map(void)
 {
-	const char *path_fs = map_spl_path();
-	if (path_fs == NULL)
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_DISABLED,
-				    "Stored playlists are disabled");
-
-	return path_fs;
-}
-
-static bool
-spl_check_name(const char *name_utf8, GError **error_r)
-{
-	if (!spl_valid_name(name_utf8)) {
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_BAD_NAME,
-				    "Bad playlist name");
-		return false;
+	const char *r = map_spl_path();
+	if (r == NULL){
+		log_err("Stored playlists are disabled");
+		return ERR_PTR(-PLAYLIST_DISABLED);
 	}
 
-	return true;
+	return r;
+}
+
+static int
+spl_check_name(const char *name_utf8)
+{
+	if (!spl_valid_name(name_utf8)) {
+		log_err("Bad playlist name");
+		return PLAYLIST_BAD_NAME;
+	}
+
+	return MPD_SUCCESS;
 }
 
 static char *
-spl_map_to_fs(const char *name_utf8, GError **error_r)
+spl_map_to_fs(const char *name_utf8)
 {
-	if (spl_map(error_r) == NULL ||
-	    !spl_check_name(name_utf8, error_r))
-		return NULL;
+	const char *path;
+	int ret = MPD_SUCCESS;
+	path = spl_map();
+	if(!IS_ERR(path))
+		ret = spl_check_name(name_utf8);
+	if(ret != MPD_SUCCESS)
+		return ERR_PTR(ret);
 
 	char *path_fs = map_spl_utf8_to_fs(name_utf8);
 	if (path_fs == NULL)
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_BAD_NAME,
-				    "Bad playlist name");
+		log_err("Bad playlist name");
+		return ERR_PTR(-PLAYLIST_BAD_NAME);
 
 	return path_fs;
 }
@@ -120,20 +121,15 @@ spl_map_to_fs(const char *name_utf8, GError **error_r)
 /**
  * Create a GError for the current errno.
  */
-static void
-playlist_errno(GError **error_r)
+static int
+playlist_errno(void)
 {
 	switch (errno) {
 	case ENOENT:
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_NO_SUCH_LIST,
-				    "No such playlist");
-		break;
-
+		return -PLAYLIST_NO_SUCH_LIST;
 	default:
-		g_set_error_literal(error_r, g_file_error_quark(), errno,
-				    strerror(errno));
-		break;
+		log_err(strerror(errno));
+		return -PLAYLIST_ERRNO;
 	}
 }
 
@@ -173,22 +169,22 @@ load_playlist_info(const char *parent_path_fs, const char *name_fs)
 }
 
 GPtrArray *
-spl_list(GError **error_r)
+spl_list(void)
 {
-	const char *parent_path_fs = spl_map(error_r);
+	const char *parent_path_fs;
 	DIR *dir;
 	struct dirent *ent;
 	GPtrArray *list;
 	struct stored_playlist_info *playlist;
 
-	if (parent_path_fs == NULL)
-		return NULL;
+	parent_path_fs = spl_map();
+	if (IS_ERR(parent_path_fs))
+		return ERR_PTR(-PLAYLIST_DISABLED);
 
 	dir = opendir(parent_path_fs);
 	if (dir == NULL) {
-		g_set_error_literal(error_r, g_file_error_quark(), errno,
-				    strerror(errno));
-		return NULL;
+		log_err(strerror(errno));
+		return ERR_PTR(-PLAYLIST_ERRNO);
 	}
 
 	list = g_ptr_array_new();
@@ -216,26 +212,24 @@ spl_list_free(GPtrArray *list)
 	g_ptr_array_free(list, true);
 }
 
-static bool
-spl_save(GPtrArray *list, const char *utf8path, GError **error_r)
+static int
+spl_save(GPtrArray *list, const char *utf8path)
 {
 	FILE *file;
 
 	assert(utf8path != NULL);
 
-	if (spl_map(error_r) == NULL)
-		return false;
+	if (IS_ERR(spl_map()))
+		return -PLAYLIST_DISABLED;
 
-	char *path_fs = spl_map_to_fs(utf8path, error_r);
-	if (path_fs == NULL)
-		return false;
+	char *path_fs = spl_map_to_fs(utf8path);
+	if (IS_ERR(path_fs))
+		return PTR_ERR(path_fs);
 
 	file = fopen(path_fs, "w");
 	free(path_fs);
-	if (file == NULL) {
-		playlist_errno(error_r);
-		return false;
-	}
+	if (file == NULL)
+		return playlist_errno();
 
 	for (unsigned i = 0; i < list->len; ++i) {
 		const char *uri = g_ptr_array_index(list, i);
@@ -243,29 +237,27 @@ spl_save(GPtrArray *list, const char *utf8path, GError **error_r)
 	}
 
 	fclose(file);
-	return true;
+	return MPD_SUCCESS;
 }
 
 GPtrArray *
-spl_load(const char *utf8path, GError **error_r)
+spl_load(const char *utf8path)
 {
 	FILE *file;
 	GPtrArray *list;
 	char *path_fs;
 
-	if (spl_map(error_r) == NULL)
-		return NULL;
+	if (IS_ERR(spl_map()))
+		return ERR_PTR(-PLAYLIST_DISABLED);
 
-	path_fs = spl_map_to_fs(utf8path, error_r);
-	if (path_fs == NULL)
-		return NULL;
+	path_fs = spl_map_to_fs(utf8path);
+	if (IS_ERR(path_fs))
+		return (void *)path_fs;
 
 	file = fopen(path_fs, "r");
 	free(path_fs);
-	if (file == NULL) {
-		playlist_errno(error_r);
-		return NULL;
-	}
+	if (file == NULL)
+		return ERR_PTR(playlist_errno());
 
 	list = g_ptr_array_new();
 
@@ -331,145 +323,130 @@ spl_insert_index_internal(GPtrArray *list, unsigned idx, char *uri)
 	g_ptr_array_index(list, idx) = uri;
 }
 
-bool
-spl_move_index(const char *utf8path, unsigned src, unsigned dest,
-	       GError **error_r)
-{
+int
+spl_move_index(const char *utf8path, unsigned src, unsigned dest) {
 	char *uri;
 
 	if (src == dest)
 		/* this doesn't check whether the playlist exists, but
 		   what the hell.. */
-		return true;
+		return MPD_SUCCESS;
 
-	GPtrArray *list = spl_load(utf8path, error_r);
-	if (list == NULL)
-		return false;
+	GPtrArray *list = spl_load(utf8path);
+	if (IS_ERR(list))
+		return PTR_ERR(list);
 
 	if (src >= list->len || dest >= list->len) {
 		spl_free(list);
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_BAD_RANGE,
-				    "Bad range");
-		return false;
+		log_err("Bad range");
+		return PLAYLIST_BAD_RANGE;
 	}
 
 	uri = spl_remove_index_internal(list, src);
 	spl_insert_index_internal(list, dest, uri);
 
-	bool result = spl_save(list, utf8path, error_r);
+	int ret = spl_save(list, utf8path);
 
 	spl_free(list);
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return result;
+	return ret;
 }
 
-bool
-spl_clear(const char *utf8path, GError **error_r)
+int
+spl_clear(const char *utf8path)
 {
 	FILE *file;
 
-	if (spl_map(error_r) == NULL)
-		return false;
+	if (IS_ERR(spl_map()))
+		return -PLAYLIST_DISABLED;
 
-	char *path_fs = spl_map_to_fs(utf8path, error_r);
-	if (path_fs == NULL)
-		return false;
+	char *path_fs = spl_map_to_fs(utf8path);
+	if (IS_ERR(path_fs))
+		return PTR_ERR(path_fs);
 
 	file = fopen(path_fs, "w");
 	free(path_fs);
-	if (file == NULL) {
-		playlist_errno(error_r);
-		return false;
-	}
+	if (file == NULL)
+		return playlist_errno();
 
 	fclose(file);
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-spl_delete(const char *name_utf8, GError **error_r)
+int
+spl_delete(const char *name_utf8)
 {
 	char *path_fs;
 	int ret;
 
-	path_fs = spl_map_to_fs(name_utf8, error_r);
-	if (path_fs == NULL)
-		return false;
+	path_fs = spl_map_to_fs(name_utf8);
+	if (IS_ERR(path_fs))
+		return PTR_ERR(path_fs);
 
 	ret = unlink(path_fs);
 	free(path_fs);
-	if (ret < 0) {
-		playlist_errno(error_r);
-		return false;
-	}
+	if (ret < 0)
+		return playlist_errno();
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-spl_remove_index(const char *utf8path, unsigned pos, GError **error_r)
+int
+spl_remove_index(const char *utf8path, unsigned pos)
 {
 	char *uri;
 
-	GPtrArray *list = spl_load(utf8path, error_r);
-	if (list == NULL)
-		return false;
+	GPtrArray *list = spl_load(utf8path);
+	if (IS_ERR(list))
+		return PTR_ERR(list);
 
 	if (pos >= list->len) {
 		spl_free(list);
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_BAD_RANGE,
-				    "Bad range");
-		return false;
+		log_err("Bad range");
+		return -PLAYLIST_BAD_RANGE;
 	}
 
 	uri = spl_remove_index_internal(list, pos);
 	free(uri);
-	bool result = spl_save(list, utf8path, error_r);
+	int ret = spl_save(list, utf8path);
 
 	spl_free(list);
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return result;
+	return ret;
 }
 
-bool
-spl_append_song(const char *utf8path, struct song *song, GError **error_r)
+int
+spl_append_song(const char *utf8path, struct song *song)
 {
 	FILE *file;
 	struct stat st;
 
-	if (spl_map(error_r) == NULL)
-		return false;
+	if (IS_ERR(spl_map()))
+		return -PLAYLIST_DISABLED;
 
-	char *path_fs = spl_map_to_fs(utf8path, error_r);
-	if (path_fs == NULL)
-		return false;
+	char *path_fs = spl_map_to_fs(utf8path);
+	if (IS_ERR(path_fs))
+		return PTR_ERR(path_fs);
 
 	file = fopen(path_fs, "a");
 	free(path_fs);
-	if (file == NULL) {
-		playlist_errno(error_r);
-		return false;
-	}
+	if (file == NULL)
+		return playlist_errno();
 
 	if (fstat(fileno(file), &st) < 0) {
-		playlist_errno(error_r);
 		fclose(file);
-		return false;
+		return playlist_errno();
 	}
 
 	if (st.st_size / (MPD_PATH_MAX + 1) >= (off_t)playlist_max_length) {
 		fclose(file);
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_TOO_LARGE,
-				    "Stored playlist is too large");
-		return false;
+		log_err("Stored playlist is too large");
+		return -PLAYLIST_TOO_LARGE;
 	}
 
 	playlist_print_song(file, song);
@@ -477,79 +454,70 @@ spl_append_song(const char *utf8path, struct song *song, GError **error_r)
 	fclose(file);
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-spl_append_uri(const char *url, const char *utf8file, GError **error_r)
+int
+spl_append_uri(const char *url, const char *utf8file)
 {
 	struct song *song;
 
 	if (uri_has_scheme(url)) {
 		song = song_remote_new(url);
-		bool success = spl_append_song(utf8file, song, error_r);
+		int ret = spl_append_song(utf8file, song);
 		song_free(song);
-		return success;
+		return ret;
 	} else {
 		song = db_get_song(url);
 		if (song == NULL) {
-			g_set_error_literal(error_r, playlist_quark(),
-					    PLAYLIST_RESULT_NO_SUCH_SONG,
-					    "No such song");
-			return false;
+			log_err("No such song");
+			return -PLAYLIST_NO_SUCH_SONG;
 		}
 
-		return spl_append_song(utf8file, song, error_r);
+		return spl_append_song(utf8file, song);
 	}
 }
 
-static bool
-spl_rename_internal(const char *from_path_fs, const char *to_path_fs,
-		    GError **error_r)
+static int
+spl_rename_internal(const char *from_path_fs, const char *to_path_fs)
 {
 	if (!g_file_test(from_path_fs, G_FILE_TEST_IS_REGULAR)) {
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_NO_SUCH_LIST,
-				    "No such playlist");
-		return false;
+		log_err("No such playlist");
+		return -PLAYLIST_NO_SUCH_LIST;
 	}
 
 	if (g_file_test(to_path_fs, G_FILE_TEST_EXISTS)) {
-		g_set_error_literal(error_r, playlist_quark(),
-				    PLAYLIST_RESULT_LIST_EXISTS,
-				    "Playlist exists already");
-		return false;
+		log_err("Playlist exists already");
+		return -PLAYLIST_LIST_EXISTS;
 	}
 
-	if (rename(from_path_fs, to_path_fs) < 0) {
-		playlist_errno(error_r);
-		return false;
-	}
+	if (rename(from_path_fs, to_path_fs) < 0)
+		return playlist_errno();
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return true;
+	return MPD_SUCCESS;
 }
 
-bool
-spl_rename(const char *utf8from, const char *utf8to, GError **error_r)
+int
+spl_rename(const char *utf8from, const char *utf8to)
 {
-	if (spl_map(error_r) == NULL)
-		return false;
+	if (IS_ERR(spl_map()))
+		return -PLAYLIST_DISABLED;
 
-	char *from_path_fs = spl_map_to_fs(utf8from, error_r);
-	if (from_path_fs == NULL)
-		return false;
+	char *from_path_fs = spl_map_to_fs(utf8from);
+	if (IS_ERR(from_path_fs))
+		return PTR_ERR(from_path_fs);
 
-	char *to_path_fs = spl_map_to_fs(utf8to, error_r);
-	if (to_path_fs == NULL) {
+	char *to_path_fs = spl_map_to_fs(utf8to);
+	if (IS_ERR(to_path_fs)) {
 		free(from_path_fs);
-		return false;
+		return PTR_ERR(to_path_fs);
 	}
 
-	bool success = spl_rename_internal(from_path_fs, to_path_fs, error_r);
+	int ret = spl_rename_internal(from_path_fs, to_path_fs);
 
 	free(from_path_fs);
 	free(to_path_fs);
 
-	return success;
+	return ret;
 }

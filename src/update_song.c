@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_song"
+
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_song.h"
 #include "update_internal.h"

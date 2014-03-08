@@ -38,8 +38,8 @@ pcm_resample_lsr_enabled(void)
 }
 #endif
 
-bool
-pcm_resample_global_init(GError **error_r)
+int
+pcm_resample_global_init(void)
 {
 #ifdef HAVE_LIBSAMPLERATE
 	const char *converter =
@@ -47,12 +47,11 @@ pcm_resample_global_init(GError **error_r)
 
 	lsr_enabled = strcmp(converter, "internal") != 0;
 	if (lsr_enabled)
-		return pcm_resample_lsr_global_init(converter, error_r);
+		return pcm_resample_lsr_global_init(converter);
 	else
-		return true;
+		return MPD_SUCCESS;
 #else
-	(void)error_r;
-	return true;
+	return MPD_SUCCESS;
 #endif
 }
 
@@ -91,17 +90,14 @@ pcm_resample_float(struct pcm_resample_state *state,
 		   unsigned channels,
 		   unsigned src_rate,
 		   const float *src_buffer, size_t src_size,
-		   unsigned dest_rate, size_t *dest_size_r,
-		   GError **error_r)
+		   unsigned dest_rate, size_t *dest_size_r)
 {
 #ifdef HAVE_LIBSAMPLERATE
 	if (pcm_resample_lsr_enabled())
 		return pcm_resample_lsr_float(state, channels,
 					      src_rate, src_buffer, src_size,
-					      dest_rate, dest_size_r,
-					      error_r);
+					      dest_rate, dest_size_r);
 #else
-	(void)error_r;
 #endif
 
 	/* sizeof(float)==sizeof(int32_t); the fallback resampler does
@@ -118,17 +114,14 @@ const int16_t *
 pcm_resample_16(struct pcm_resample_state *state,
 		unsigned channels,
 		unsigned src_rate, const int16_t *src_buffer, size_t src_size,
-		unsigned dest_rate, size_t *dest_size_r,
-		GError **error_r)
+		unsigned dest_rate, size_t *dest_size_r)
 {
 #ifdef HAVE_LIBSAMPLERATE
 	if (pcm_resample_lsr_enabled())
 		return pcm_resample_lsr_16(state, channels,
 					   src_rate, src_buffer, src_size,
-					   dest_rate, dest_size_r,
-					   error_r);
+					   dest_rate, dest_size_r);
 #else
-	(void)error_r;
 #endif
 
 	return pcm_resample_fallback_16(state, channels,
@@ -140,17 +133,14 @@ const int32_t *
 pcm_resample_32(struct pcm_resample_state *state,
 		unsigned channels,
 		unsigned src_rate, const int32_t *src_buffer, size_t src_size,
-		unsigned dest_rate, size_t *dest_size_r,
-		GError **error_r)
+		unsigned dest_rate, size_t *dest_size_r)
 {
 #ifdef HAVE_LIBSAMPLERATE
 	if (pcm_resample_lsr_enabled())
 		return pcm_resample_lsr_32(state, channels,
 					   src_rate, src_buffer, src_size,
-					   dest_rate, dest_size_r,
-					   error_r);
+					   dest_rate, dest_size_r);
 #else
-	(void)error_r;
 #endif
 
 	return pcm_resample_fallback_32(state, channels,

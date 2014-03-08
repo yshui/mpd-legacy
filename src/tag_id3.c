@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "tag_id3"
+
+#include "log.h"
 #include "config.h"
 #include "tag_id3.h"
 #include "tag_handler.h"
@@ -34,9 +37,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "id3"
 
 #  ifndef ID3_FRAME_COMPOSER
 #    define ID3_FRAME_COMPOSER "TCOM"
@@ -543,14 +543,13 @@ tag_id3_riff_aiff_load(FILE *file)
 }
 
 struct id3_tag *
-tag_id3_load(const char *path_fs, GError **error_r)
+tag_id3_load(const char *path_fs)
 {
 	FILE *file = fopen(path_fs, "rb");
 	if (file == NULL) {
-		g_set_error(error_r, g_file_error_quark(), errno,
-			    "Failed to open file %s: %s",
+		log_err("Failed to open file %s: %s",
 			    path_fs, strerror(errno));
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	struct id3_tag *tag = tag_id3_find_from_beginning(file);
@@ -568,14 +567,10 @@ bool
 tag_id3_scan(const char *path_fs,
 	     const struct tag_handler *handler, void *handler_ctx)
 {
-	GError *error = NULL;
-	struct id3_tag *tag = tag_id3_load(path_fs, &error);
-	if (tag == NULL) {
-		if (error != NULL) {
-			log_warning("%s", error->message);
-			g_error_free(error);
-		}
-
+	struct id3_tag *tag = tag_id3_load(path_fs);
+	if (IS_ERR_OR_NULL(tag)) {
+		if (IS_ERR(tag))
+			log_warning("Error loading tag");
 		return false;
 	}
 

@@ -21,6 +21,9 @@
   * single bz2 archive handling (requires libbz2)
   */
 
+#define LOG_DOMAIN "archive: bz2"
+
+#include "log.h"
 #include "config.h"
 #include "archive/bz2_archive_plugin.h"
 #include "archive_api.h"
@@ -71,8 +74,8 @@ bz2_quark(void)
 
 /* single archive handling allocation helpers */
 
-static bool
-bz2_alloc(struct bz2_input_stream *data, GError **error_r)
+static int
+bz2_alloc(struct bz2_input_stream *data)
 {
 	int ret;
 
@@ -85,14 +88,13 @@ bz2_alloc(struct bz2_input_stream *data, GError **error_r)
 
 	ret = BZ2_bzDecompressInit(&data->bzstream, 0, 0);
 	if (ret != BZ_OK) {
-		g_free(data);
+		free(data);
 
-		g_set_error(error_r, bz2_quark(), ret,
-			    "BZ2_bzDecompressInit() has failed");
-		return false;
+		log_err("BZ2_bzDecompressInit() has failed");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -104,7 +106,7 @@ bz2_destroy(struct bz2_input_stream *data)
 /* archive open && listing routine */
 
 static struct archive_file *
-bz2_open(const char *pathname, GError **error_r)
+bz2_open(const char *pathname)
 {
 	struct bz2_archive_file *context;
 	int len;
@@ -117,11 +119,10 @@ bz2_open(const char *pathname, GError **error_r)
 	static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
 	context->istream = input_stream_open(pathname,
 					     g_static_mutex_get_mutex(&mutex),
-					     NULL,
-					     error_r);
-	if (context->istream == NULL) {
-		g_free(context);
-		return NULL;
+					     NULL);
+	if (IS_ERR(context->istream)) {
+		free(context);
+		return (void *)context->istream;
 	}
 
 	context->name = g_path_get_basename(pathname);
@@ -174,8 +175,7 @@ bz2_close(struct archive_file *file)
 
 static struct input_stream *
 bz2_open_stream(struct archive_file *file, const char *path,
-		GMutex *mutex, GCond *cond,
-		GError **error_r)
+		GMutex *mutex, GCond *cond)
 {
 	struct bz2_archive_file *context = (struct bz2_archive_file *) file;
 	struct bz2_input_stream *bis = g_new(struct bz2_input_stream, 1);
@@ -188,10 +188,11 @@ bz2_open_stream(struct archive_file *file, const char *path,
 	bis->base.ready = true;
 	bis->base.seekable = false;
 
-	if (!bz2_alloc(bis, error_r)) {
+	int ret = bz2_alloc(bis);
+	if (ret != MPD_SUCCESS) {
 		input_stream_deinit(&bis->base);
-		g_free(bis);
-		return NULL;
+		free(bis);
+		return ERR_PTR(ret);
 	}
 
 	bis->eof = false;
@@ -215,7 +216,7 @@ bz2_is_close(struct input_stream *is)
 }
 
 static bool
-bz2_fillbuffer(struct bz2_input_stream *bis, GError **error_r)
+bz2_fillbuffer(struct bz2_input_stream *bis)
 {
 	size_t count;
 	bz_stream *bzstream;
@@ -226,8 +227,7 @@ bz2_fillbuffer(struct bz2_input_stream *bis, GError **error_r)
 		return true;
 
 	count = input_stream_read(bis->archive->istream,
-				  bis->buffer, sizeof(bis->buffer),
-				  error_r);
+				  bis->buffer, sizeof(bis->buffer));
 	if (count == 0)
 		return false;
 
@@ -236,9 +236,8 @@ bz2_fillbuffer(struct bz2_input_stream *bis, GError **error_r)
 	return true;
 }
 
-static size_t
-bz2_is_read(struct input_stream *is, void *ptr, size_t length,
-	    GError **error_r)
+static ssize_t
+bz2_is_read(struct input_stream *is, void *ptr, size_t length)
 {
 	struct bz2_input_stream *bis = (struct bz2_input_stream *)is;
 	bz_stream *bzstream;
@@ -253,8 +252,8 @@ bz2_is_read(struct input_stream *is, void *ptr, size_t length,
 	bzstream->avail_out = length;
 
 	do {
-		if (!bz2_fillbuffer(bis, error_r))
-			return 0;
+		if (!bz2_fillbuffer(bis))
+			return -MPD_3RD;
 
 		bz_result = BZ2_bzDecompress(bzstream);
 
@@ -264,9 +263,8 @@ bz2_is_read(struct input_stream *is, void *ptr, size_t length,
 		}
 
 		if (bz_result != BZ_OK) {
-			g_set_error(error_r, bz2_quark(), bz_result,
-				    "BZ2_bzDecompress() has failed");
-			return 0;
+			log_err("BZ2_bzDecompress() has failed");
+			return -MPD_3RD;
 		}
 	} while (bzstream->avail_out == length);
 

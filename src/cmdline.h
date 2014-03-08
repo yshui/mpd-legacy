@@ -20,19 +20,16 @@
 #ifndef CMDLINE_H
 #define CMDLINE_H
 
-#include <glib.h>
-
 #include <stdbool.h>
 
 struct options {
-	gboolean kill;
-	gboolean daemon;
-	gboolean log_stderr;
-	gboolean verbose;
+	bool kill;
+	bool daemon;
+	bool log_stderr;
+	bool verbose;
 };
 
-bool
-parse_cmdline(int argc, char **argv, struct options *options,
-	      GError **error_r);
+int
+parse_cmdline(int argc, char **argv, struct options *options);
 
 #endif

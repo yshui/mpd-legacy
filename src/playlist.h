@@ -20,7 +20,6 @@
 #ifndef MPD_PLAYLIST_H
 #define MPD_PLAYLIST_H
 
-#include "log.h"
 #include "queue.h"
 #include "playlist_error.h"
 
@@ -106,19 +105,19 @@ playlist_clear(struct playlist *playlist, struct player_control *pc);
  *
  * Note: the caller is responsible for checking permissions.
  */
-enum playlist_result
+int
 playlist_append_file(struct playlist *playlist, struct player_control *pc,
 		     const char *path_fs, unsigned *added_id);
 
-enum playlist_result
+int
 playlist_append_uri(struct playlist *playlist, struct player_control *pc,
 		    const char *file, unsigned *added_id);
 
-enum playlist_result
+int
 playlist_append_song(struct playlist *playlist, struct player_control *pc,
 		  struct song *song, unsigned *added_id);
 
-enum playlist_result
+int
 playlist_delete(struct playlist *playlist, struct player_control *pc,
 		unsigned song);
 
@@ -128,22 +127,22 @@ playlist_delete(struct playlist *playlist, struct player_control *pc,
  * @param start the position of the first song to delete
  * @param end the position after the last song to delete
  */
-enum playlist_result
+int
 playlist_delete_range(struct playlist *playlist, struct player_control *pc,
 		      unsigned start, unsigned end);
 
-enum playlist_result
+int
 playlist_delete_id(struct playlist *playlist, struct player_control *pc,
 		   unsigned song);
 
 void
 playlist_stop(struct playlist *playlist, struct player_control *pc);
 
-enum playlist_result
+int
 playlist_play(struct playlist *playlist, struct player_control *pc,
 	      int song);
 
-enum playlist_result
+int
 playlist_play_id(struct playlist *playlist, struct player_control *pc,
 		 int song);
 
@@ -164,28 +163,28 @@ void
 playlist_delete_song(struct playlist *playlist, struct player_control *pc,
 		     const struct song *song);
 
-enum playlist_result
+int
 playlist_move_range(struct playlist *playlist, struct player_control *pc,
 		    unsigned start, unsigned end, int to);
 
-enum playlist_result
+int
 playlist_move_id(struct playlist *playlist, struct player_control *pc,
 		 unsigned id, int to);
 
-enum playlist_result
+int
 playlist_swap_songs(struct playlist *playlist, struct player_control *pc,
 		    unsigned song1, unsigned song2);
 
-enum playlist_result
+int
 playlist_swap_songs_id(struct playlist *playlist, struct player_control *pc,
 		       unsigned id1, unsigned id2);
 
-enum playlist_result
+int
 playlist_set_priority(struct playlist *playlist, struct player_control *pc,
 		      unsigned start_position, unsigned end_position,
 		      uint8_t priority);
 
-enum playlist_result
+int
 playlist_set_priority_id(struct playlist *playlist, struct player_control *pc,
 			 unsigned song_id, uint8_t priority);
 
@@ -231,11 +230,11 @@ playlist_get_length(const struct playlist *playlist);
 unsigned long
 playlist_get_version(const struct playlist *playlist);
 
-enum playlist_result
+int
 playlist_seek_song(struct playlist *playlist, struct player_control *pc,
 		   unsigned song, float seek_time);
 
-enum playlist_result
+int
 playlist_seek_song_id(struct playlist *playlist, struct player_control *pc,
 		       unsigned id, float seek_time);
 
@@ -247,7 +246,7 @@ playlist_seek_song_id(struct playlist *playlist, struct player_control *pc,
  * @param relative if true, then the specified time is relative to the
  * current position
  */
-enum playlist_result
+int
 playlist_seek_current(struct playlist *playlist, struct player_control *pc,
 		      float seek_time, bool relative);
 

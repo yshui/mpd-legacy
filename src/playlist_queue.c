@@ -27,13 +27,13 @@
 #include "input_stream.h"
 #include "utils.h"
 
-enum playlist_result
+int
 playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 			 unsigned start_index, unsigned end_index,
 			 struct playlist *dest, struct player_control *pc,
 			 bool secure)
 {
-	enum playlist_result result;
+	int result;
 	struct song *song;
 	char *base_uri = strdup_dirname(uri);
 
@@ -52,7 +52,7 @@ playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 			continue;
 
 		result = playlist_append_song(dest, pc, song, NULL);
-		if (result != PLAYLIST_RESULT_SUCCESS) {
+		if (result != MPD_SUCCESS) {
 			if (!song_in_database(song))
 				song_free(song);
 			free(base_uri);
@@ -62,10 +62,10 @@ playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 
 	free(base_uri);
 
-	return PLAYLIST_RESULT_SUCCESS;
+	return MPD_SUCCESS;
 }
 
-enum playlist_result
+int
 playlist_open_into_queue(const char *uri,
 			 unsigned start_index, unsigned end_index,
 			 struct playlist *dest, struct player_control *pc,
@@ -80,10 +80,10 @@ playlist_open_into_queue(const char *uri,
 	if (playlist == NULL) {
 		g_cond_free(cond);
 		g_mutex_free(mutex);
-		return PLAYLIST_RESULT_NO_SUCH_LIST;
+		return -PLAYLIST_NO_SUCH_LIST;
 	}
 
-	enum playlist_result result =
+	int result =
 		playlist_load_into_queue(uri, playlist, start_index, end_index,
 					 dest, pc, secure);
 	playlist_plugin_close(playlist);

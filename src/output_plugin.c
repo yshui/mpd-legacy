@@ -23,13 +23,12 @@
 
 struct audio_output *
 ao_plugin_init(const struct audio_output_plugin *plugin,
-	       const struct config_param *param,
-	       GError **error)
+	       const struct config_param *param)
 {
 	assert(plugin != NULL);
 	assert(plugin->init != NULL);
 
-	return plugin->init(param, error);
+	return plugin->init(param);
 }
 
 void
@@ -38,12 +37,12 @@ ao_plugin_finish(struct audio_output *ao)
 	ao->plugin->finish(ao);
 }
 
-bool
-ao_plugin_enable(struct audio_output *ao, GError **error_r)
+int
+ao_plugin_enable(struct audio_output *ao)
 {
 	return ao->plugin->enable != NULL
-		? ao->plugin->enable(ao, error_r)
-		: true;
+		? ao->plugin->enable(ao)
+		: MPD_SUCCESS;
 }
 
 void
@@ -53,11 +52,10 @@ ao_plugin_disable(struct audio_output *ao)
 		ao->plugin->disable(ao);
 }
 
-bool
-ao_plugin_open(struct audio_output *ao, struct audio_format *audio_format,
-	       GError **error)
+int
+ao_plugin_open(struct audio_output *ao, struct audio_format *audio_format)
 {
-	return ao->plugin->open(ao, audio_format, error);
+	return ao->plugin->open(ao, audio_format);
 }
 
 void
@@ -82,10 +80,9 @@ ao_plugin_send_tag(struct audio_output *ao, const struct tag *tag)
 }
 
 size_t
-ao_plugin_play(struct audio_output *ao, const void *chunk, size_t size,
-	       GError **error)
+ao_plugin_play(struct audio_output *ao, const void *chunk, size_t size)
 {
-	return ao->plugin->play(ao, chunk, size, error);
+	return ao->plugin->play(ao, chunk, size);
 }
 
 void

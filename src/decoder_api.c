@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder_api"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "decoder_internal.h"
@@ -257,8 +260,7 @@ size_t decoder_read(struct decoder *decoder,
 		    void *buffer, size_t length)
 {
 	/* XXX don't allow decoder==NULL */
-	GError *error = NULL;
-	size_t nbytes;
+	ssize_t nbytes;
 
 	assert(decoder == NULL ||
 	       decoder->dc->state == DECODE_STATE_START ||
@@ -283,18 +285,15 @@ size_t decoder_read(struct decoder *decoder,
 		g_cond_wait(is->cond, is->mutex);
 	}
 
-	nbytes = input_stream_read(is, buffer, length, &error);
-	assert(nbytes == 0 || error == NULL);
-	assert(nbytes > 0 || error != NULL || input_stream_eof(is));
+	nbytes = input_stream_read(is, buffer, length);
+	assert(nbytes > 0 || input_stream_eof(is));
 
-	if (unlikely(nbytes == 0 && error != NULL)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
-	}
+	if (unlikely(nbytes == 0))
+		log_warning("stream read returns 0");
 
 	input_stream_unlock(is);
 
-	return nbytes;
+	return nbytes > 0 ? nbytes : 0;
 }
 
 void
@@ -367,7 +366,6 @@ decoder_data(struct decoder *decoder,
 {
 	struct decoder_control *dc = decoder->dc;
 	const char *data = _data;
-	GError *error = NULL;
 	enum decoder_command cmd;
 
 	assert(dc->state == DECODE_STATE_DECODE);
@@ -404,13 +402,12 @@ decoder_data(struct decoder *decoder,
 	if (!audio_format_equals(&dc->in_audio_format, &dc->out_audio_format)) {
 		data = pcm_convert(&decoder->conv_state,
 				   &dc->in_audio_format, data, length,
-				   &dc->out_audio_format, &length,
-				   &error);
-		if (data == NULL) {
+				   &dc->out_audio_format, &length);
+		if (IS_ERR(data)) {
 			/* the PCM conversion has failed - stop
 			   playback, since we have no better way to
 			   bail out */
-			log_warning("%s", error->message);
+			log_warning("pcm_convert failed");
 			return DECODE_COMMAND_STOP;
 		}
 	}
@@ -476,7 +473,6 @@ enum decoder_command
 decoder_tag(struct decoder *decoder, struct input_stream *is,
 	    const struct tag *tag)
 {
-	const struct decoder_control *dc = decoder->dc;
 	enum decoder_command cmd;
 
 	assert(dc->state == DECODE_STATE_DECODE);

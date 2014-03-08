@@ -37,8 +37,8 @@ server_socket_new(server_socket_callback_t callback, void *callback_ctx);
 void
 server_socket_free(struct server_socket *ss);
 
-bool
-server_socket_open(struct server_socket *ss, GError **error_r);
+int
+server_socket_open(struct server_socket *ss);
 
 void
 server_socket_close(struct server_socket *ss);
@@ -48,8 +48,8 @@ server_socket_close(struct server_socket *ss);
  * has been called, don't call server_socket_open(), because the
  * socket is already open.
  */
-bool
-server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r);
+int
+server_socket_add_fd(struct server_socket *ss, int fd);
 
 /**
  * Add a listener on a port on all interfaces.
@@ -59,9 +59,8 @@ server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r);
  * ignore errors
  * @return true on success
  */
-bool
-server_socket_add_port(struct server_socket *ss, unsigned port,
-		       GError **error_r);
+int
+server_socket_add_port(struct server_socket *ss, unsigned port);
 
 /**
  * Resolves a host name, and adds listeners on all addresses in the
@@ -73,9 +72,9 @@ server_socket_add_port(struct server_socket *ss, unsigned port,
  * ignore errors
  * @return true on success
  */
-bool
+int
 server_socket_add_host(struct server_socket *ss, const char *hostname,
-		       unsigned port, GError **error_r);
+		       unsigned port);
 
 /**
  * Add a listener on a Unix domain socket.
@@ -85,8 +84,7 @@ server_socket_add_host(struct server_socket *ss, const char *hostname,
  * ignore errors
  * @return true on success
  */
-bool
-server_socket_add_path(struct server_socket *ss, const char *path,
-		       GError **error_r);
+int
+server_socket_add_path(struct server_socket *ss, const char *path);
 
 #endif

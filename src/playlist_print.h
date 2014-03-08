@@ -99,9 +99,8 @@ playlist_print_changes_position(struct client *client,
  * @param detail true if all details should be printed
  * @return true on success, false if the playlist does not exist
  */
-bool
-spl_print(struct client *client, const char *name_utf8, bool detail,
-	  GError **error_r);
+int
+spl_print(struct client *client, const char *name_utf8, bool detail);
 
 /**
  * Send the playlist file to the client.

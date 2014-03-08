@@ -83,14 +83,13 @@ pcm_convert_reset(struct pcm_convert_state *state);
  * @param dest_size_r returns the number of bytes of the destination buffer
  * @param error_r location to store the error occurring, or NULL to
  * ignore errors
- * @return the destination buffer, or NULL on error
+ * @return the destination buffer, or error code
  */
 const void *
 pcm_convert(struct pcm_convert_state *state,
 	    const struct audio_format *src_format,
 	    const void *src, size_t src_size,
 	    const struct audio_format *dest_format,
-	    size_t *dest_size_r,
-	    GError **error_r);
+	    size_t *dest_size_r);
 
 #endif

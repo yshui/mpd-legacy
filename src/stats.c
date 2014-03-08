@@ -69,9 +69,8 @@ visit_tag(struct visit_data *data, const struct tag *tag)
 	}
 }
 
-static bool
-collect_stats_song(struct song *song, void *_data,
-		   GError **error_r)
+static int
+collect_stats_song(struct song *song, void *_data)
 {
 	struct visit_data *data = _data;
 
@@ -80,7 +79,7 @@ collect_stats_song(struct song *song, void *_data,
 	if (song->tag != NULL)
 		visit_tag(data, song->tag);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static const struct db_visitor collect_stats_visitor = {
@@ -98,7 +97,7 @@ void stats_update(void)
 	data.artists = strset_new();
 	data.albums = strset_new();
 
-	db_walk("", &collect_stats_visitor, &data, NULL);
+	db_walk("", &collect_stats_visitor, &data);
 
 	stats.artist_count = strset_size(data.artists);
 	stats.album_count = strset_size(data.albums);

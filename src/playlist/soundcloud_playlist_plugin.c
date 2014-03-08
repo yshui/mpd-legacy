@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "playlist: soundcloud"
+
+#include "log.h"
 #include "config.h"
 #include "playlist/soundcloud_playlist_plugin.h"
 #include "conf.h"
@@ -250,19 +253,13 @@ static int
 soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* cond)
 {
 	struct input_stream *input_stream;
-	GError *error = NULL;
 	char buffer[4096];
 	unsigned char *ubuffer = (unsigned char *)buffer;
-	size_t nbytes;
+	ssize_t nbytes;
 
-	input_stream = input_stream_open(url, mutex, cond, &error);
-	if (input_stream == NULL) {
-		if (error != NULL) {
-			log_warning("%s", error->message);
-			g_error_free(error);
-		}
-		return -1;
-	}
+	input_stream = input_stream_open(url, mutex, cond);
+	if (IS_ERR(input_stream))
+		return PTR_ERR(input_stream);
 
 	g_mutex_lock(mutex);
 	input_stream_wait_ready(input_stream);
@@ -271,18 +268,14 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 	int done = 0;
 
 	while (!done) {
-		nbytes = input_stream_read(input_stream, buffer, sizeof(buffer), &error);
-		if (nbytes == 0) {
-			if (error != NULL) {
-				log_warning("%s", error->message);
-				g_error_free(error);
-			}
+		nbytes = input_stream_read(input_stream, buffer, sizeof(buffer));
+		if (nbytes <= 0) {
 			if (input_stream_eof(input_stream)) {
 				done = true;
 			} else {
 				g_mutex_unlock(mutex);
 				input_stream_close(input_stream);
-				return -1;
+				return nbytes ? nbytes : -MPD_ACCESS;
 			}
 		}
 

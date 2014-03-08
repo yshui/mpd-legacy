@@ -72,32 +72,32 @@ playlist_print_uri(FILE *file, const char *uri)
 	}
 }
 
-enum playlist_result
+int
 spl_save_queue(const char *name_utf8, const struct queue *queue)
 {
 	char *path_fs;
 	FILE *file;
 
 	if (map_spl_path() == NULL)
-		return PLAYLIST_RESULT_DISABLED;
+		return -PLAYLIST_DISABLED;
 
 	if (!spl_valid_name(name_utf8))
-		return PLAYLIST_RESULT_BAD_NAME;
+		return -PLAYLIST_BAD_NAME;
 
 	path_fs = map_spl_utf8_to_fs(name_utf8);
 	if (path_fs == NULL)
-		return PLAYLIST_RESULT_BAD_NAME;
+		return -PLAYLIST_BAD_NAME;
 
 	if (g_file_test(path_fs, G_FILE_TEST_EXISTS)) {
 		free(path_fs);
-		return PLAYLIST_RESULT_LIST_EXISTS;
+		return -PLAYLIST_LIST_EXISTS;
 	}
 
 	file = fopen(path_fs, "w");
 	free(path_fs);
 
 	if (file == NULL)
-		return PLAYLIST_RESULT_ERRNO;
+		return -PLAYLIST_ERRNO;
 
 	for (unsigned i = 0; i < queue_length(queue); i++)
 		playlist_print_song(file, queue_get(queue, i));
@@ -105,33 +105,32 @@ spl_save_queue(const char *name_utf8, const struct queue *queue)
 	fclose(file);
 
 	idle_add(IDLE_STORED_PLAYLIST);
-	return PLAYLIST_RESULT_SUCCESS;
+	return MPD_SUCCESS;
 }
 
-enum playlist_result
+int
 spl_save_playlist(const char *name_utf8, const struct playlist *playlist)
 {
 	return spl_save_queue(name_utf8, &playlist->queue);
 }
 
-bool
+int
 playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 		  const char *name_utf8,
-		  unsigned start_index, unsigned end_index,
-		  GError **error_r)
+		  unsigned start_index, unsigned end_index)
 {
 	GPtrArray *list;
 
-	list = spl_load(name_utf8, error_r);
-	if (list == NULL)
-		return false;
+	list = spl_load(name_utf8);
+	if (IS_ERR(list))
+		return PTR_ERR(list);
 
 	if (list->len < end_index)
 		end_index = list->len;
 
 	for (unsigned i = start_index; i < end_index; ++i) {
 		const char *temp = g_ptr_array_index(list, i);
-		if ((playlist_append_uri(playlist, pc, temp, NULL)) != PLAYLIST_RESULT_SUCCESS) {
+		if ((playlist_append_uri(playlist, pc, temp, NULL)) != MPD_SUCCESS) {
 			/* for windows compatibility, convert slashes */
 			char *temp2 = strdup(temp);
 			char *p = temp2;
@@ -141,7 +140,7 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 				p++;
 			}
 			if ((playlist_append_uri(playlist, pc, temp2,
-						 NULL)) != PLAYLIST_RESULT_SUCCESS) {
+						 NULL)) != MPD_SUCCESS) {
 				log_warning("can't add file \"%s\"", temp2);
 			}
 			free(temp2);
@@ -149,5 +148,5 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 	}
 
 	spl_free(list);
-	return true;
+	return MPD_SUCCESS;
 }

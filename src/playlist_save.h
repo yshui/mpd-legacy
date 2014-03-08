@@ -39,23 +39,22 @@ playlist_print_uri(FILE *fp, const char *uri);
 /**
  * Saves a queue object into a stored playlist file.
  */
-enum playlist_result
+int
 spl_save_queue(const char *name_utf8, const struct queue *queue);
 
 /**
  * Saves a playlist object into a stored playlist file.
  */
-enum playlist_result
+int
 spl_save_playlist(const char *name_utf8, const struct playlist *playlist);
 
 /**
  * Loads a stored playlist file, and append all songs to the global
  * playlist.
  */
-bool
+int
 playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 		  const char *name_utf8,
-		  unsigned start_index, unsigned end_index,
-		  GError **error_r);
+		  unsigned start_index, unsigned end_index);
 
 #endif

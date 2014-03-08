@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "utils"
+
+#include "log.h"
 #include "config.h"
 #include "utils.h"
 #include "glib_compat.h"
@@ -38,7 +41,7 @@
 
 #if HAVE_IPV6 && WIN32
 #include <winsock2.h>
-#endif 
+#endif
 
 #if HAVE_IPV6 && ! WIN32
 #include <sys/socket.h>
@@ -48,23 +51,15 @@
 #include <windows.h>
 #endif
 
-MPD_CONST
-static inline GQuark
-parse_path_quark(void)
-{
-	return g_quark_from_static_string("path");
-}
-
 char *
-parsePath(const char *path, GError **error_r)
+parsePath(const char *path)
 {
 	assert(path != NULL);
 	assert(error_r == NULL || *error_r == NULL);
 
 #ifndef WIN32
 	if (!g_path_is_absolute(path) && path[0] != '~') {
-		g_set_error(error_r, parse_path_quark(), 0,
-			    "not an absolute path: %s", path);
+		log_err("not an absolute path: %s", path);
 		return NULL;
 	} else if (path[0] == '~') {
 		const char *home;
@@ -74,8 +69,7 @@ parsePath(const char *path, GError **error_r)
 			if (user != NULL) {
 				struct passwd *passwd = getpwnam(user);
 				if (!passwd) {
-					g_set_error(error_r, parse_path_quark(), 0,
-						    "no such user: %s", user);
+					log_err("no such user: %s", user);
 					return NULL;
 				}
 
@@ -83,9 +77,7 @@ parsePath(const char *path, GError **error_r)
 			} else {
 				home = g_get_home_dir();
 				if (home == NULL) {
-					g_set_error_literal(error_r, parse_path_quark(), 0,
-							    "problems getting home "
-							    "for current user");
+					log_err("problems getting home for current user");
 					return NULL;
 				}
 			}
@@ -101,8 +93,7 @@ parsePath(const char *path, GError **error_r)
 
 			struct passwd *passwd = getpwnam(user);
 			if (!passwd) {
-				g_set_error(error_r, parse_path_quark(), 0,
-					    "no such user: %s", user);
+				log_err("no such user: %s", user);
 				free(user);
 				return NULL;
 			}

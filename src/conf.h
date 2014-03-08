@@ -111,17 +111,6 @@ struct config_param {
 	bool used;
 };
 
-/**
- * A GQuark for GError instances, resulting from malformed
- * configuration.
- */
-MPD_CONST
-static inline GQuark
-config_quark(void)
-{
-	return g_quark_from_static_string("config");
-}
-
 void config_global_init(void);
 void config_global_finish(void);
 
@@ -131,8 +120,8 @@ void config_global_finish(void);
  */
 void config_global_check(void);
 
-bool
-config_read_file(const char *file, GError **error_r);
+int
+config_read_file(const char *file);
 
 /* don't free the returned value
    set _last_ to NULL to get first entry */
@@ -204,8 +193,7 @@ config_dup_block_string(const struct config_param *param, const char *name,
  */
 MPD_MALLOC
 char *
-config_dup_block_path(const struct config_param *param, const char *name,
-		      GError **error_r);
+config_dup_block_path(const struct config_param *param, const char *name);
 
 MPD_PURE
 unsigned

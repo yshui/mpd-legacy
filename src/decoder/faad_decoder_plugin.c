@@ -206,7 +206,7 @@ faad_song_duration(struct decoder_buffer *buffer, struct input_stream *is)
 		/* obtain the duration from the ADTS header */
 		float song_length = adts_song_duration(buffer);
 
-		input_stream_lock_seek(is, tagsize, SEEK_SET, NULL);
+		input_stream_lock_seek(is, tagsize, SEEK_SET);
 
 		data = decoder_buffer_read(buffer, &length);
 		if (data != NULL)
@@ -284,7 +284,7 @@ faad_decoder_init(faacDecHandle decoder, struct decoder_buffer *buffer,
 	decoder_buffer_consume(buffer, nbytes);
 
 	return audio_format_init_checked(audio_format, sample_rate,
-					 SAMPLE_FORMAT_S16, channels, error_r);
+					 SAMPLE_FORMAT_S16, channels) == MPD_SUCCESS;
 }
 
 /**

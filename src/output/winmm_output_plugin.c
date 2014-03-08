@@ -53,15 +53,6 @@ struct winmm_output {
 	unsigned next_buffer;
 };
 
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-winmm_output_quark(void)
-{
-	return g_quark_from_static_string("winmm_output");
-}
-
 HWAVEOUT
 winmm_output_get_handle(struct winmm_output* output)
 {
@@ -75,7 +66,7 @@ winmm_output_test_default_device(void)
 }
 
 static bool
-get_device_id(const char *device_name, UINT *device_id, GError **error_r)
+get_device_id(const char *device_name, UINT *device_id)
 {
 	/* if device is not specified use wave mapper */
 	if (device_name == NULL) {
@@ -110,25 +101,25 @@ get_device_id(const char *device_name, UINT *device_id, GError **error_r)
 	}
 
 fail:
-	g_set_error(error_r, winmm_output_quark(), 0,
-		    "device \"%s\" is not found", device_name);
+	log_err("device \"%s\" is not found", device_name);
 	return false;
 }
 
 static struct audio_output *
-winmm_output_init(const struct config_param *param, GError **error_r)
+winmm_output_init(const struct config_param *param)
 {
 	struct winmm_output *wo = g_new(struct winmm_output, 1);
-	if (!ao_base_init(&wo->base, &winmm_output_plugin, param, error_r)) {
-		g_free(wo);
-		return NULL;
+	int ret = ao_base_init(&wo->base, &winmm_output_plugin, param, error_r);
+	if (ret != MPD_SUCCESS) {
+		free(wo);
+		return ERR_PTR(ret);
 	}
 
 	const char *device = config_get_block_string(param, "device", NULL);
-	if (!get_device_id(device, &wo->device_id, error_r)) {
+	if (!get_device_id(device, &wo->device_id)) {
 		ao_base_finish(&wo->base);
-		g_free(wo);
-		return NULL;
+		free(wo);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	return &wo->base;
@@ -143,17 +134,15 @@ winmm_output_finish(struct audio_output *ao)
 	g_free(wo);
 }
 
-static bool
-winmm_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		  GError **error_r)
+static int
+winmm_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct winmm_output *wo = (struct winmm_output *)ao;
 
 	wo->event = CreateEvent(NULL, false, false, NULL);
 	if (wo->event == NULL) {
-		g_set_error(error_r, winmm_output_quark(), 0,
-			    "CreateEvent() failed");
-		return false;
+		log_err("CreateEvent() failed");
+		return -MPD_3RD;
 	}
 
 	switch (audio_format->format) {
@@ -186,9 +175,8 @@ winmm_output_open(struct audio_output *ao, struct audio_format *audio_format,
 				      (DWORD_PTR)wo->event, 0, CALLBACK_EVENT);
 	if (result != MMSYSERR_NOERROR) {
 		CloseHandle(wo->event);
-		g_set_error(error_r, winmm_output_quark(), result,
-			    "waveOutOpen() failed");
-		return false;
+		log_err("waveOutOpen() failed");
+		return -MPD_3RD;
 	}
 
 	for (unsigned i = 0; i < G_N_ELEMENTS(wo->buffers); ++i) {
@@ -198,7 +186,7 @@ winmm_output_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	wo->next_buffer = 0;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -217,10 +205,9 @@ winmm_output_close(struct audio_output *ao)
 /**
  * Copy data into a buffer, and prepare the wave header.
  */
-static bool
+static int
 winmm_set_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
-		 const void *data, size_t size,
-		 GError **error_r)
+		 const void *data, size_t size)
 {
 	void *dest = pcm_buffer_get(&buffer->buffer, size);
 	assert(dest != NULL);
@@ -234,35 +221,32 @@ winmm_set_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
 	MMRESULT result = waveOutPrepareHeader(wo->handle, &buffer->hdr,
 					       sizeof(buffer->hdr));
 	if (result != MMSYSERR_NOERROR) {
-		g_set_error(error_r, winmm_output_quark(), result,
-			    "waveOutPrepareHeader() failed");
-		return false;
+		log_err("waveOutPrepareHeader() failed");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 /**
  * Wait until the buffer is finished.
  */
-static bool
-winmm_drain_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
-		   GError **error_r)
+static int
+winmm_drain_buffer(struct winmm_output *wo, struct winmm_buffer *buffer)
 {
 	if ((buffer->hdr.dwFlags & WHDR_DONE) == WHDR_DONE)
 		/* already finished */
-		return true;
+		return MPD_SUCCESS;
 
 	while (true) {
 		MMRESULT result = waveOutUnprepareHeader(wo->handle,
 							 &buffer->hdr,
 							 sizeof(buffer->hdr));
 		if (result == MMSYSERR_NOERROR)
-			return true;
+			return MPD_SUCCESS;
 		else if (result != WAVERR_STILLPLAYING) {
-			g_set_error(error_r, winmm_output_quark(), result,
-				    "waveOutUnprepareHeader() failed");
-			return false;
+			log_err("waveOutUnprepareHeader() failed");
+			return -MPD_3RD;
 		}
 
 		/* wait some more */
@@ -271,7 +255,7 @@ winmm_drain_buffer(struct winmm_output *wo, struct winmm_buffer *buffer,
 }
 
 static size_t
-winmm_output_play(struct audio_output *ao, const void *chunk, size_t size, GError **error_r)
+winmm_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct winmm_output *wo = (struct winmm_output *)ao;
 
@@ -287,8 +271,7 @@ winmm_output_play(struct audio_output *ao, const void *chunk, size_t size, GErro
 	if (result != MMSYSERR_NOERROR) {
 		waveOutUnprepareHeader(wo->handle, &buffer->hdr,
 				       sizeof(buffer->hdr));
-		g_set_error(error_r, winmm_output_quark(), result,
-			    "waveOutWrite() failed");
+		log_err("waveOutWrite() failed");
 		return 0;
 	}
 
@@ -299,18 +282,21 @@ winmm_output_play(struct audio_output *ao, const void *chunk, size_t size, GErro
 	return size;
 }
 
-static bool
-winmm_drain_all_buffers(struct winmm_output *wo, GError **error_r)
+static int
+winmm_drain_all_buffers(struct winmm_output *wo)
 {
-	for (unsigned i = wo->next_buffer; i < G_N_ELEMENTS(wo->buffers); ++i)
-		if (!winmm_drain_buffer(wo, &wo->buffers[i], error_r))
-			return false;
+	for (unsigned i = wo->next_buffer; i < G_N_ELEMENTS(wo->buffers); ++i) {
+		int ret = winmm_drain_buffer(wo, &wo->buffers[i]);
+		if (ret != MPD_SUCCESS)
+			return ret;
+	}
 
-	for (unsigned i = 0; i < wo->next_buffer; ++i)
-		if (!winmm_drain_buffer(wo, &wo->buffers[i], error_r))
-			return false;
+	for (unsigned i = 0; i < wo->next_buffer; ++i) {
+		int ret = winmm_drain_buffer(wo, &wo->buffers[i]);
+		if (ret != MPD_SUCCESS)
+			return ret;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void

@@ -42,11 +42,10 @@ struct tag *tag_id3_import(struct id3_tag *);
  * Loads the ID3 tags from the file into a libid3tag object.  The
  * return value must be freed with id3_tag_delete().
  *
- * @return NULL on error or if no ID3 tag was found in the file (no
- * GError will be set)
+ * @return NULL on error or error code
  */
 struct id3_tag *
-tag_id3_load(const char *path_fs, GError **error_r);
+tag_id3_load(const char *path_fs);
 
 #else
 

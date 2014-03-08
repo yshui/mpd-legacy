@@ -17,11 +17,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "cmdline"
+
+#include "log.h"
 #include "config.h"
 #include "utils.h"
 #include "cmdline.h"
 #include "path.h"
-#include "log.h"
 #include "conf.h"
 #include "decoder_list.h"
 #include "decoder_plugin.h"
@@ -56,12 +58,6 @@
 #define USER_CONFIG_FILE_LOCATION1	".mpdconf"
 #define USER_CONFIG_FILE_LOCATION2	".mpd/mpd.conf"
 #endif
-
-static GQuark
-cmdline_quark(void)
-{
-	return g_quark_from_static_string("cmdline");
-}
 
 G_GNUC_NORETURN
 static void version(void)
@@ -117,8 +113,9 @@ static void version(void)
 
 	puts("\n"
 	     "Input plugins:");
-	input_plugins_for_each(plugin)
-		printf(" %s", plugin->name);
+	int i;
+	for(i = 0; input_plugins[i]; i++)
+		printf(" %s", input_plugins[i]->name);
 
 	puts("\n\n"
 	     "Playlist plugins:");
@@ -135,13 +132,13 @@ static void version(void)
 static const char *summary =
 	"Music Player Daemon - a daemon for playing music.";
 
-bool
-parse_cmdline(int argc, char **argv, struct options *options,
-	      GError **error_r)
+int
+parse_cmdline(int argc, char **argv, struct options *options)
 {
 	GError *error = NULL;
 	GOptionContext *context;
-	bool ret;
+	bool success;
+	int ret = MPD_SUCCESS;
 	static gboolean option_version,
 		option_no_daemon,
 		option_no_config;
@@ -173,10 +170,10 @@ parse_cmdline(int argc, char **argv, struct options *options,
 
 	g_option_context_set_summary(context, summary);
 
-	ret = g_option_context_parse(context, &argc, &argv, &error);
+	success = g_option_context_parse(context, &argc, &argv, &error);
 	g_option_context_free(context);
 
-	if (!ret)
+	if (!success)
 		MPD_ERROR("option parsing failed: %s\n", error->message);
 
 	if (option_version)
@@ -190,7 +187,7 @@ parse_cmdline(int argc, char **argv, struct options *options,
 
 	if (option_no_config) {
 		log_debug("Ignoring config, using daemon defaults\n");
-		return true;
+		return MPD_SUCCESS;
 	} else if (argc <= 1) {
 		/* default configuration file path */
 		char *path1;
@@ -199,7 +196,7 @@ parse_cmdline(int argc, char **argv, struct options *options,
 		path1 = build_db_filename(g_get_user_config_dir(),
 					CONFIG_FILE_LOCATION, NULL);
 		if (g_file_test(path1, G_FILE_TEST_IS_REGULAR))
-			ret = config_read_file(path1, error_r);
+			ret = config_read_file(path1);
 		else {
 			int i = 0;
 			char *system_path = NULL;
@@ -213,7 +210,7 @@ parse_cmdline(int argc, char **argv, struct options *options,
 						NULL);
 				if(g_file_test(system_path,
 						G_FILE_TEST_IS_REGULAR)) {
-					ret = config_read_file(system_path,error_r);
+					ret = config_read_file(system_path);
 					free(system_path);
 					break;
 				} else
@@ -228,13 +225,12 @@ parse_cmdline(int argc, char **argv, struct options *options,
 		path2 = build_db_filename(g_get_home_dir(),
 					USER_CONFIG_FILE_LOCATION2, NULL);
 		if (g_file_test(path1, G_FILE_TEST_IS_REGULAR))
-			ret = config_read_file(path1, error_r);
+			ret = config_read_file(path1);
 		else if (g_file_test(path2, G_FILE_TEST_IS_REGULAR))
-			ret = config_read_file(path2, error_r);
+			ret = config_read_file(path2);
 		else if (g_file_test(SYSTEM_CONFIG_FILE_LOCATION,
 				     G_FILE_TEST_IS_REGULAR))
-			ret = config_read_file(SYSTEM_CONFIG_FILE_LOCATION,
-					       error_r);
+			ret = config_read_file(SYSTEM_CONFIG_FILE_LOCATION);
 #endif
 
 		free(path1);
@@ -245,10 +241,9 @@ parse_cmdline(int argc, char **argv, struct options *options,
 		return ret;
 	} else if (argc == 2) {
 		/* specified configuration file */
-		return config_read_file(argv[1], error_r);
+		return config_read_file(argv[1]);
 	} else {
-		g_set_error(error_r, cmdline_quark(), 0,
-			    "too many arguments");
-		return false;
+		log_err("too many arguments");
+		return -MPD_INVAL;
 	}
 }

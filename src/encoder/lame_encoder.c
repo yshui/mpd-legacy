@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "encoder: lame"
+
+#include "log.h"
 #include "config.h"
 #include "encoder_api.h"
 #include "encoder_plugin.h"
@@ -41,15 +44,9 @@ struct lame_encoder {
 
 extern const struct encoder_plugin lame_encoder_plugin;
 
-static inline GQuark
-lame_encoder_quark(void)
-{
-	return g_quark_from_static_string("lame_encoder");
-}
-
-static bool
+static int
 lame_encoder_configure(struct lame_encoder *encoder,
-		       const struct config_param *param, GError **error)
+		       const struct config_param *param)
 {
 	const char *value;
 	char *endptr;
@@ -62,48 +59,44 @@ lame_encoder_configure(struct lame_encoder *encoder,
 
 		if (*endptr != '\0' || encoder->quality < -1.0 ||
 		    encoder->quality > 10.0) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "quality \"%s\" is not a number in the "
+			log_err("quality \"%s\" is not a number in the "
 				    "range -1 to 10, line %i",
 				    value, param->line);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		if (config_get_block_string(param, "bitrate", NULL) != NULL) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "quality and bitrate are "
+			log_err("quality and bitrate are "
 				    "both defined (line %i)",
 				    param->line);
-			return false;
+			return -MPD_INVAL;
 		}
 	} else {
 		/* a bit rate was configured */
 
 		value = config_get_block_string(param, "bitrate", NULL);
 		if (value == NULL) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "neither bitrate nor quality defined "
+			log_err("neither bitrate nor quality defined "
 				    "at line %i",
 				    param->line);
-			return false;
+			return -MPD_MISS_VALUE;
 		}
 
 		encoder->quality = -2.0;
 		encoder->bitrate = g_ascii_strtoll(value, &endptr, 10);
 
 		if (*endptr != '\0' || encoder->bitrate <= 0) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "bitrate at line %i should be a positive integer",
+			log_err("bitrate at line %i should be a positive integer",
 				    param->line);
-			return false;
+			return -MPD_INVAL;
 		}
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct encoder *
-lame_encoder_init(const struct config_param *param, GError **error)
+lame_encoder_init(const struct config_param *param)
 {
 	struct lame_encoder *encoder;
 
@@ -111,10 +104,11 @@ lame_encoder_init(const struct config_param *param, GError **error)
 	encoder_struct_init(&encoder->encoder, &lame_encoder_plugin);
 
 	/* load configuration from "param" */
-	if (!lame_encoder_configure(encoder, param, error)) {
+	int ret = lame_encoder_configure(encoder, param);
+	if (ret != MPD_SUCCESS) {
 		/* configuration has failed, roll back and return error */
-		g_free(encoder);
-		return NULL;
+		free(encoder);
+		return ERR_PTR(ret);
 	}
 
 	return &encoder->encoder;
@@ -130,65 +124,57 @@ lame_encoder_finish(struct encoder *_encoder)
 	g_free(encoder);
 }
 
-static bool
-lame_encoder_setup(struct lame_encoder *encoder, GError **error)
+static int
+lame_encoder_setup(struct lame_encoder *encoder)
 {
 	if (encoder->quality >= -1.0) {
 		/* a quality was configured (VBR) */
 
 		if (0 != lame_set_VBR(encoder->gfp, vbr_rh)) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "error setting lame VBR mode");
-			return false;
+			log_err("error setting lame VBR mode");
+			return -MPD_3RD;
 		}
 		if (0 != lame_set_VBR_q(encoder->gfp, encoder->quality)) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "error setting lame VBR quality");
-			return false;
+			log_err("error setting lame VBR quality");
+			return -MPD_3RD;
 		}
 	} else {
 		/* a bit rate was configured */
 
 		if (0 != lame_set_brate(encoder->gfp, encoder->bitrate)) {
-			g_set_error(error, lame_encoder_quark(), 0,
-				    "error setting lame bitrate");
-			return false;
+			log_err("error setting lame bitrate");
+			return -MPD_3RD;
 		}
 	}
 
 	if (0 != lame_set_num_channels(encoder->gfp,
 				       encoder->audio_format.channels)) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "error setting lame num channels");
-		return false;
+		log_err("error setting lame num channels");
+		return -MPD_3RD;
 	}
 
 	if (0 != lame_set_in_samplerate(encoder->gfp,
 					encoder->audio_format.sample_rate)) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "error setting lame sample rate");
-		return false;
+		log_err("error setting lame sample rate");
+		return -MPD_3RD;
 	}
 
 	if (0 != lame_set_out_samplerate(encoder->gfp,
 					 encoder->audio_format.sample_rate)) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "error setting lame out sample rate");
-		return false;
+		log_err("error setting lame out sample rate");
+		return -MPD_3RD;
 	}
 
 	if (0 > lame_init_params(encoder->gfp)) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "error initializing lame params");
-		return false;
+		log_err("error initializing lame params");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-lame_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
-		  GError **error)
+static int
+lame_encoder_open(struct encoder *_encoder, struct audio_format *audio_format)
 {
 	struct lame_encoder *encoder = (struct lame_encoder *)_encoder;
 
@@ -199,19 +185,19 @@ lame_encoder_open(struct encoder *_encoder, struct audio_format *audio_format,
 
 	encoder->gfp = lame_init();
 	if (encoder->gfp == NULL) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "lame_init() failed");
-		return false;
+		log_err("lame_init() failed");
+		return -MPD_3RD;
 	}
 
-	if (!lame_encoder_setup(encoder, error)) {
+	int ret = lame_encoder_setup(encoder);
+	if (ret != MPD_SUCCESS) {
 		lame_close(encoder->gfp);
-		return false;
+		return ret;
 	}
 
 	encoder->buffer_length = 0;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -222,10 +208,9 @@ lame_encoder_close(struct encoder *_encoder)
 	lame_close(encoder->gfp);
 }
 
-static bool
+static ssize_t
 lame_encoder_write(struct encoder *_encoder,
-		   const void *data, size_t length,
-		   GError **error)
+		   const void *data, size_t length)
 {
 	struct lame_encoder *encoder = (struct lame_encoder *)_encoder;
 	unsigned num_frames;
@@ -256,13 +241,12 @@ lame_encoder_write(struct encoder *_encoder,
 	g_free(right);
 
 	if (bytes_out < 0) {
-		g_set_error(error, lame_encoder_quark(), 0,
-			    "lame encoder failed");
-		return false;
+		log_err("lame encoder failed");
+		return -MPD_3RD;
 	}
 
 	encoder->buffer_length = (size_t)bytes_out;
-	return true;
+	return bytes_out;
 }
 
 static size_t

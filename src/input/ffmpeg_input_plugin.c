@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "input: ffmpeg"
+
+#include "log.h"
 #include "config.h"
 #include "input/ffmpeg_input_plugin.h"
 #include "input_internal.h"
@@ -41,12 +44,6 @@ struct input_ffmpeg {
 	bool eof;
 };
 
-static inline GQuark
-ffmpeg_quark(void)
-{
-	return g_quark_from_static_string("ffmpeg");
-}
-
 static inline bool
 input_ffmpeg_supported(void)
 {
@@ -58,26 +55,23 @@ input_ffmpeg_supported(void)
 #endif
 }
 
-static bool
-input_ffmpeg_init(const struct config_param *param,
-		  GError **error_r)
+static int
+input_ffmpeg_init(const struct config_param *param)
 {
 	av_register_all();
 
 	/* disable this plugin if there's no registered protocol */
 	if (!input_ffmpeg_supported()) {
-		g_set_error(error_r, ffmpeg_quark(), 0,
-			    "No protocol");
-		return false;
+		log_err("No protocol");
+		return -MPD_DISABLED;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct input_stream *
 input_ffmpeg_open(const char *uri,
-		  GMutex *mutex, GCond *cond,
-		  GError **error_r)
+		  GMutex *mutex, GCond *cond)
 {
 	struct input_ffmpeg *i;
 
@@ -101,10 +95,9 @@ input_ffmpeg_open(const char *uri,
 	int ret = url_open(&i->h, uri, URL_RDONLY);
 #endif
 	if (ret != 0) {
-		g_free(i);
-		g_set_error(error_r, ffmpeg_quark(), ret,
-			    "libavformat failed to open the URI");
-		return NULL;
+		free(i);
+		log_err("libavformat failed to open the URI");
+		return ERR_PTR(-MPD_3RD);
 	}
 
 	i->eof = false;
@@ -127,9 +120,8 @@ input_ffmpeg_open(const char *uri,
 	return &i->base;
 }
 
-static size_t
-input_ffmpeg_read(struct input_stream *is, void *ptr, size_t size,
-		  GError **error_r)
+static ssize_t
+input_ffmpeg_read(struct input_stream *is, void *ptr, size_t size)
 {
 	struct input_ffmpeg *i = (struct input_ffmpeg *)is;
 
@@ -140,11 +132,10 @@ input_ffmpeg_read(struct input_stream *is, void *ptr, size_t size,
 #endif
 	if (ret <= 0) {
 		if (ret < 0)
-			g_set_error(error_r, ffmpeg_quark(), 0,
-				    "url_read() failed");
+			log_err("url_read() failed");
 
 		i->eof = true;
-		return false;
+		return -MPD_3RD;
 	}
 
 	is->offset += ret;
@@ -173,9 +164,8 @@ input_ffmpeg_eof(struct input_stream *is)
 	return i->eof;
 }
 
-static bool
-input_ffmpeg_seek(struct input_stream *is, goffset offset, int whence,
-		  GError **error_r)
+static int
+input_ffmpeg_seek(struct input_stream *is, goffset offset, int whence)
 {
 	struct input_ffmpeg *i = (struct input_ffmpeg *)is;
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53,0,0)
@@ -186,10 +176,10 @@ input_ffmpeg_seek(struct input_stream *is, goffset offset, int whence,
 
 	if (ret >= 0) {
 		i->eof = false;
-		return true;
+		return MPD_SUCCESS;
 	} else {
-		g_set_error(error_r, ffmpeg_quark(), 0, "url_seek() failed");
-		return false;
+		log_err("url_seek() failed");
+		return -MPD_3RD;
 	}
 }
 

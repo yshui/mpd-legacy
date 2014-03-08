@@ -27,45 +27,35 @@
 #include <unistd.h>
 #include <string.h>
 
-bool
-client_allow_file(const struct client *client, const char *path_fs,
-		  GError **error_r)
+int
+client_allow_file(const struct client *client, const char *path_fs)
 {
 #ifdef WIN32
 	(void)client;
 	(void)path_fs;
 
-	g_set_error(error_r, ack_quark(), ACK_ERROR_PERMISSION,
-		    "Access denied");
-	return false;
+	return -MPD_PERM;
 #else
 	const int uid = client_get_uid(client);
 	if (uid >= 0 && (uid_t)uid == geteuid())
 		/* always allow access if user runs his own MPD
 		   instance */
-		return true;
+		return -MPD_PERM;
 
 	if (uid <= 0) {
 		/* unauthenticated client */
-		g_set_error(error_r, ack_quark(), ACK_ERROR_PERMISSION,
-			    "Access denied");
-		return false;
+		return -MPD_PERM;
 	}
 
 	struct stat st;
-	if (stat(path_fs, &st) < 0) {
-		g_set_error(error_r, g_file_error_quark(), errno,
-			    "%s", strerror(errno));
-		return false;
-	}
+	if (stat(path_fs, &st) < 0)
+		return -MPD_ACCESS;
 
 	if (st.st_uid != (uid_t)uid && (st.st_mode & 0444) != 0444) {
 		/* client is not owner */
-		g_set_error(error_r, ack_quark(), ACK_ERROR_PERMISSION,
-			    "Access denied");
-		return false;
+		return -MPD_PERM;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 #endif
 }

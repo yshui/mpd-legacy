@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "mixer: winmm"
+
+#include "log.h"
 #include "config.h"
 #include "mixer_api.h"
 #include "output_api.h"
@@ -34,12 +37,6 @@ struct winmm_mixer {
 	struct winmm_output *output;
 };
 
-static inline GQuark
-winmm_mixer_quark(void)
-{
-	return g_quark_from_static_string("winmm_mixer");
-}
-
 static inline int
 winmm_volume_decode(DWORD volume)
 {
@@ -54,8 +51,7 @@ winmm_volume_encode(int volume)
 }
 
 static struct mixer *
-winmm_mixer_init(void *ao, const struct config_param *param,
-		 GError **error_r)
+winmm_mixer_init(void *ao, const struct config_param *param)
 {
 	assert(ao != NULL);
 
@@ -73,7 +69,7 @@ winmm_mixer_finish(struct mixer *data)
 }
 
 static int
-winmm_mixer_get_volume(struct mixer *mixer, GError **error_r)
+winmm_mixer_get_volume(struct mixer *mixer)
 {
 	struct winmm_mixer *wm = (struct winmm_mixer *) mixer;
 	DWORD volume;
@@ -81,16 +77,15 @@ winmm_mixer_get_volume(struct mixer *mixer, GError **error_r)
 	MMRESULT result = waveOutGetVolume(handle, &volume);
 
 	if (result != MMSYSERR_NOERROR) {
-		g_set_error(error_r, 0, winmm_mixer_quark(),
-			    "Failed to get winmm volume");
-		return -1;
+		log_err("Failed to get winmm volume");
+		return -MPD_3RD;
 	}
 
 	return winmm_volume_decode(volume);
 }
 
-static bool
-winmm_mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r)
+static int
+winmm_mixer_set_volume(struct mixer *mixer, unsigned volume)
 {
 	struct winmm_mixer *wm = (struct winmm_mixer *) mixer;
 	DWORD value = winmm_volume_encode(volume);
@@ -98,12 +93,11 @@ winmm_mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r)
 	MMRESULT result = waveOutSetVolume(handle, value);
 
 	if (result != MMSYSERR_NOERROR) {
-		g_set_error(error_r, 0, winmm_mixer_quark(),
-			    "Failed to set winmm volume");
-		return false;
+		log_err("Failed to set winmm volume");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 const struct mixer_plugin winmm_mixer_plugin = {

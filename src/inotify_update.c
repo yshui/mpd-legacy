@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "inotify_update"
+
 #include "config.h" /* must be first for large file support */
 #include "log.h"
 #include "inotify_update.h"
@@ -153,7 +155,6 @@ static void
 recursive_watch_subdirectories(struct watch_directory *directory,
 			       const char *path_fs, unsigned depth)
 {
-	GError *error = NULL;
 	DIR *dir;
 	struct dirent *ent;
 
@@ -197,12 +198,10 @@ recursive_watch_subdirectories(struct watch_directory *directory,
 		}
 
 		ret = mpd_inotify_source_add(inotify_source, child_path_fs,
-					     IN_MASK, &error);
+					     IN_MASK);
 		if (ret < 0) {
-			log_warning("Failed to register %s: %s",
-				  child_path_fs, error->message);
-			g_error_free(error);
-			error = NULL;
+			log_warning("Failed to register %s",
+				  child_path_fs);
 			free(child_path_fs);
 			continue;
 		}
@@ -323,8 +322,6 @@ mpd_inotify_callback(int wd, unsigned mask,
 void
 mpd_inotify_init(unsigned max_depth)
 {
-	GError *error = NULL;
-
 	log_debug("initializing inotify");
 
 	const char *path = mapper_get_music_directory_fs();
@@ -333,11 +330,9 @@ mpd_inotify_init(unsigned max_depth)
 		return;
 	}
 
-	inotify_source = mpd_inotify_source_new(mpd_inotify_callback, NULL,
-						&error);
-	if (inotify_source == NULL) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	inotify_source = mpd_inotify_source_new(mpd_inotify_callback, NULL);
+	if (IS_ERR(inotify_source)) {
+		log_warning("Failed to create inotify source.");
 		return;
 	}
 
@@ -345,10 +340,9 @@ mpd_inotify_init(unsigned max_depth)
 
 	inotify_root.name = strdup(path);
 	inotify_root.descriptor = mpd_inotify_source_add(inotify_source, path,
-							 IN_MASK, &error);
+							 IN_MASK);
 	if (inotify_root.descriptor < 0) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+		log_warning("Failed to add root inotify source");
 		mpd_inotify_source_free(inotify_source);
 		inotify_source = NULL;
 		return;

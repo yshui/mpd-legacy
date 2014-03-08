@@ -221,7 +221,7 @@ rss_open_stream(struct input_stream *is)
 	struct rss_playlist *playlist;
 	GMarkupParseContext *context;
 	char buffer[1024];
-	size_t nbytes;
+	ssize_t nbytes;
 	bool success;
 	GError *error = NULL;
 
@@ -232,14 +232,11 @@ rss_open_stream(struct input_stream *is)
 					     &parser, rss_parser_destroy);
 
 	while (true) {
-		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer),
-						&error);
-		if (nbytes == 0) {
-			if (error != NULL) {
-				g_markup_parse_context_free(context);
-				log_warning("%s", error->message);
-				g_error_free(error);
-				return NULL;
+		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer));
+		if (nbytes <= 0) {
+			if (nbytes < 0) {
+				log_warning("Failed to read");
+				return ERR_PTR(nbytes);
 			}
 
 			break;

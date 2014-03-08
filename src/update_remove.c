@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_remove"
+
 #include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_remove.h"

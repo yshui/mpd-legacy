@@ -107,12 +107,12 @@ input_rewind_close(struct input_stream *is)
 	g_free(r);
 }
 
-static bool
-input_rewind_check(struct input_stream *is, GError **error_r)
+static int
+input_rewind_check(struct input_stream *is)
 {
 	struct input_rewind *r = (struct input_rewind *)is;
 
-	return input_stream_check(r->input, error_r);
+	return input_stream_check(r->input);
 }
 
 static void
@@ -140,9 +140,8 @@ input_rewind_available(struct input_stream *is)
 	return input_stream_available(r->input);
 }
 
-static size_t
-input_rewind_read(struct input_stream *is, void *ptr, size_t size,
-		  GError **error_r)
+static ssize_t
+input_rewind_read(struct input_stream *is, void *ptr, size_t size)
 {
 	struct input_rewind *r = (struct input_rewind *)is;
 
@@ -163,7 +162,10 @@ input_rewind_read(struct input_stream *is, void *ptr, size_t size,
 	} else {
 		/* pass method call to underlying stream */
 
-		size_t nbytes = input_stream_read(r->input, ptr, size, error_r);
+		ssize_t nbytes = input_stream_read(r->input, ptr, size);
+
+		if (nbytes < 0)
+			return nbytes;
 
 		if (r->input->offset > (goffset)sizeof(r->buffer))
 			/* disable buffering */
@@ -191,15 +193,14 @@ input_rewind_eof(struct input_stream *is)
 	return !reading_from_buffer(r) && input_stream_eof(r->input);
 }
 
-static bool
-input_rewind_seek(struct input_stream *is, goffset offset, int whence,
-		  GError **error_r)
+static int
+input_rewind_seek(struct input_stream *is, off64_t offset, int whence)
 {
 	struct input_rewind *r = (struct input_rewind *)is;
 
 	assert(is->ready);
 
-	if (whence == SEEK_SET && r->tail > 0 && offset <= (goffset)r->tail) {
+	if (whence == SEEK_SET && r->tail > 0 && offset <= (off64_t)r->tail) {
 		/* buffered seek */
 
 		assert(!reading_from_buffer(r) ||
@@ -209,10 +210,9 @@ input_rewind_seek(struct input_stream *is, goffset offset, int whence,
 		r->head = (size_t)offset;
 		is->offset = offset;
 
-		return true;
+		return MPD_SUCCESS;
 	} else {
-		bool success = input_stream_seek(r->input, offset, whence,
-						 error_r);
+		int success = input_stream_seek(r->input, offset, whence);
 		copy_attributes(r);
 
 		/* disable the buffer, because r->input has left the

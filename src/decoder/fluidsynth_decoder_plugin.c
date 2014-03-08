@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "fluidsynth"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
@@ -26,8 +29,6 @@
 
 #include <fluidsynth.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "fluidsynth"
 
 static unsigned sample_rate;
 static const char *soundfont_path;
@@ -36,26 +37,26 @@ static const char *soundfont_path;
  * Convert a fluidsynth log level to a GLib log level.
  */
 static GLogLevelFlags
-fluidsynth_level_to_glib(enum fluid_log_level level)
+fluidsynth_level_to_mpd(enum fluid_log_level level)
 {
 	switch (level) {
 	case FLUID_PANIC:
 	case FLUID_ERR:
-		return G_LOG_LEVEL_CRITICAL;
+		return LOG_ERR;
 
 	case FLUID_WARN:
-		return G_LOG_LEVEL_WARNING;
+		return LOG_WARNING;
 
 	case FLUID_INFO:
-		return G_LOG_LEVEL_INFO;
+		return LOG_INFO;
 
 	case FLUID_DBG:
 	case LAST_LOG_LEVEL:
-		return G_LOG_LEVEL_DEBUG;
+		return LOG_DEBUG;
 	}
 
 	/* invalid fluidsynth log level */
-	return G_LOG_LEVEL_MESSAGE;
+	return LOG_NOTICE;
 }
 
 /**
@@ -65,20 +66,15 @@ fluidsynth_level_to_glib(enum fluid_log_level level)
 static void
 fluidsynth_mpd_log_function(int level, char *message, void *data)
 {
-	g_log(G_LOG_DOMAIN, fluidsynth_level_to_glib(level), "%s", message);
+	log_meta(fluidsynth_level_to_mpd(level), "%s", message);
 }
 
 static bool
 fluidsynth_init(const struct config_param *param)
 {
-	GError *error = NULL;
-
 	sample_rate = config_get_block_unsigned(param, "sample_rate", 48000);
-	if (!audio_check_sample_rate(sample_rate, &error)) {
-		log_warning("%s\n", error->message);
-		g_error_free(error);
+	if (audio_check_sample_rate(sample_rate) != MPD_SUCCESS)
 		return false;
-	}
 
 	soundfont_path =
 		config_get_block_string(param, "soundfont",

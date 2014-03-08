@@ -17,22 +17,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter"
+
 #include "filter_config.h"
 #include "config.h"
 #include "conf.h"
+#include "log.h"
 #include "filter/chain_filter_plugin.h"
 #include "filter_plugin.h"
 #include "filter_internal.h"
 #include "filter_registry.h"
 
 #include <string.h>
-
-
-static GQuark
-filter_quark(void)
-{
-	return g_quark_from_static_string("filter");
-}
 
 /**
  * Find the "filter" configuration block for the specified name.
@@ -42,7 +38,7 @@ filter_quark(void)
  * @return the configuration block, or NULL if none was configured
  */
 static const struct config_param *
-filter_plugin_config(const char *filter_template_name, GError **error_r)
+filter_plugin_config(const char *filter_template_name)
 {
 	const struct config_param *param = NULL;
 
@@ -50,21 +46,19 @@ filter_plugin_config(const char *filter_template_name, GError **error_r)
 		const char *name =
 			config_get_block_string(param, "name", NULL);
 		if (name == NULL) {
-			g_set_error(error_r, filter_quark(), 1,
-				    "filter configuration without 'name' name in line %d",
+			log_err("filter configuration without 'name' name in line %d",
 				    param->line);
-			return NULL;
+			return ERR_PTR(-MPD_MISS_VALUE);
 		}
 
 		if (strcmp(name, filter_template_name) == 0)
 			return param;
 	}
 
-	g_set_error(error_r, filter_quark(), 1,
-		    "filter template not found: %s",
+	log_err("filter template not found: %s",
 		    filter_template_name);
 
-	return NULL;
+	return ERR_PTR(-MPD_DISABLED);
 }
 
 /**
@@ -76,12 +70,12 @@ filter_plugin_config(const char *filter_template_name, GError **error_r)
  * @param error_r space to return an error description
  * @return the number of filters which were successfully added
  */
-unsigned int
-filter_chain_parse(struct filter *chain, const char *spec, GError **error_r)
+int
+filter_chain_parse(struct filter *chain, const char *spec)
 {
 
 	// Split on comma
-	gchar** tokens = g_strsplit_set(spec, ",", 255);
+	char** tokens = g_strsplit_set(spec, ",", 255);
 
 	int added_filters = 0;
 
@@ -94,15 +88,15 @@ filter_chain_parse(struct filter *chain, const char *spec, GError **error_r)
 		// Squeeze whitespace
 		g_strstrip(*template_names);
 
-		cfg = filter_plugin_config(*template_names, error_r);
-		if (cfg == NULL) {
+		cfg = filter_plugin_config(*template_names);
+		if (IS_ERR(cfg)) {
 			// The error has already been set, just stop.
 			break;
 		}
 
 		// Instantiate one of those filter plugins with the template name as a hint
-		f = filter_configured_new(cfg, error_r);
-		if (f == NULL) {
+		f = filter_configured_new(cfg);
+		if (IS_ERR(f)) {
 			// The error has already been set, just stop.
 			break;
 		}

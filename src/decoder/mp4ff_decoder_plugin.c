@@ -101,7 +101,8 @@ mp4_read(void *user_data, void *buffer, uint32_t length)
 		   would not allow this */
 		return 0;
 
-	return decoder_read(mis->decoder, mis->input_stream, buffer, length);
+	ssize_t ret = decoder_read(mis->decoder, mis->input_stream, buffer, length);
+	return ret > 0 ? ret : 0;
 }
 
 static uint32_t
@@ -109,8 +110,7 @@ mp4_seek(void *user_data, uint64_t position)
 {
 	struct mp4ff_input_stream *mis = user_data;
 
-	return input_stream_lock_seek(mis->input_stream, position, SEEK_SET,
-				      NULL)
+	return input_stream_lock_seek(mis->input_stream, position, SEEK_SET) == MPD_SUCCESS
 		? 0 : -1;
 }
 
@@ -140,7 +140,6 @@ mp4_faad_new(mp4ff_t *mp4fh, int *track_r, struct audio_format *audio_format)
 	int track;
 	uint32_t sample_rate;
 	unsigned char channels;
-	GError *error = NULL;
 
 	decoder = faacDecOpen();
 
@@ -161,11 +160,9 @@ mp4_faad_new(mp4ff_t *mp4fh, int *track_r, struct audio_format *audio_format)
 		return NULL;
 	}
 
-	if (!audio_format_init_checked(audio_format, sample_rate,
-				       SAMPLE_FORMAT_S16, channels,
-				       &error)) {
-		log_warning("%s", error->message);
-		g_error_free(error);
+	if (audio_format_init_checked(audio_format, sample_rate,
+				       SAMPLE_FORMAT_S16, channels)
+				       != MPD_SUCCESS) {
 		faacDecClose(decoder);
 		return NULL;
 	}
