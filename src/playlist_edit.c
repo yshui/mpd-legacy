@@ -259,12 +259,8 @@ playlist_delete_internal(struct playlist *playlist, struct player_control *pc,
 	if (playlist->playing && playlist->current == (int)songOrder) {
 		bool paused = pc_get_state(pc) == PLAYER_STATE_PAUSE;
 
-		/* the current song is going to be deleted: stop the player */
-
-		pc_stop(pc);
-		playlist->playing = false;
-
-		/* see which song is going to be played instead */
+		/* the current playing song is deleted, see which song is
+		 * going to be played instead */
 
 		playlist->current = queue_next_order(&playlist->queue,
 						     playlist->current);
@@ -274,10 +270,13 @@ playlist_delete_internal(struct playlist *playlist, struct player_control *pc,
 		if (playlist->current >= 0 && !paused)
 			/* play the song after the deleted one */
 			playlist_play_order(playlist, pc, playlist->current);
-		else
+		else {
 			/* no songs left to play, stop playback
 			   completely */
 			playlist_stop(playlist, pc);
+			pc_stop(pc);
+			playlist->playing = false;
+		}
 
 		*queued_p = NULL;
 	} else if (playlist->current == (int)songOrder)
