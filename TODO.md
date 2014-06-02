@@ -1,3 +1,6 @@
+# Upstream changes to pull in:
+* Remove whence from seek().
+
 # Learn the code:
 * Read the filter plugin code.
 
