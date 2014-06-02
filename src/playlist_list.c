@@ -20,17 +20,6 @@
 #include "config.h"
 #include "playlist_list.h"
 #include "playlist_plugin.h"
-#include "playlist/extm3u_playlist_plugin.h"
-#include "playlist/m3u_playlist_plugin.h"
-#include "playlist/xspf_playlist_plugin.h"
-#include "playlist/lastfm_playlist_plugin.h"
-#include "playlist/despotify_playlist_plugin.h"
-#include "playlist/soundcloud_playlist_plugin.h"
-#include "playlist/pls_playlist_plugin.h"
-#include "playlist/asx_playlist_plugin.h"
-#include "playlist/rss_playlist_plugin.h"
-#include "playlist/cue_playlist_plugin.h"
-#include "playlist/embcue_playlist_plugin.h"
 #include "input_stream.h"
 #include "uri.h"
 #include "string_util.h"
@@ -42,6 +31,18 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+
+extern const struct playlist_plugin extm3u_playlist_plugin;
+extern const struct playlist_plugin m3u_playlist_plugin;
+extern const struct playlist_plugin xspf_playlist_plugin;
+extern const struct playlist_plugin pls_playlist_plugin;
+extern const struct playlist_plugin asx_playlist_plugin;
+extern const struct playlist_plugin rss_playlist_plugin;
+extern const struct playlist_plugin despotify_playlist_plugin;
+extern const struct playlist_plugin lastfm_playlist_plugin;
+extern const struct playlist_plugin soundcloud_playlist_plugin;
+extern const struct playlist_plugin cue_playlist_plugin;
+extern const struct playlist_plugin embcue_playlist_plugin;
 
 const struct playlist_plugin *const playlist_plugins[] = {
 	&extm3u_playlist_plugin,

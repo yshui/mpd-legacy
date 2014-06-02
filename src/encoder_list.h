@@ -20,6 +20,8 @@
 #ifndef MPD_ENCODER_LIST_H
 #define MPD_ENCODER_LIST_H
 
+#include "encoder/encoder_conf.h"
+
 struct encoder_plugin;
 
 extern const struct encoder_plugin *const encoder_plugins[];
@@ -29,15 +31,5 @@ extern const struct encoder_plugin *const encoder_plugins[];
 		*const*encoder_plugin_iterator = &encoder_plugins[0]; \
 		(plugin = *encoder_plugin_iterator) != NULL; \
 		++encoder_plugin_iterator)
-
-/**
- * Looks up an encoder plugin by its name.
- *
- * @param name the encoder name to look for
- * @return the encoder plugin with the specified name, or NULL if none
- * was found
- */
-const struct encoder_plugin *
-encoder_plugin_get(const char *name);
 
 #endif

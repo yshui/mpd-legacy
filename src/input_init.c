@@ -23,7 +23,7 @@
 #include "config.h"
 #include "input_init.h"
 #include "input_plugin.h"
-#include "input_registry.h"
+#include "input_list.h"
 #include "conf.h"
 
 #include <assert.h>

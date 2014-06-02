@@ -1,0 +1,25 @@
+Buffer plugin interface:
+.seek:
+	seek the stream, could request previous buffer to seek as well. If previous buffer is not seekable, seek fails.
+	mpd will try to seek at the last seekable buffer
+
+
+How to chain buffers:
+
+<input plugin> -> [<input plugins> -> ] decoder -> [<filters> -> ] output
+
+input chain example: curl -> zip -> rewind -> etc.
+
+<input> is a producer only buffer
+<output> is consumer only
+
+others are both producer and consumer.
+
+input and decoder should be seekable. if the last input plugin in chain is not seekable, rewind will be appended.
+
+Buffer object:
+
+buffer tags:
+
+EOF tag: No buffer will come after this
+SONGEND/SONGBEGIN tag: signal beginning/end of a song, for crossfade. songbegin tag will come with song metadata.

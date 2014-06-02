@@ -30,7 +30,7 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef ENABLE_SYSTEMD_DAEMON
+#ifdef ENABLE_SYSTEMD_ACTIVATION
 #include <systemd/sd-daemon.h>
 #endif
 
@@ -65,7 +65,7 @@ listen_add_config_param(unsigned int port,
 static int
 listen_systemd_activation(void)
 {
-#ifdef ENABLE_SYSTEMD_DAEMON
+#ifdef ENABLE_SYSTEMD_ACTIVATION
 	int n = sd_listen_fds(true);
 	if (n <= 0) {
 		if (n < 0) {
@@ -85,7 +85,6 @@ listen_systemd_activation(void)
 
 	return MPD_SUCCESS;
 #else
-	(void)error_r;
 	return -MPD_NIMPL;
 #endif
 }

@@ -29,7 +29,7 @@
 #include "decoder_plugin.h"
 #include "output_list.h"
 #include "output_plugin.h"
-#include "input_registry.h"
+#include "input_list.h"
 #include "input_plugin.h"
 #include "playlist_list.h"
 #include "playlist_plugin.h"
@@ -228,9 +228,9 @@ parse_cmdline(int argc, char **argv, struct options *options)
 			ret = config_read_file(path1);
 		else if (g_file_test(path2, G_FILE_TEST_IS_REGULAR))
 			ret = config_read_file(path2);
-		else if (g_file_test(SYSTEM_CONFIG_FILE_LOCATION,
+		else if (g_file_test(SYSCONFIG,
 				     G_FILE_TEST_IS_REGULAR))
-			ret = config_read_file(SYSTEM_CONFIG_FILE_LOCATION);
+			ret = config_read_file(SYSCONFIG);
 #endif
 
 		free(path1);

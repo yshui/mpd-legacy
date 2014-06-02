@@ -20,6 +20,8 @@
 #ifndef MPD_OUTPUT_LIST_H
 #define MPD_OUTPUT_LIST_H
 
+#include "output/output_conf.h"
+
 extern const struct audio_output_plugin *const audio_output_plugins[];
 
 const struct audio_output_plugin *

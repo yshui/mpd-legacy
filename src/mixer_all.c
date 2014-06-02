@@ -26,7 +26,7 @@
 #include "output_all.h"
 #include "output_plugin.h"
 #include "output_internal.h"
-#include "pcm_volume.h"
+#include "pcm/pcm_volume.h"
 #include "mixer_api.h"
 #include "mixer_list.h"
 

@@ -37,14 +37,14 @@
 char *
 sockaddr_to_string(const struct sockaddr *sa, size_t length)
 {
-#if defined(HAVE_IPV6) && defined(IN6_IS_ADDR_V4MAPPED)
+#if defined(AF_INET6) && defined(IN6_IS_ADDR_V4MAPPED)
 	const struct sockaddr_in6 *a6 = (const struct sockaddr_in6 *)sa;
 	struct sockaddr_in a4;
 #endif
 	int ret;
 	char host[NI_MAXHOST], serv[NI_MAXSERV];
 
-#if defined(HAVE_IPV6) && defined(IN6_IS_ADDR_V4MAPPED)
+#if defined(AF_INET6) && defined(IN6_IS_ADDR_V4MAPPED)
 	if (sa->sa_family == AF_INET6 &&
 	    IN6_IS_ADDR_V4MAPPED(&a6->sin6_addr)) {
 		/* convert "::ffff:127.0.0.1" to "127.0.0.1" */
@@ -70,17 +70,15 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length)
 		return ERR_PTR(-MPD_3RD);
 	}
 
-#ifdef HAVE_UN
+#ifdef AF_UNIX
 	if (sa->sa_family == AF_UNIX)
 		/* "serv" contains corrupt information with unix
 		   sockets */
 		return strdup(host);
 #endif
 
-#ifdef HAVE_IPV6
 	if (strchr(host, ':') != NULL)
 		return g_strconcat("[", host, "]:", serv, NULL);
-#endif
 
 	return g_strconcat(host, ":", serv, NULL);
 }

@@ -17,20 +17,22 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder_list"
+
 #include "config.h"
 #include "decoder_list.h"
 #include "decoder_plugin.h"
 #include "utils.h"
 #include "conf.h"
 #include "mpd_error.h"
-#include "decoder/pcm_decoder_plugin.h"
-#include "decoder/dsdiff_decoder_plugin.h"
-#include "decoder/dsf_decoder_plugin.h"
 
 #include <glib.h>
 
 #include <string.h>
 
+extern const struct decoder_plugin pcm_decoder_plugin;
+extern const struct decoder_plugin dsdiff_decoder_plugin;
+extern const struct decoder_plugin dsf_decoder_plugin;
 extern const struct decoder_plugin mad_decoder_plugin;
 extern const struct decoder_plugin mpg123_decoder_plugin;
 extern const struct decoder_plugin vorbis_decoder_plugin;
@@ -52,45 +54,45 @@ extern const struct decoder_plugin gme_decoder_plugin;
 extern const struct decoder_plugin asap_decoder_plugin;
 
 const struct decoder_plugin *const decoder_plugins[] = {
-#ifdef HAVE_MAD
+#ifdef ENABLE_MAD
 	&mad_decoder_plugin,
 #endif
-#ifdef HAVE_MPG123
+#ifdef ENABLE_MPG123
 	&mpg123_decoder_plugin,
 #endif
-#ifdef ENABLE_VORBIS_DECODER
+#ifdef ENABLE_VORBIS
 	&vorbis_decoder_plugin,
 #endif
-#if defined(HAVE_FLAC)
+#ifdef ENABLE_FLAC
 	&oggflac_decoder_plugin,
 #endif
-#ifdef HAVE_FLAC
+#ifdef ENABLE_FLAC
 	&flac_decoder_plugin,
 #endif
 #ifdef ENABLE_SNDFILE
 	&sndfile_decoder_plugin,
 #endif
-#ifdef HAVE_AUDIOFILE
+#ifdef ENABLE_AUDIOFILE
 	&audiofile_decoder_plugin,
 #endif
 	&dsdiff_decoder_plugin,
 	&dsf_decoder_plugin,
-#ifdef HAVE_FAAD
+#ifdef ENABLE_FAAD
 	&faad_decoder_plugin,
 #endif
-#ifdef HAVE_MP4
+#ifdef ENABLE_MP4
 	&mp4ff_decoder_plugin,
 #endif
-#ifdef HAVE_MPCDEC
+#ifdef ENABLE_MPCDEC
 	&mpcdec_decoder_plugin,
 #endif
-#ifdef HAVE_WAVPACK
+#ifdef ENABLE_WAVPACK
 	&wavpack_decoder_plugin,
 #endif
-#ifdef HAVE_MODPLUG
+#ifdef ENABLE_MODPLUG
 	&modplug_decoder_plugin,
 #endif
-#ifdef ENABLE_MIKMOD_DECODER
+#ifdef ENABLE_MIKMOD
 	&mikmod_decoder_plugin,
 #endif
 #ifdef ENABLE_SIDPLAY
@@ -102,13 +104,13 @@ const struct decoder_plugin *const decoder_plugins[] = {
 #ifdef ENABLE_FLUIDSYNTH
 	&fluidsynth_decoder_plugin,
 #endif
-#ifdef HAVE_FFMPEG
+#ifdef ENABLE_FFMPEG
 	&ffmpeg_decoder_plugin,
 #endif
-#ifdef HAVE_ASAP
+#ifdef ENABLE_ASAP
 	&asap_decoder_plugin,
 #endif
-#ifdef HAVE_GME
+#ifdef ENABLE_GME
 	&gme_decoder_plugin,
 #endif
 	&pcm_decoder_plugin,
@@ -218,10 +220,12 @@ decoder_plugin_config(const char *plugin_name)
 
 void decoder_plugin_init_all(void)
 {
+	log_info("MPD is compiled with decoders:\n");
 	for (unsigned i = 0; decoder_plugins[i] != NULL; ++i) {
 		const struct decoder_plugin *plugin = decoder_plugins[i];
 		const struct config_param *param =
 			decoder_plugin_config(plugin->name);
+		log_info("\t%s\n", plugin->name);
 
 		if (!config_get_block_bool(param, "enabled", true))
 			/* the plugin is disabled in mpd.conf */

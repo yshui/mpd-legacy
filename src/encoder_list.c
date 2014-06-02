@@ -49,13 +49,3 @@ const struct encoder_plugin *const encoder_plugins[] = {
 #endif
 	NULL
 };
-
-const struct encoder_plugin *
-encoder_plugin_get(const char *name)
-{
-	encoder_plugins_for_each(plugin)
-		if (strcmp(plugin->name, name) == 0)
-			return plugin;
-
-	return NULL;
-}

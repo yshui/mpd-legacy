@@ -35,27 +35,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifndef WIN32
-#include <pwd.h>
-#endif
-
-#if HAVE_IPV6 && WIN32
+#if WIN32
 #include <winsock2.h>
-#endif
-
-#if HAVE_IPV6 && ! WIN32
-#include <sys/socket.h>
-#endif
-
-#ifdef WIN32
 #include <windows.h>
+#endif
+
+#if !WIN32
+#include <pwd.h>
+#include <sys/socket.h>
 #endif
 
 char *
 parsePath(const char *path)
 {
 	assert(path != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
 #ifndef WIN32
 	if (!g_path_is_absolute(path) && path[0] != '~') {

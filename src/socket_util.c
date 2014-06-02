@@ -34,9 +34,7 @@
 #include <winsock.h>
 #endif /* G_OS_WIN32 */
 
-#ifdef HAVE_IPV6
 #include <string.h>
-#endif
 
 int
 socket_bind_listen(int domain, int type, int protocol,

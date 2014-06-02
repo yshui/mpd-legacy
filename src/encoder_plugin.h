@@ -25,11 +25,18 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 struct encoder_plugin;
 struct audio_format;
 struct config_param;
 struct tag;
+
+#define encoder_plugins_for_each(plugin) \
+	for (const struct encoder_plugin *plugin, \
+		*const*encoder_plugin_iterator = &encoder_plugins[0]; \
+		(plugin = *encoder_plugin_iterator) != NULL; \
+		++encoder_plugin_iterator)
 
 struct encoder {
 	const struct encoder_plugin *plugin;
@@ -66,6 +73,8 @@ struct encoder_plugin {
 
 	const char *(*get_mime_type)(struct encoder *encoder);
 };
+
+extern const struct encoder_plugin *const encoder_plugins[];
 
 /**
  * Initializes an encoder object.  This should be used by encoder
@@ -321,6 +330,23 @@ encoder_get_mime_type(struct encoder *encoder)
 	return encoder->plugin->get_mime_type != NULL
 		? encoder->plugin->get_mime_type(encoder)
 		: NULL;
+}
+
+/**
+ * Looks up an encoder plugin by its name.
+ *
+ * @param name the encoder name to look for
+ * @return the encoder plugin with the specified name, or NULL if none
+ * was found
+ */
+static const struct encoder_plugin *
+encoder_plugin_get(const char *name)
+{
+	encoder_plugins_for_each(plugin)
+		if (strcmp(plugin->name, name) == 0)
+			return plugin;
+
+	return NULL;
 }
 
 #endif

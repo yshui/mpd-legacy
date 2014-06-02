@@ -25,7 +25,7 @@
 #include "tag.h"
 #include "song.h"
 #include "idle.h"
-#include "pcm_volume.h"
+#include "pcm/pcm_volume.h"
 #include "main.h"
 #include "utils.h"
 #include "macros.h"

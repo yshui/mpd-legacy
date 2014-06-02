@@ -24,6 +24,8 @@
 
 #include <stdbool.h>
 
+#include "playlist/playlist_conf.h"
+
 struct playlist_provider;
 struct input_stream;
 

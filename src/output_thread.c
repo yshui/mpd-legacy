@@ -26,10 +26,10 @@
 #include "chunk.h"
 #include "pipe.h"
 #include "player_control.h"
-#include "pcm_mix.h"
+#include "pcm/pcm_mix.h"
 #include "filter_plugin.h"
-#include "filter/convert_filter_plugin.h"
-#include "filter/replay_gain_filter_plugin.h"
+#include "filter/convert.h"
+#include "filter/replay_gain.h"
 #include "mpd_error.h"
 #include "notify.h"
 

@@ -29,7 +29,7 @@
 struct tag_handler;
 struct tag;
 
-#ifdef HAVE_ID3TAG
+#ifdef ENABLE_ID3TAG
 
 bool
 tag_id3_scan(const char *path_fs,

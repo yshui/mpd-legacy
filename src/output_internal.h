@@ -22,7 +22,7 @@
 
 #include "log.h"
 #include "audio_format.h"
-#include "pcm_buffer.h"
+#include "pcm/pcm_buffer.h"
 
 #include <glib.h>
 

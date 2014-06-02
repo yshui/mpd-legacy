@@ -123,7 +123,7 @@ audio_output_all_init(struct player_control *pc)
 		assert(param || (num_audio_outputs == 1));
 
 		struct audio_output *output = audio_output_new(param, pc);
-		if (output == NULL) {
+		if (IS_ERR_OR_NULL(output)) {
 			if (param != NULL)
 				MPD_ERROR("at line %i", param->line);
 			else

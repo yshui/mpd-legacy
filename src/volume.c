@@ -22,7 +22,7 @@
 #include "volume.h"
 #include "conf.h"
 #include "idle.h"
-#include "pcm_volume.h"
+#include "pcm/pcm_volume.h"
 #include "output_all.h"
 #include "mixer_control.h"
 #include "mixer_all.h"

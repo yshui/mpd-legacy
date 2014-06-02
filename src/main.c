@@ -46,7 +46,7 @@
 #include "volume.h"
 #include "log.h"
 #include "permission.h"
-#include "pcm_resample.h"
+#include "pcm/pcm_resample.h"
 #include "replay_gain_config.h"
 #include "decoder_list.h"
 #include "input_init.h"

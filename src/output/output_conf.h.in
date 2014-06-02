@@ -1,0 +1,14 @@
+#pragma once
+#cmakedefine ENABLE_ALSA
+#cmakedefine ENABLE_PULSE
+#cmakedefine ENABLE_SHOUT
+#cmakedefine ENABLE_OSS
+#cmakedefine ENABLE_ROAR
+#cmakedefine ENABLE_FFADO
+#cmakedefine ENABLE_AO
+#cmakedefine ENABLE_OPENAL
+#cmakedefine ENABLE_OSX
+#cmakedefine ENABLE_WINMM
+#cmakedefine ENABLE_JACK
+#cmakedefine ENABLE_SOLARIS
+#cmakedefine HAVE_FIFO

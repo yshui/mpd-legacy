@@ -284,7 +284,6 @@ directory_walk(const struct directory *directory, bool recursive,
 {
 	assert(directory != NULL);
 	assert(visitor != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 	int ret;
 
 	if (visitor->song != NULL) {

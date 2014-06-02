@@ -475,8 +475,6 @@ decoder_tag(struct decoder *decoder, struct input_stream *is,
 {
 	enum decoder_command cmd;
 
-	assert(dc->state == DECODE_STATE_DECODE);
-	assert(dc->pipe != NULL);
 	assert(tag != NULL);
 
 	/* save the tag */

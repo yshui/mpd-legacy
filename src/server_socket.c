@@ -320,7 +320,6 @@ server_socket_add_address(struct server_socket *ss,
 	return s;
 }
 
-#ifdef HAVE_TCP
 
 /**
  * Add a listener on a port on all IPv4 interfaces.
@@ -340,7 +339,7 @@ server_socket_add_port_ipv4(struct server_socket *ss, unsigned port)
 				  sizeof(sin));
 }
 
-#ifdef HAVE_IPV6
+#ifdef AF_INET6
 /**
  * Add a listener on a port on all IPv6 interfaces.
  *
@@ -357,20 +356,17 @@ server_socket_add_port_ipv6(struct server_socket *ss, unsigned port)
 	server_socket_add_address(ss, (const struct sockaddr *)&sin,
 				  sizeof(sin));
 }
-#endif /* HAVE_IPV6 */
-
-#endif /* HAVE_TCP */
+#endif /* AF_INET6 */
 
 int
 server_socket_add_port(struct server_socket *ss, unsigned port)
 {
-#ifdef HAVE_TCP
 	if (port == 0 || port > 0xffff) {
 		log_err("Invalid TCP port");
 		return -MPD_ACCESS;
 	}
 
-#ifdef HAVE_IPV6
+#ifdef AF_INET6
 	server_socket_add_port_ipv6(ss, port);
 #endif
 	server_socket_add_port_ipv4(ss, port);
@@ -378,20 +374,12 @@ server_socket_add_port(struct server_socket *ss, unsigned port)
 	++ss->next_serial;
 
 	return MPD_SUCCESS;
-#else /* HAVE_TCP */
-	(void)ss;
-	(void)port;
-
-	log_warning("TCP support is disabled");
-	return -MPD_INVAL;
-#endif /* HAVE_TCP */
 }
 
 int
 server_socket_add_host(struct server_socket *ss, const char *hostname,
 		       unsigned port)
 {
-#ifdef HAVE_TCP
 	struct addrinfo *ai = resolve_host_port(hostname, port,
 						AI_PASSIVE, SOCK_STREAM);
 	if (IS_ERR(ai))
@@ -405,20 +393,12 @@ server_socket_add_host(struct server_socket *ss, const char *hostname,
 	++ss->next_serial;
 
 	return MPD_SUCCESS;
-#else /* HAVE_TCP */
-	(void)ss;
-	(void)hostname;
-	(void)port;
-
-	log_warning("TCP support is disabled");
-	return -MPD_INVAL;
-#endif /* HAVE_TCP */
 }
 
 int
 server_socket_add_path(struct server_socket *ss, const char *path)
 {
-#ifdef HAVE_UN
+#ifdef AF_UNIX
 	struct sockaddr_un s_un;
 
 	size_t path_length = strlen(path);
@@ -438,12 +418,12 @@ server_socket_add_path(struct server_socket *ss, const char *path)
 	s->path = strdup(path);
 
 	return MPD_SUCCESS;
-#else /* !HAVE_UN */
+#else
 	(void)ss;
 	(void)path;
 
 	log_warning("UNIX domain socket support is disabled");
 	return -MPD_INVAL;
-#endif /* !HAVE_UN */
+#endif
 }
 

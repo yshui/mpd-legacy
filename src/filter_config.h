@@ -26,7 +26,7 @@
 #define MPD_FILTER_CONFIG_H
 
 #include "conf.h"
-#include "filter/chain_filter_plugin.h"
+#include "filter/chain.h"
 #include "filter_plugin.h"
 #include "filter_internal.h"
 #include "filter_registry.h"

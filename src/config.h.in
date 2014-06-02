@@ -1,0 +1,116 @@
+/* Define to enable inotify support */
+#cmakedefine ENABLE_INOTIFY
+
+/* Define to enable sqlite database support */
+#cmakedefine ENABLE_SQLITE
+
+/* Define to enable systemd activation */
+#cmakedefine ENABLE_SYSTEMD_ACTIVATION
+
+/* Define to 1 if you have the `accept4' function. */
+#cmakedefine HAVE_ACCEPT4
+
+/* Define to enable Avahi Zeroconf support */
+#cmakedefine HAVE_AVAHI
+
+/* Define to enable Bonjour Zeroconf support */
+#cmakedefine HAVE_BONJOUR
+
+/* Define to have bz2 archive support */
+#cmakedefine HAVE_BZ2
+
+/* Define to 1 if you have the <cdio/paranoia.h> header file. */
+#cmakedefine HAVE_CDIO_PARANOIA_H
+
+/* Define to 1 if you have the <cdio/paranoia/paranoia.h> header file. */
+#cmakedefine HAVE_CDIO_PARANOIA_PARANOIA_H
+
+/* Define to 1 if you have the `daemon' function. */
+#cmakedefine HAVE_DAEMON
+
+/* enable compressed db support */
+#cmakedefine COMPRESS_DB
+
+/* Define to enable support for writing audio to a FIFO */
+#cmakedefine HAVE_FIFO
+
+/* Define to 1 if you have the `fork' function. */
+#cmakedefine HAVE_FORK
+
+/* Define to 1 if you have the `getpeereid' function. */
+#cmakedefine HAVE_GETPEEREID
+
+/* Define to use id3tag */
+#cmakedefine ENABLE_ID3TAG
+
+/* Define to 1 if you have the `inotify_init' function. */
+#cmakedefine HAVE_INOTIFY_INIT
+
+/* Define to 1 if you have the `inotify_init1' function. */
+#cmakedefine HAVE_INOTIFY_INIT1
+
+/* Define to have ISO9660 archive support */
+#cmakedefine HAVE_ISO9660
+
+/* Define to 1 if you have the `jack_set_info_function' function. */
+#cmakedefine HAVE_JACK_SET_INFO_FUNCTION
+
+/* Define to 1 if you have the `dns_sd' library (-ldns_sd). */
+#cmakedefine HAVE_LIBDNS_SD
+
+/* Define to 1 if you have the `sidutils' library (-lsidutils). */
+#cmakedefine HAVE_LIBSIDUTILS
+
+/* define to enable libwrap library */
+#cmakedefine HAVE_LIBWRAP
+
+/* Define to 1 if you have the `pipe2' function. */
+#cmakedefine HAVE_PIPE2
+
+/* Define if struct ucred is present from sys/socket.h */
+#cmakedefine HAVE_STRUCT_UCRED
+
+/* Define if syslog() is available */
+#cmakedefine HAVE_SYSLOG
+
+/* Define to 1 if you have the <tcpd.h> header file. */
+#cmakedefine HAVE_TCPD_H
+
+/* Define to 1 if you have the <valgrind/memcheck.h> header file. */
+#cmakedefine HAVE_VALGRIND_MEMCHECK_H
+
+/* Define to enable Zeroconf support */
+#cmakedefine HAVE_ZEROCONF
+
+/* have zlib on the system */
+#cmakedefine HAVE_ZLIB
+
+/* Define to have zip archive support */
+#cmakedefine HAVE_ZZIP
+
+/* Define if an old pre-SV8 libmpcdec is used */
+#cmakedefine MPC_IS_OLD_API
+
+/* Name of package */
+#define PACKAGE "mpd"
+
+/* Define to the full name of this package. */
+#define PACKAGE_NAME "mpd"
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "${version}"
+
+/* The MPD protocol version */
+#define PROTOCOL_VERSION "0.17.0"
+
+/* Version number of package */
+#define VERSION "${version}"
+
+/* Enable large inode numbers on Mac OS X 10.5.  */
+#ifndef _DARWIN_USE_64_BIT_INODE
+# define _DARWIN_USE_64_BIT_INODE 1
+#endif
+
+#define SYSCONFDIR "${sysconfdir}"
+
+#define SYSCONFIG SYSCONFDIR "/mpd.conf"

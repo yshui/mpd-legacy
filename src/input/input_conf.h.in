@@ -1,0 +1,6 @@
+#pragma once
+#cmakedefine ENABLE_CDIO
+#cmakedefine ENABLE_MMS
+#cmakedefine ENABLE_CURL
+#cmakedefine ENABLE_FFMPEG
+#cmakedefine ENABLE_DESPOTIFY

@@ -269,7 +269,7 @@ config_read_name_value(struct config_param *param, char *input, unsigned line)
 	}
 
 	if (*input != 0 && *input != CONF_COMMENT){
-		log_err("line %i, Syntax error", line);
+		log_err("line %i, Syntax error %c", line, *input);
 		return -MPD_INVAL;
 	}
 
@@ -321,7 +321,7 @@ config_read_block(FILE *fp, int *count, char *string)
 
 		/* parse name and value */
 
-		if (config_read_name_value(ret, line, *count != MPD_SUCCESS)) {
+		if (config_read_name_value(ret, line, *count) != MPD_SUCCESS) {
 			assert(*line != 0);
 			config_param_free(ret);
 			return NULL;
@@ -586,9 +586,6 @@ config_get_block_string(const struct config_param *param, const char *name,
 char *
 config_dup_block_path(const struct config_param *param, const char *name)
 {
-	assert(error_r != NULL);
-	assert(*error_r == NULL);
-
 	const struct block_param *bp = config_get_block_param(param, name);
 	if (bp == NULL)
 		return NULL;

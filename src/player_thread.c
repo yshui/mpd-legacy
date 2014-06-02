@@ -26,7 +26,7 @@
 #include "decoder_control.h"
 #include "decoder_thread.h"
 #include "output_all.h"
-#include "pcm_volume.h"
+#include "pcm/pcm_volume.h"
 #include "path.h"
 #include "event_pipe.h"
 #include "crossfade.h"

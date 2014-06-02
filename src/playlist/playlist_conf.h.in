@@ -1,0 +1,5 @@
+#pragma once
+
+#cmakedefine ENABLE_LASTFM
+#cmakedefine ENABLE_DESPOTIFY
+#cmakedefine ENABLE_SOUNDCLOUD

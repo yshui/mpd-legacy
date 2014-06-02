@@ -29,13 +29,13 @@
 #include "mixer_control.h"
 #include "mixer_type.h"
 #include "mixer_list.h"
-#include "mixer/software_mixer_plugin.h"
+#include "mixer/software.h"
 #include "filter_plugin.h"
 #include "filter_registry.h"
 #include "filter_config.h"
-#include "filter/chain_filter_plugin.h"
-#include "filter/autoconvert_filter_plugin.h"
-#include "filter/replay_gain_filter_plugin.h"
+#include "filter/chain.h"
+#include "filter/autoconvert.h"
+#include "filter/replay_gain.h"
 
 #include <glib.h>
 
@@ -242,12 +242,16 @@ audio_output_setup(struct audio_output *ao, const struct config_param *param)
 
 	/* set up the mixer */
 
-	ao->mixer = audio_output_load_mixer(ao, param,
-					    ao->plugin->mixer_plugin,
-					    ao->filter);
-	if (IS_ERR_OR_NULL(ao->mixer))
-		log_warning("Failed to initialize hardware mixer for '%s'",
-			  ao->name);
+	if (ao->plugin->mixer_plugin) {
+		ao->mixer = audio_output_load_mixer(ao, param,
+						    ao->plugin->mixer_plugin,
+						    ao->filter);
+		if (IS_ERR_OR_NULL(ao->mixer))
+			log_warning("Failed to initialize hardware mixer for '%s'",
+				    ao->name);
+	} else
+		log_warning("Output type %s doesn't support hardware mixer\n",
+			ao->plugin->name);
 
 	/* use the hardware mixer for replay gain? */
 

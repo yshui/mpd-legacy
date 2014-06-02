@@ -44,7 +44,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef HAVE_DB_COMPRESS
+#ifdef COMPRESS_DB
 #include <zlib.h>
 #endif
 
@@ -77,7 +77,7 @@ enum {
 	DB_FORMAT = 1,
 };
 
-#ifdef HAVE_DB_COMPRESS
+#ifdef COMPRESS_DB
 typedef gzFile db_file;
 
 static inline db_file db_open(const char *path_fs, const char *flags){

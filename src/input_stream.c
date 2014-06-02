@@ -22,9 +22,9 @@
 #include "log.h"
 #include "config.h"
 #include "input_stream.h"
-#include "input_registry.h"
+#include "input_list.h"
 #include "input_plugin.h"
-#include "input/rewind_input_plugin.h"
+#include "input/rewind.h"
 
 #include <glib.h>
 #include <assert.h>

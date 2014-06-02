@@ -88,12 +88,10 @@ db_plugin_new(const struct db_plugin *plugin, const struct config_param *param)
 	assert(plugin->finish != NULL);
 	assert(plugin->get_song != NULL);
 	assert(plugin->visit != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
 	struct db *db = plugin->init(param);
 	assert(!IS_ERR(db));
-	assert(db == NULL || db->plugin == plugin);
-	assert(db != NULL || error_r == NULL || *error_r != NULL);
+	assert(db != NULL && db->plugin == plugin);
 
 	return db;
 }

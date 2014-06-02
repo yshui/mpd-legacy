@@ -24,11 +24,11 @@
  */
 
 #include "config.h"
-#include "dsf_decoder_plugin.h"
+#include "dsf.h"
 #include "decoder_api.h"
 #include "util/bit_reverse.h"
 #include "dsdlib.h"
-#include "dsdiff_decoder_plugin.h"
+#include "dsdiff.h"
 
 #include <unistd.h>
 #include <stdio.h> /* for SEEK_SET, SEEK_CUR */

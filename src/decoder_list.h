@@ -22,6 +22,8 @@
 
 #include <stdbool.h>
 
+#include "decoder/decoder_conf.h"
+
 struct decoder_plugin;
 
 extern const struct decoder_plugin *const decoder_plugins[];
