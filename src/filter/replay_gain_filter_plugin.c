@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter: replay_gain"
+
 #include "config.h"
+#include "log.h"
 #include "filter/replay_gain_filter_plugin.h"
 #include "filter_plugin.h"
 #include "filter_internal.h"
@@ -33,7 +36,6 @@
 #include <string.h>
 
 #undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "replay_gain"
 
 struct replay_gain_filter {
 	struct filter filter;
@@ -73,12 +75,6 @@ struct replay_gain_filter {
 	struct pcm_buffer buffer;
 };
 
-static inline GQuark
-replay_gain_quark(void)
-{
-	return g_quark_from_static_string("replay_gain");
-}
-
 /**
  * Recalculates the new volume after a property was changed.
  */
@@ -88,7 +84,7 @@ replay_gain_filter_update(struct replay_gain_filter *filter)
 	if (filter->mode != REPLAY_GAIN_OFF) {
 		float scale = replay_gain_tuple_scale(&filter->info.tuples[filter->mode],
 		    replay_gain_preamp, replay_gain_missing_preamp, replay_gain_limit);
-		g_debug("scale=%f\n", (double)scale);
+		log_debug("scale=%f\n", (double)scale);
 
 		filter->volume = pcm_float_to_volume(scale);
 	} else
@@ -101,18 +97,14 @@ replay_gain_filter_update(struct replay_gain_filter *filter)
 		if (volume > 100)
 			volume = 100;
 
-		GError *error = NULL;
-		if (!mixer_set_volume(filter->mixer, volume, &error)) {
-			g_warning("Failed to update hardware mixer: %s",
-				  error->message);
-			g_error_free(error);
-		}
+		int ret = mixer_set_volume(filter->mixer, volume);
+		if (ret != MPD_SUCCESS)
+			log_warning("Failed to update hardware mixer");
 	}
 }
 
 static struct filter *
-replay_gain_filter_init(const struct config_param *param,
-			GError **error_r)
+replay_gain_filter_init(const struct config_param *param)
 {
 	struct replay_gain_filter *filter = g_new(struct replay_gain_filter, 1);
 
@@ -134,8 +126,7 @@ replay_gain_filter_finish(struct filter *filter)
 
 static const struct audio_format *
 replay_gain_filter_open(struct filter *_filter,
-			struct audio_format *audio_format,
-			GError **error_r)
+			struct audio_format *audio_format)
 {
 	struct replay_gain_filter *filter =
 		(struct replay_gain_filter *)_filter;
@@ -158,7 +149,7 @@ replay_gain_filter_close(struct filter *_filter)
 static const void *
 replay_gain_filter_filter(struct filter *_filter,
 			  const void *src, size_t src_size,
-			  size_t *dest_size_r, GError **error_r)
+			  size_t *dest_size_r)
 {
 	struct replay_gain_filter *filter =
 		(struct replay_gain_filter *)_filter;
@@ -170,7 +161,7 @@ replay_gain_filter_filter(struct filter *_filter,
 	rg_mode = replay_gain_get_real_mode();
 
 	if (filter->mode != rg_mode) {
-		g_debug("replay gain mode has changed %d->%d\n", filter->mode, rg_mode);
+		log_debug("replay gain mode has changed %d->%d\n", filter->mode, rg_mode);
 		filter->mode = rg_mode;
 		replay_gain_filter_update(filter);
 	}
@@ -196,9 +187,8 @@ replay_gain_filter_filter(struct filter *_filter,
 	success = pcm_volume(dest, src_size, filter->audio_format.format,
 			     filter->volume);
 	if (!success) {
-		g_set_error(error_r, replay_gain_quark(), 0,
-			    "pcm_volume() has failed");
-		return NULL;
+		log_err("pcm_volume() has failed");
+		return ERR_PTR(-MPD_UNKNOWN);
 	}
 
 	return dest;

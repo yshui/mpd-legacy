@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: fifo"
+
+#include "log.h"
 #include "config.h"
 #include "fifo_output_plugin.h"
 #include "output_api.h"
@@ -33,8 +36,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "fifo"
 
 #define FIFO_BUFFER_SIZE 65536 /* pipe capacity on Linux >= 2.6.11 */
 
@@ -47,15 +48,6 @@ struct fifo_data {
 	bool created;
 	struct timer *timer;
 };
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-fifo_output_quark(void)
-{
-	return g_quark_from_static_string("fifo_output");
-}
 
 static struct fifo_data *fifo_data_new(void)
 {
@@ -79,11 +71,11 @@ static void fifo_data_free(struct fifo_data *fd)
 
 static void fifo_delete(struct fifo_data *fd)
 {
-	g_debug("Removing FIFO \"%s\"", fd->path);
+	log_debug("Removing FIFO \"%s\"", fd->path);
 
 	if (unlink(fd->path) < 0) {
-		g_warning("Could not remove FIFO \"%s\": %s",
-			  fd->path, g_strerror(errno));
+		log_warning("Could not remove FIFO \"%s\": %s",
+			  fd->path, strerror(errno));
 		return;
 	}
 
@@ -109,104 +101,95 @@ fifo_close(struct fifo_data *fd)
 		fifo_delete(fd);
 }
 
-static bool
-fifo_make(struct fifo_data *fd, GError **error)
+static int
+fifo_make(struct fifo_data *fd)
 {
 	if (mkfifo(fd->path, 0666) < 0) {
-		g_set_error(error, fifo_output_quark(), errno,
-			    "Couldn't create FIFO \"%s\": %s",
-			    fd->path, g_strerror(errno));
-		return false;
+		log_err("Couldn't create FIFO \"%s\": %s",
+			    fd->path, strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	fd->created = true;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-fifo_check(struct fifo_data *fd, GError **error)
+static int
+fifo_check(struct fifo_data *fd)
 {
 	struct stat st;
 
 	if (stat(fd->path, &st) < 0) {
 		if (errno == ENOENT) {
 			/* Path doesn't exist */
-			return fifo_make(fd, error);
+			return fifo_make(fd);
 		}
 
-		g_set_error(error, fifo_output_quark(), errno,
-			    "Failed to stat FIFO \"%s\": %s",
-			    fd->path, g_strerror(errno));
-		return false;
+		log_err("Failed to stat FIFO \"%s\": %s",
+			    fd->path, strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	if (!S_ISFIFO(st.st_mode)) {
-		g_set_error(error, fifo_output_quark(), 0,
-			    "\"%s\" already exists, but is not a FIFO",
+		log_err("\"%s\" already exists, but is not a FIFO",
 			    fd->path);
-		return false;
+		return -MPD_INVAL;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-fifo_open(struct fifo_data *fd, GError **error)
+static int
+fifo_open(struct fifo_data *fd)
 {
-	if (!fifo_check(fd, error))
-		return false;
+	if (!fifo_check(fd))
+		return -MPD_INVAL;
 
 	fd->input = open_cloexec(fd->path, O_RDONLY|O_NONBLOCK|O_BINARY, 0);
 	if (fd->input < 0) {
-		g_set_error(error, fifo_output_quark(), errno,
-			    "Could not open FIFO \"%s\" for reading: %s",
-			    fd->path, g_strerror(errno));
+		log_err("Could not open FIFO \"%s\" for reading: %s",
+			    fd->path, strerror(errno));
 		fifo_close(fd);
-		return false;
+		return -MPD_ACCESS;
 	}
 
 	fd->output = open_cloexec(fd->path, O_WRONLY|O_NONBLOCK|O_BINARY, 0);
 	if (fd->output < 0) {
-		g_set_error(error, fifo_output_quark(), errno,
-			    "Could not open FIFO \"%s\" for writing: %s",
-			    fd->path, g_strerror(errno));
+		log_err("Could not open FIFO \"%s\" for writing: %s",
+			    fd->path, strerror(errno));
 		fifo_close(fd);
-		return false;
+		return -MPD_ACCESS;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct audio_output *
-fifo_output_init(const struct config_param *param,
-		 GError **error_r)
+fifo_output_init(const struct config_param *param)
 {
 	struct fifo_data *fd;
 
-	GError *error = NULL;
-	char *path = config_dup_block_path(param, "path", &error);
+	char *path = config_dup_block_path(param, "path");
 	if (!path) {
-		if (error != NULL)
-			g_propagate_error(error_r, error);
-		else
-			g_set_error(error_r, fifo_output_quark(), 0,
-				    "No \"path\" parameter specified");
-		return NULL;
+		log_err("No \"path\" parameter specified");
+		return ERR_PTR(-MPD_MISS_VALUE);
 	}
 
 	fd = fifo_data_new();
 	fd->path = path;
 
-	if (!ao_base_init(&fd->base, &fifo_output_plugin, param, error_r)) {
+	int ret = ao_base_init(&fd->base, &fifo_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
 		fifo_data_free(fd);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
-	if (!fifo_open(fd, error_r)) {
+	ret = fifo_open(fd);
+	if (ret != MPD_SUCCESS) {
 		ao_base_finish(&fd->base);
 		fifo_data_free(fd);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	return &fd->base;
@@ -222,15 +205,14 @@ fifo_output_finish(struct audio_output *ao)
 	fifo_data_free(fd);
 }
 
-static bool
-fifo_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		 GError **error)
+static int
+fifo_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct fifo_data *fd = (struct fifo_data *)ao;
 
 	fd->timer = timer_new(audio_format);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -254,8 +236,8 @@ fifo_output_cancel(struct audio_output *ao)
 		bytes = read(fd->input, buf, FIFO_BUFFER_SIZE);
 
 	if (bytes < 0 && errno != EAGAIN) {
-		g_warning("Flush of FIFO \"%s\" failed: %s",
-			  fd->path, g_strerror(errno));
+		log_warning("Flush of FIFO \"%s\" failed: %s",
+			  fd->path, strerror(errno));
 	}
 }
 
@@ -270,8 +252,7 @@ fifo_output_delay(struct audio_output *ao)
 }
 
 static size_t
-fifo_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		 GError **error)
+fifo_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct fifo_data *fd = (struct fifo_data *)ao;
 	ssize_t bytes;
@@ -295,9 +276,8 @@ fifo_output_play(struct audio_output *ao, const void *chunk, size_t size,
 				continue;
 			}
 
-			g_set_error(error, fifo_output_quark(), errno,
-				    "Failed to write to FIFO %s: %s",
-				    fd->path, g_strerror(errno));
+			log_err("Failed to write to FIFO %s: %s",
+				    fd->path, strerror(errno));
 			return 0;
 		}
 	}

@@ -17,12 +17,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: solaris"
+
+#include "log.h"
 #include "config.h"
 #include "solaris_output_plugin.h"
 #include "output_api.h"
 #include "fd_util.h"
-
-#include <glib.h>
 
 #include <sys/stropts.h>
 #include <sys/types.h>
@@ -50,9 +51,6 @@ struct audio_info {
 
 #endif
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "solaris_output"
-
 struct solaris_output {
 	struct audio_output base;
 
@@ -61,15 +59,6 @@ struct solaris_output {
 
 	int fd;
 };
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-solaris_output_quark(void)
-{
-	return g_quark_from_static_string("solaris_output");
-}
 
 static bool
 solaris_output_test_default_device(void)
@@ -81,13 +70,14 @@ solaris_output_test_default_device(void)
 }
 
 static struct audio_output *
-solaris_output_init(const struct config_param *param, GError **error_r)
+solaris_output_init(const struct config_param *param)
 {
 	struct solaris_output *so = g_new(struct solaris_output, 1);
 
-	if (!ao_base_init(&so->base, &solaris_output_plugin, param, error_r)) {
-		g_free(so);
-		return NULL;
+	int ret = ao_base_init(&so->base, &solaris_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(so);
+		return ERR_PTR(ret);
 	}
 
 	so->device = config_get_block_string(param, "device", "/dev/audio");
@@ -104,9 +94,8 @@ solaris_output_finish(struct audio_output *ao)
 	g_free(so);
 }
 
-static bool
-solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
-		    GError **error)
+static int
+solaris_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct solaris_output *so = (struct solaris_output *)ao;
 	struct audio_info info;
@@ -120,10 +109,9 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	so->fd = open_cloexec(so->device, O_WRONLY|O_NONBLOCK, 0);
 	if (so->fd < 0) {
-		g_set_error(error, solaris_output_quark(), errno,
-			    "Failed to open %s: %s",
-			    so->device, g_strerror(errno));
-		return false;
+		log_err("Failed to open %s: %s",
+			    so->device, strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	/* restore blocking mode */
@@ -136,10 +124,9 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	ret = ioctl(so->fd, AUDIO_GETINFO, &info);
 	if (ret < 0) {
-		g_set_error(error, solaris_output_quark(), errno,
-			    "AUDIO_GETINFO failed: %s", g_strerror(errno));
+		log_err("AUDIO_GETINFO failed: %s", strerror(errno));
 		close(so->fd);
-		return false;
+		return -MPD_3RD;
 	}
 
 	info.play.sample_rate = audio_format->sample_rate;
@@ -149,13 +136,12 @@ solaris_output_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	ret = ioctl(so->fd, AUDIO_SETINFO, &info);
 	if (ret < 0) {
-		g_set_error(error, solaris_output_quark(), errno,
-			    "AUDIO_SETINFO failed: %s", g_strerror(errno));
+		log_err("AUDIO_SETINFO failed: %s", strerror(errno));
 		close(so->fd);
-		return false;
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -167,16 +153,14 @@ solaris_output_close(struct audio_output *ao)
 }
 
 static size_t
-solaris_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		    GError **error)
+solaris_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct solaris_output *so = (struct solaris_output *)ao;
 	ssize_t nbytes;
 
 	nbytes = write(so->fd, chunk, size);
 	if (nbytes <= 0) {
-		g_set_error(error, solaris_output_quark(), errno,
-			    "Write failed: %s", g_strerror(errno));
+		log_err("Write failed: %s", strerror(errno));
 		return 0;
 	}
 

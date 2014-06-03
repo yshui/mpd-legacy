@@ -44,16 +44,14 @@ void getOutputAudioFormat(const struct audio_format *inAudioFormat,
 void initAudioConfig(void)
 {
 	const struct config_param *param = config_get_param(CONF_AUDIO_OUTPUT_FORMAT);
-	GError *error = NULL;
-	bool ret;
+	int ret;
 
 	if (param == NULL)
 		return;
 
 	ret = audio_format_parse(&configured_audio_format, param->value,
-				 true, &error);
-	if (!ret)
-		MPD_ERROR("error parsing \"%s\" at line %i: %s",
-			  CONF_AUDIO_OUTPUT_FORMAT, param->line,
-			  error->message);
+				 true);
+	if (ret != MPD_SUCCESS)
+		MPD_ERROR("error parsing \"%s\" at line %i",
+			  CONF_AUDIO_OUTPUT_FORMAT, param->line);
 }

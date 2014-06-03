@@ -101,7 +101,8 @@ mp4_read(void *user_data, void *buffer, uint32_t length)
 		   would not allow this */
 		return 0;
 
-	return decoder_read(mis->decoder, mis->input_stream, buffer, length);
+	ssize_t ret = decoder_read(mis->decoder, mis->input_stream, buffer, length);
+	return ret > 0 ? ret : 0;
 }
 
 static uint32_t
@@ -109,8 +110,7 @@ mp4_seek(void *user_data, uint64_t position)
 {
 	struct mp4ff_input_stream *mis = user_data;
 
-	return input_stream_lock_seek(mis->input_stream, position, SEEK_SET,
-				      NULL)
+	return input_stream_lock_seek(mis->input_stream, position, SEEK_SET) == MPD_SUCCESS
 		? 0 : -1;
 }
 
@@ -140,7 +140,6 @@ mp4_faad_new(mp4ff_t *mp4fh, int *track_r, struct audio_format *audio_format)
 	int track;
 	uint32_t sample_rate;
 	unsigned char channels;
-	GError *error = NULL;
 
 	decoder = faacDecOpen();
 
@@ -156,16 +155,14 @@ mp4_faad_new(mp4ff_t *mp4fh, int *track_r, struct audio_format *audio_format)
 
 	track = mp4_get_aac_track(mp4fh, decoder, &sample_rate, &channels);
 	if (track < 0) {
-		g_warning("No AAC track found");
+		log_warning("No AAC track found");
 		faacDecClose(decoder);
 		return NULL;
 	}
 
-	if (!audio_format_init_checked(audio_format, sample_rate,
-				       SAMPLE_FORMAT_S16, channels,
-				       &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	if (audio_format_init_checked(audio_format, sample_rate,
+				       SAMPLE_FORMAT_S16, channels)
+				       != MPD_SUCCESS) {
 		faacDecClose(decoder);
 		return NULL;
 	}
@@ -205,7 +202,7 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 
 	mp4fh = mp4ff_input_stream_open(&mis, mpd_decoder, input_stream);
 	if (!mp4fh) {
-		g_warning("Input does not appear to be a mp4 stream.\n");
+		log_warning("Input does not appear to be a mp4 stream.\n");
 		return;
 	}
 
@@ -219,7 +216,7 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 	scale = mp4ff_time_scale(mp4fh, track);
 
 	if (scale < 0) {
-		g_warning("Error getting audio format of mp4 AAC track.\n");
+		log_warning("Error getting audio format of mp4 AAC track.\n");
 		faacDecClose(decoder);
 		mp4ff_close(mp4fh);
 		return;
@@ -228,7 +225,7 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 
 	num_samples = mp4ff_num_samples(mp4fh, track);
 	if (num_samples > (long)(G_MAXINT / sizeof(float))) {
-		 g_warning("Integer overflow.\n");
+		 log_warning("Integer overflow.\n");
 		 faacDecClose(decoder);
 		 mp4ff_close(mp4fh);
 		 return;
@@ -308,20 +305,20 @@ mp4_decode(struct decoder *mpd_decoder, struct input_stream *input_stream)
 		free(mp4_buffer);
 
 		if (frame_info.error > 0) {
-			g_warning("faad2 error: %s\n",
+			log_warning("faad2 error: %s\n",
 				  faacDecGetErrorMessage(frame_info.error));
 			break;
 		}
 
 		if (frame_info.channels != audio_format.channels) {
-			g_warning("channel count changed from %u to %u",
+			log_warning("channel count changed from %u to %u",
 				  audio_format.channels, frame_info.channels);
 			break;
 		}
 
 #ifdef HAVE_FAACDECFRAMEINFO_SAMPLERATE
 		if (frame_info.samplerate != audio_format.sample_rate) {
-			g_warning("sample rate changed from %u to %lu",
+			log_warning("sample rate changed from %u to %lu",
 				  audio_format.sample_rate,
 				  (unsigned long)frame_info.samplerate);
 			break;

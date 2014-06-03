@@ -30,15 +30,14 @@ struct db_visitor {
 	 *
 	 * @return true to continue the operation, false on error (set error_r)
 	 */
-	bool (*directory)(const struct directory *directory, void *ctx,
-			  GError **error_r);
+	int (*directory)(const struct directory *directory, void *ctx);
 
 	/**
 	 * Visit a song.  Optional method.
 	 *
 	 * @return true to continue the operation, false on error (set error_r)
 	 */
-	bool (*song)(struct song *song, void *ctx, GError **error_r);
+	int (*song)(struct song *song, void *ctx);
 
 	/**
 	 * Visit a playlist.  Optional method.
@@ -46,9 +45,8 @@ struct db_visitor {
 	 * @param directory the directory the playlist resides in
 	 * @return true to continue the operation, false on error (set error_r)
 	 */
-	bool (*playlist)(const struct playlist_metadata *playlist,
-			 const struct directory *directory, void *ctx,
-			 GError **error_r);
+	int (*playlist)(const struct playlist_metadata *playlist,
+			 const struct directory *directory, void *ctx);
 };
 
 #endif

@@ -47,7 +47,7 @@ update_archive_tree(struct directory *directory, char *name)
 		update_archive_tree(subdir, tmp+1);
 	} else {
 		if (strlen(name) == 0) {
-			g_warning("archive returned directory only");
+			log_warning("archive returned directory only");
 			return;
 		}
 
@@ -63,7 +63,7 @@ update_archive_tree(struct directory *directory, char *name)
 				db_unlock();
 
 				modified = true;
-				g_message("added %s/%s",
+				log_info("added %s/%s",
 					  directory_get_path(directory), name);
 			}
 		}
@@ -96,20 +96,18 @@ update_archive_file2(struct directory *parent, const char *name,
 	char *path_fs = map_directory_child_fs(parent, name);
 
 	/* open archive */
-	GError *error = NULL;
-	struct archive_file *file = archive_file_open(plugin, path_fs, &error);
-	if (file == NULL) {
+	struct archive_file *file = archive_file_open(plugin, path_fs);
+	if (IS_ERR(file)) {
 		free(path_fs);
-		g_warning("%s", error->message);
-		g_error_free(error);
+		log_warning("%s", error->message);
 		return;
 	}
 
-	g_debug("archive %s opened", path_fs);
+	log_debug("archive %s opened", path_fs);
 	free(path_fs);
 
 	if (directory == NULL) {
-		g_debug("creating archive directory: %s", name);
+		log_debug("creating archive directory: %s", name);
 		db_lock();
 		directory = directory_new_child(parent, name);
 		/* mark this directory as archive (we use device for
@@ -125,7 +123,7 @@ update_archive_file2(struct directory *parent, const char *name,
 	char *filepath;
 	while ((filepath = archive_file_scan_next(file)) != NULL) {
 		/* split name into directory and file */
-		g_debug("adding archive file: %s", filepath);
+		log_debug("adding archive file: %s", filepath);
 		update_archive_tree(directory, filepath);
 	}
 

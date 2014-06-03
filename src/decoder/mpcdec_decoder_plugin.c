@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: mpcdec"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
@@ -33,8 +36,6 @@
 #include <assert.h>
 #include <unistd.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "mpcdec"
 
 struct mpc_decoder_data {
 	struct input_stream *is;
@@ -62,7 +63,7 @@ mpc_seek_cb(cb_first_arg, mpc_int32_t offset)
 {
 	struct mpc_decoder_data *data = (struct mpc_decoder_data *) cb_data;
 
-	return input_stream_lock_seek(data->is, offset, SEEK_SET, NULL);
+	return input_stream_lock_seek(data->is, offset, SEEK_SET) == MPD_SUCCESS;
 }
 
 static mpc_int32_t
@@ -144,7 +145,6 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 #endif
 	mpc_reader reader;
 	mpc_streaminfo info;
-	GError *error = NULL;
 	struct audio_format audio_format;
 
 	struct mpc_decoder_data data;
@@ -172,7 +172,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	if ((ret = mpc_streaminfo_read(&info, &reader)) != ERROR_CODE_OK) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream\n");
+			log_warning("Not a valid musepack stream\n");
 		return;
 	}
 
@@ -180,25 +180,23 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	if (!mpc_decoder_initialize(&decoder, &info)) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream\n");
+			log_warning("Not a valid musepack stream\n");
 		return;
 	}
 #else
 	demux = mpc_demux_init(&reader);
 	if (demux == NULL) {
 		if (decoder_get_command(mpd_decoder) != DECODE_COMMAND_STOP)
-			g_warning("Not a valid musepack stream");
+			log_warning("Not a valid musepack stream");
 		return;
 	}
 
 	mpc_demux_get_info(demux, &info);
 #endif
 
-	if (!audio_format_init_checked(&audio_format, info.sample_freq,
+	if (audio_format_init_checked(&audio_format, info.sample_freq,
 				       SAMPLE_FORMAT_S24_P32,
-				       info.channels, &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+				       info.channels) != MPD_SUCCESS) {
 #ifndef MPC_IS_OLD_API
 		mpc_demux_exit(demux);
 #endif
@@ -256,7 +254,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 		frame.buffer = (MPC_SAMPLE_FORMAT *)sample_buffer;
 		status = mpc_demux_decode(demux, &frame);
 		if (status != MPC_STATUS_OK) {
-			g_warning("Failed to decode sample");
+			log_warning("Failed to decode sample");
 			break;
 		}
 

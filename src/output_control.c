@@ -180,13 +180,9 @@ audio_output_open(struct audio_output *ao,
 	open = ao->open;
 
 	if (open && ao->mixer != NULL) {
-		GError *error = NULL;
-
-		if (!mixer_open(ao->mixer, &error)) {
-			g_warning("Failed to open mixer for '%s': %s",
-				  ao->name, error->message);
-			g_error_free(error);
-		}
+		if (mixer_open(ao->mixer) != MPD_SUCCESS)
+			log_warning("Failed to open mixer for '%s'",
+				  ao->name);
 	}
 
 	return open;

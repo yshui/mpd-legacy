@@ -86,16 +86,16 @@ ffado_output_quark(void)
 }
 
 static struct audio_output *
-ffado_init(const struct config_param *param,
-	   GError **error_r)
+ffado_init(const struct config_param *param)
 {
-	g_debug("using libffado version %s, API=%d",
+	log_debug("using libffado version %s, API=%d",
 		ffado_get_version(), ffado_get_api_version());
 
 	struct mpd_ffado_device *fd = g_new(struct mpd_ffado_device, 1);
-	if (!ao_base_init(&fd->base, &ffado_output_plugin, param, error_r)) {
-		g_free(fd);
-		return NULL;
+	int ret = ao_base_init(&fd->base, &ffado_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(fd);
+		return ERR_PTR(ret);
 	}
 
 	fd->device_name = config_dup_block_string(param, "device", NULL);
@@ -105,17 +105,15 @@ ffado_init(const struct config_param *param,
 						    1024);
 	if (fd->period_size == 0 || fd->period_size > 1024 * 1024) {
 		ao_base_finish(&fd->base);
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "invalid period_size setting");
-		return false;
+		log_err("invalid period_size setting");
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	fd->nb_buffers = config_get_block_unsigned(param, "nb_buffers", 3);
 	if (fd->nb_buffers == 0 || fd->nb_buffers > 1024) {
 		ao_base_finish(&fd->base);
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "invalid nb_buffers setting");
-		return false;
+		log_err("invalid nb_buffers setting");
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	return &fd->base;
@@ -131,31 +129,27 @@ ffado_finish(struct audio_output *ao)
 	g_free(fd);
 }
 
-static bool
-ffado_configure_stream(ffado_device_t *dev, struct mpd_ffado_stream *stream,
-		       GError **error_r)
+static int
+ffado_configure_stream(ffado_device_t *dev, struct mpd_ffado_stream *stream)
 {
 	char *buffer = (char *)stream->buffer;
 	if (ffado_streaming_set_playback_stream_buffer(dev, stream->number,
 						       buffer) != 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "failed to configure stream buffer");
-		return false;
+		log_err("failed to configure stream buffer");
+		return -MPD_3RD;
 	}
 
 	if (ffado_streaming_playback_stream_onoff(dev, stream->number,
 						  1) != 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "failed to disable stream");
-		return false;
+		log_err("failed to disable stream");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
-		GError **error_r)
+static int
+ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format)
 {
 	assert(fd != NULL);
 	assert(fd->dev != NULL);
@@ -163,19 +157,17 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 
 	if (ffado_streaming_set_audio_datatype(fd->dev,
 					       ffado_audio_datatype_float) != 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "ffado_streaming_set_audio_datatype() failed");
-		return false;
+		log_err("ffado_streaming_set_audio_datatype() failed");
+		return -MPD_3RD;
 	}
 
 	int num_streams = ffado_streaming_get_nb_playback_streams(fd->dev);
 	if (num_streams < 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "ffado_streaming_get_nb_playback_streams() failed");
-		return false;
+		log_err("ffado_streaming_get_nb_playback_streams() failed");
+		return -MPD_3RD;
 	}
 
-	g_debug("there are %d playback streams", num_streams);
+	log_debug("there are %d playback streams", num_streams);
 
 	fd->num_streams = 0;
 	for (int i = 0; i < num_streams; ++i) {
@@ -186,18 +178,18 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 		ffado_streaming_stream_type type =
 			ffado_streaming_get_playback_stream_type(fd->dev, i);
 		if (type != ffado_stream_type_audio) {
-			g_debug("stream %d name='%s': not an audio stream",
+			log_debug("stream %d name='%s': not an audio stream",
 				i, name);
 			continue;
 		}
 
 		if (fd->num_streams >= audio_format->channels) {
-			g_debug("stream %d name='%s': ignoring",
+			log_debug("stream %d name='%s': ignoring",
 				i, name);
 			continue;
 		}
 
-		g_debug("stream %d name='%s'", i, name);
+		log_debug("stream %d name='%s'", i, name);
 
 		struct mpd_ffado_stream *stream =
 			&fd->streams[fd->num_streams++];
@@ -207,38 +199,35 @@ ffado_configure(struct mpd_ffado_device *fd, struct audio_format *audio_format,
 		/* allocated buffer is zeroed = silence */
 		stream->buffer = g_new0(float, fd->period_size);
 
-		if (!ffado_configure_stream(fd->dev, stream, error_r))
-			return false;
+		int ret = ffado_configure_stream(fd->dev, stream, error_r);
+		if (ret != MPD_SUCCESS)
+			return ret;
 	}
 
 	if (!audio_valid_channel_count(fd->num_streams)) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "invalid channel count from libffado: %u",
+		log_err("invalid channel count from libffado: %u",
 			    audio_format->channels);
-		return false;
+		return -MPD_3RD;
 	}
 
-	g_debug("configured %d audio streams", fd->num_streams);
+	log_debug("configured %d audio streams", fd->num_streams);
 
 	if (ffado_streaming_prepare(fd->dev) != 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "ffado_streaming_prepare() failed");
-		return false;
+		log_err("ffado_streaming_prepare() failed");
+		return -MPD_3RD;
 	}
 
 	if (ffado_streaming_start(fd->dev) != 0) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "ffado_streaming_start() failed");
-		return false;
+		log_err("ffado_streaming_start() failed");
+		return -MPD_3RD;
 	}
 
 	audio_format->channels = fd->num_streams;
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-ffado_open(struct audio_output *ao, struct audio_format *audio_format,
-	   GError **error_r)
+static int
+ffado_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct mpd_ffado_device *fd = (struct mpd_ffado_device *)ao;
 
@@ -262,25 +251,25 @@ ffado_open(struct audio_output *ao, struct audio_format *audio_format,
 
 	fd->dev = ffado_streaming_init(device_info, options);
 	if (fd->dev == NULL) {
-		g_set_error(error_r, ffado_output_quark(), 0,
-			    "ffado_streaming_init() failed");
-		return false;
+		log_err("ffado_streaming_init() failed");
+		return -MPD_3RD;
 	}
 
-	if (!ffado_configure(fd, audio_format, error_r)) {
+	int ret = ffado_configure(fd, audio_format, error_r);
+	if (ret != MPD_SUCCESS) {
 		ffado_streaming_finish(fd->dev);
 
 		for (int i = 0; i < fd->num_streams; ++i) {
 			struct mpd_ffado_stream *stream = &fd->streams[i];
-			g_free(stream->buffer);
+			free(stream->buffer);
 		}
 
-		return false;
+		return ret;
 	}
 
 	fd->buffer_position = 0;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -293,13 +282,12 @@ ffado_close(struct audio_output *ao)
 
 	for (int i = 0; i < fd->num_streams; ++i) {
 		struct mpd_ffado_stream *stream = &fd->streams[i];
-		g_free(stream->buffer);
+		free(stream->buffer);
 	}
 }
 
 static size_t
-ffado_play(struct audio_output *ao, const void *chunk, size_t size,
-	   GError **error_r)
+ffado_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct mpd_ffado_device *fd = (struct mpd_ffado_device *)ao;
 

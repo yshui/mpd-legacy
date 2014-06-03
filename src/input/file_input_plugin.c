@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "input: file"
+
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "input/file_input_plugin.h"
 #include "input_internal.h"
@@ -30,25 +33,15 @@
 #include <string.h>
 #include <glib.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "input_file"
-
 struct file_input_stream {
 	struct input_stream base;
 
 	int fd;
 };
 
-static inline GQuark
-file_quark(void)
-{
-	return g_quark_from_static_string("file");
-}
-
 static struct input_stream *
 input_file_open(const char *filename,
-		GMutex *mutex, GCond *cond,
-		GError **error_r)
+		GMutex *mutex, GCond *cond)
 {
 	int fd, ret;
 	struct stat st;
@@ -60,26 +53,23 @@ input_file_open(const char *filename,
 	fd = open_cloexec(filename, O_RDONLY|O_BINARY, 0);
 	if (fd < 0) {
 		if (errno != ENOENT && errno != ENOTDIR)
-			g_set_error(error_r, file_quark(), errno,
-				    "Failed to open \"%s\": %s",
-				    filename, g_strerror(errno));
-		return NULL;
+			log_err("Failed to open \"%s\": %s",
+				    filename, strerror(errno));
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	ret = fstat(fd, &st);
 	if (ret < 0) {
-		g_set_error(error_r, file_quark(), errno,
-			    "Failed to stat \"%s\": %s",
-			    filename, g_strerror(errno));
+		log_err("Failed to stat \"%s\": %s",
+			    filename, strerror(errno));
 		close(fd);
-		return NULL;
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	if (!S_ISREG(st.st_mode)) {
-		g_set_error(error_r, file_quark(), 0,
-			    "Not a regular file: %s", filename);
+		log_err("Not a regular file: %s", filename);
 		close(fd);
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 #ifdef POSIX_FADV_SEQUENTIAL
@@ -99,35 +89,31 @@ input_file_open(const char *filename,
 	return &fis->base;
 }
 
-static bool
-input_file_seek(struct input_stream *is, goffset offset, int whence,
-		GError **error_r)
+static int
+input_file_seek(struct input_stream *is, off64_t offset, int whence)
 {
 	struct file_input_stream *fis = (struct file_input_stream *)is;
 
 	offset = (goffset)lseek(fis->fd, (off_t)offset, whence);
 	if (offset < 0) {
-		g_set_error(error_r, file_quark(), errno,
-			    "Failed to seek: %s", g_strerror(errno));
-		return false;
+		log_err("Failed to seek: %s", strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	is->offset = offset;
-	return true;
+	return MPD_SUCCESS;
 }
 
-static size_t
-input_file_read(struct input_stream *is, void *ptr, size_t size,
-		GError **error_r)
+static ssize_t
+input_file_read(struct input_stream *is, void *ptr, size_t size)
 {
 	struct file_input_stream *fis = (struct file_input_stream *)is;
 	ssize_t nbytes;
 
 	nbytes = read(fis->fd, ptr, size);
 	if (nbytes < 0) {
-		g_set_error(error_r, file_quark(), errno,
-			    "Failed to read: %s", g_strerror(errno));
-		return 0;
+		log_err("Failed to read: %s", strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	is->offset += nbytes;

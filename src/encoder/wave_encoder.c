@@ -51,12 +51,6 @@ struct wave_header {
 
 extern const struct encoder_plugin wave_encoder_plugin;
 
-static inline GQuark
-wave_encoder_quark(void)
-{
-	return g_quark_from_static_string("wave_encoder");
-}
-
 static void
 fill_wave_header(struct wave_header *header, int channels, int bits,
 		int freq, int block_size)
@@ -85,12 +79,11 @@ fill_wave_header(struct wave_header *header, int channels, int bits,
 }
 
 static struct encoder *
-wave_encoder_init(const struct config_param *param,
-		  GError **error)
+wave_encoder_init(const struct config_param *param)
 {
 	struct wave_encoder *encoder;
 
-	encoder = g_new(struct wave_encoder, 1);
+	encoder = tmalloc(struct wave_encoder, 1);
 	encoder_struct_init(&encoder->encoder, &wave_encoder_plugin);
 
 	return &encoder->encoder;
@@ -104,10 +97,9 @@ wave_encoder_finish(struct encoder *_encoder)
 	g_free(encoder);
 }
 
-static bool
+static int
 wave_encoder_open(struct encoder *_encoder,
-		  struct audio_format *audio_format,
-		  GError **error)
+		  struct audio_format *audio_format)
 {
 	struct wave_encoder *encoder = (struct wave_encoder *)_encoder;
 
@@ -148,7 +140,7 @@ wave_encoder_open(struct encoder *_encoder,
 			 (encoder->bits / 8) * audio_format->channels );
 	fifo_buffer_append(encoder->buffer, sizeof(*header));
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -199,10 +191,9 @@ pcm24_to_wave(uint8_t *dst8, const uint32_t *src32, size_t length)
 	return (dst8 - dst_old);
 }
 
-static bool
+static ssize_t
 wave_encoder_write(struct encoder *_encoder,
-		   const void *src, size_t length,
-		   GError **error)
+		   const void *src, size_t length)
 {
 	struct wave_encoder *encoder = (struct wave_encoder *)_encoder;
 
@@ -239,7 +230,7 @@ wave_encoder_write(struct encoder *_encoder,
 #endif
 
 	fifo_buffer_append(encoder->buffer, length);
-	return true;
+	return length;
 }
 
 static size_t

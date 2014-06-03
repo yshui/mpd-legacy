@@ -40,14 +40,4 @@ enum ack {
 	ACK_ERROR_EXIST = 56,
 };
 
-/**
- * Quark for GError.domain; the code is an enum #ack.
- */
-MPD_CONST
-static inline GQuark
-ack_quark(void)
-{
-	return g_quark_from_static_string("ack");
-}
-
 #endif

@@ -26,6 +26,8 @@
 #ifndef MPD_FILTER_PLUGIN_H
 #define MPD_FILTER_PLUGIN_H
 
+#include "log.h"
+
 #include <glib.h>
 
 #include <stdbool.h>
@@ -40,8 +42,7 @@ struct filter_plugin {
 	/**
          * Allocates and configures a filter.
 	 */
-	struct filter *(*init)(const struct config_param *param,
-			       GError **error_r);
+	struct filter *(*init)(const struct config_param *param);
 
 	/**
 	 * Free instance data.
@@ -57,8 +58,7 @@ struct filter_plugin {
 	 */
 	const struct audio_format *
 	(*open)(struct filter *filter,
-		struct audio_format *audio_format,
-		GError **error_r);
+		struct audio_format *audio_format);
 
 	/**
 	 * Closes a filter.
@@ -70,8 +70,7 @@ struct filter_plugin {
 	 */
 	const void *(*filter)(struct filter *filter,
 			      const void *src, size_t src_size,
-			      size_t *dest_buffer_r,
-			      GError **error_r);
+			      size_t *dest_buffer_r);
 };
 
 /**
@@ -85,7 +84,7 @@ struct filter_plugin {
  */
 struct filter *
 filter_new(const struct filter_plugin *plugin,
-	   const struct config_param *param, GError **error_r);
+	   const struct config_param *param);
 
 /**
  * Creates a new filter, loads configuration and the plugin name from
@@ -97,7 +96,7 @@ filter_new(const struct filter_plugin *plugin,
  * @return a new filter object, or NULL on error
  */
 struct filter *
-filter_configured_new(const struct config_param *param, GError **error_r);
+filter_configured_new(const struct config_param *param);
 
 /**
  * Deletes a filter.  It must be closed prior to calling this
@@ -119,8 +118,7 @@ filter_free(struct filter *filter);
  * @return the format of outgoing data
  */
 const struct audio_format *
-filter_open(struct filter *filter, struct audio_format *audio_format,
-	    GError **error_r);
+filter_open(struct filter *filter, struct audio_format *audio_format);
 
 /**
  * Closes the filter.  After that, you may call filter_open() again.
@@ -144,7 +142,6 @@ filter_close(struct filter *filter);
  */
 const void *
 filter_filter(struct filter *filter, const void *src, size_t src_size,
-	      size_t *dest_size_r,
-	      GError **error_r);
+	      size_t *dest_size_r);
 
 #endif

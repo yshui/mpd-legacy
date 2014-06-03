@@ -21,6 +21,8 @@
  * Common data structures and functions used by FLAC and OggFLAC
  */
 
+#define LOG_DOMAIN "decoder: flac"
+
 #include "config.h"
 #include "_flac_common.h"
 #include "flac_metadata.h"
@@ -86,13 +88,10 @@ flac_got_stream_info(struct flac_data *data,
 	if (data->initialized || data->unsupported)
 		return;
 
-	GError *error = NULL;
-	if (!audio_format_init_checked(&data->audio_format,
+	if (audio_format_init_checked(&data->audio_format,
 				       stream_info->sample_rate,
 				       flac_sample_format(stream_info->bits_per_sample),
-				       stream_info->channels, &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+				       stream_info->channels) != MPD_SUCCESS) {
 		data->unsupported = true;
 		return;
 	}
@@ -144,7 +143,7 @@ void flac_error_common_cb(const FLAC__StreamDecoderErrorStatus status,
 	if (decoder_get_command(data->decoder) == DECODE_COMMAND_STOP)
 		return;
 
-	g_warning("%s", FLAC__StreamDecoderErrorStatusString[status]);
+	log_warning("%s", FLAC__StreamDecoderErrorStatusString[status]);
 }
 
 /**
@@ -160,13 +159,10 @@ flac_got_first_frame(struct flac_data *data, const FLAC__FrameHeader *header)
 	if (data->unsupported)
 		return false;
 
-	GError *error = NULL;
 	if (!audio_format_init_checked(&data->audio_format,
 				       header->sample_rate,
 				       flac_sample_format(header->bits_per_sample),
-				       header->channels, &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+				       header->channels) != MPD_SUCCESS) {
 		data->unsupported = true;
 		return false;
 	}

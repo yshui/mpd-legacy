@@ -18,6 +18,7 @@
  */
 
 #include "config.h" /* must be first for large file support */
+#include "log.h"
 #include "riff.h"
 
 #include <glib.h>
@@ -56,8 +57,8 @@ riff_seek_id3(FILE *file)
 
 	ret = fstat(fileno(file), &st);
 	if (ret < 0) {
-		g_warning("Failed to stat file descriptor: %s",
-			  g_strerror(errno));
+		log_warning("Failed to stat file descriptor: %s",
+			  strerror(errno));
 		return 0;
 	}
 
@@ -65,7 +66,7 @@ riff_seek_id3(FILE *file)
 
 	ret = fseek(file, 0, SEEK_SET);
 	if (ret != 0) {
-		g_warning("Failed to seek: %s", g_strerror(errno));
+		log_warning("Failed to seek: %s", strerror(errno));
 		return 0;
 	}
 

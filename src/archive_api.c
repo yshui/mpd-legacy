@@ -65,7 +65,7 @@ bool archive_lookup(char *pathname, char **archive, char **inpath, char **suffix
 		//try to stat if its real directory
 		if (stat(pathdupe, &st_info) == -1) {
 			if (errno != ENOTDIR) {
-				g_warning("stat %s failed (errno=%d)\n", pathdupe, errno);
+				log_warning("stat %s failed (errno=%d)\n", pathdupe, errno);
 				break;
 			}
 		} else {
@@ -92,7 +92,7 @@ bool archive_lookup(char *pathname, char **archive, char **inpath, char **suffix
 				}
 				break;
 			} else {
-				g_warning("not a regular file %s\n", pathdupe);
+				log_warning("not a regular file %s\n", pathdupe);
 				break;
 			}
 		}

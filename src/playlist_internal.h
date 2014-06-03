@@ -25,6 +25,7 @@
 #ifndef PLAYLIST_INTERNAL_H
 #define PLAYLIST_INTERNAL_H
 
+#include "log.h"
 #include "playlist.h"
 
 struct player_control;

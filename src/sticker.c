@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "sticker"
+
 #include "config.h"
+#include "log.h"
 #include "sticker.h"
 #include "idle.h"
 #include "macros.h"
@@ -26,9 +29,6 @@
 #include <sqlite3.h>
 #include <assert.h>
 #include <string.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "sticker"
 
 #if SQLITE_VERSION_NUMBER < 3003009
 #define sqlite3_prepare_v2 sqlite3_prepare
@@ -79,56 +79,47 @@ static const char sticker_sql_create[] =
 static sqlite3 *sticker_db;
 static sqlite3_stmt *sticker_stmt[G_N_ELEMENTS(sticker_sql)];
 
-static GQuark
-sticker_quark(void)
-{
-	return g_quark_from_static_string("sticker");
-}
-
 static sqlite3_stmt *
-sticker_prepare(const char *sql, GError **error_r)
+sticker_prepare(const char *sql)
 {
 	int ret;
 	sqlite3_stmt *stmt;
 
 	ret = sqlite3_prepare_v2(sticker_db, sql, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		g_set_error(error_r, sticker_quark(), ret,
-			    "sqlite3_prepare_v2() failed: %s",
+		log_err("sqlite3_prepare_v2() failed: %s",
 			    sqlite3_errmsg(sticker_db));
-		return NULL;
+		return ERR_PTR(-MPD_3RD);
 	}
 
 	return stmt;
 }
 
-bool
-sticker_global_init(const char *path, GError **error_r)
+int
+sticker_global_init(const char *path)
 {
 	int ret;
 
 	if (path == NULL)
 		/* not configured */
-		return true;
+		return -MPD_DISABLED;
 
 	/* open/create the sqlite database */
 
 	ret = sqlite3_open(path, &sticker_db);
 	if (ret != SQLITE_OK) {
-		g_set_error(error_r, sticker_quark(), ret,
-			    "Failed to open sqlite database '%s': %s",
+		log_err("Failed to open sqlite database '%s': %s",
 			    path, sqlite3_errmsg(sticker_db));
-		return false;
+		return -MPD_3RD;
 	}
 
 	/* create the table and index */
 
 	ret = sqlite3_exec(sticker_db, sticker_sql_create, NULL, NULL, NULL);
 	if (ret != SQLITE_OK) {
-		g_set_error(error_r, sticker_quark(), ret,
-			    "Failed to create sticker table: %s",
+		log_err("Failed to create sticker table: %s",
 			    sqlite3_errmsg(sticker_db));
-		return false;
+		return -MPD_3RD;
 	}
 
 	/* prepare the statements we're going to use */
@@ -136,12 +127,12 @@ sticker_global_init(const char *path, GError **error_r)
 	for (unsigned i = 0; i < G_N_ELEMENTS(sticker_sql); ++i) {
 		assert(sticker_sql[i] != NULL);
 
-		sticker_stmt[i] = sticker_prepare(sticker_sql[i], error_r);
-		if (sticker_stmt[i] == NULL)
-			return false;
+		sticker_stmt[i] = sticker_prepare(sticker_sql[i]);
+		if (IS_ERR(sticker_stmt[i]))
+			return PTR_ERR(sticker_stmt[i]);
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 void
@@ -185,21 +176,21 @@ sticker_load_value(const char *type, const char *uri, const char *name)
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return NULL;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return NULL;
 	}
 
 	ret = sqlite3_bind_text(stmt, 3, name, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return NULL;
 	}
@@ -216,7 +207,7 @@ sticker_load_value(const char *type, const char *uri, const char *name)
 		value = NULL;
 	} else {
 		/* error */
-		g_warning("sqlite3_step() failed: %s",
+		log_warning("sqlite3_step() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return NULL;
 	}
@@ -243,14 +234,14 @@ sticker_list_values(GHashTable *hash, const char *type, const char *uri)
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -269,7 +260,7 @@ sticker_list_values(GHashTable *hash, const char *type, const char *uri)
 			/* no op */
 			break;
 		default:
-			g_warning("sqlite3_step() failed: %s",
+			log_warning("sqlite3_step() failed: %s",
 				  sqlite3_errmsg(sticker_db));
 			return false;
 		}
@@ -300,28 +291,28 @@ sticker_update_value(const char *type, const char *uri,
 
 	ret = sqlite3_bind_text(stmt, 1, value, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 3, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 4, name, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -331,7 +322,7 @@ sticker_update_value(const char *type, const char *uri,
 	} while (ret == SQLITE_BUSY);
 
 	if (ret != SQLITE_DONE) {
-		g_warning("sqlite3_step() failed: %s",
+		log_warning("sqlite3_step() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -364,28 +355,28 @@ sticker_insert_value(const char *type, const char *uri,
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 3, name, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 4, value, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -395,7 +386,7 @@ sticker_insert_value(const char *type, const char *uri,
 	} while (ret == SQLITE_BUSY);
 
 	if (ret != SQLITE_DONE) {
-		g_warning("sqlite3_step() failed: %s",
+		log_warning("sqlite3_step() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -439,14 +430,14 @@ sticker_delete(const char *type, const char *uri)
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -456,7 +447,7 @@ sticker_delete(const char *type, const char *uri)
 	} while (ret == SQLITE_BUSY);
 
 	if (ret != SQLITE_DONE) {
-		g_warning("sqlite3_step() failed: %s",
+		log_warning("sqlite3_step() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -482,21 +473,21 @@ sticker_delete_value(const char *type, const char *uri, const char *name)
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 2, uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 3, name, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -506,7 +497,7 @@ sticker_delete_value(const char *type, const char *uri, const char *name)
 	} while (ret == SQLITE_BUSY);
 
 	if (ret != SQLITE_DONE) {
-		g_warning("sqlite3_step() failed: %s",
+		log_warning("sqlite3_step() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -613,7 +604,7 @@ sticker_find(const char *type, const char *base_uri, const char *name,
 
 	ret = sqlite3_bind_text(stmt, 1, type, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -623,14 +614,14 @@ sticker_find(const char *type, const char *base_uri, const char *name,
 
 	ret = sqlite3_bind_text(stmt, 2, base_uri, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
 
 	ret = sqlite3_bind_text(stmt, 3, name, -1, NULL);
 	if (ret != SQLITE_OK) {
-		g_warning("sqlite3_bind_text() failed: %s",
+		log_warning("sqlite3_bind_text() failed: %s",
 			  sqlite3_errmsg(sticker_db));
 		return false;
 	}
@@ -649,7 +640,7 @@ sticker_find(const char *type, const char *base_uri, const char *name,
 			/* no op */
 			break;
 		default:
-			g_warning("sqlite3_step() failed: %s",
+			log_warning("sqlite3_step() failed: %s",
 				  sqlite3_errmsg(sticker_db));
 			return false;
 		}

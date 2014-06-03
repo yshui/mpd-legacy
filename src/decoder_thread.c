@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder_thread"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_thread.h"
 #include "decoder_control.h"
@@ -38,9 +41,6 @@
 
 #include <unistd.h>
 #include <stdio.h> /* for SEEK_SET */
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "decoder_thread"
 
 /**
  * Marks the current decoder command as "finished" and notifies the
@@ -72,17 +72,13 @@ decoder_command_finished_locked(struct decoder_control *dc)
 static struct input_stream *
 decoder_input_stream_open(struct decoder_control *dc, const char *uri)
 {
-	GError *error = NULL;
 	struct input_stream *is;
 
-	is = input_stream_open(uri, dc->mutex, dc->cond, &error);
-	if (is == NULL) {
-		if (error != NULL) {
-			g_warning("%s", error->message);
-			g_error_free(error);
-		}
+	is = input_stream_open(uri, dc->mutex, dc->cond);
+	if (IS_ERR(is)) {
+		log_warning("Can't open stream");
 
-		return NULL;
+		return (void *)is;
 	}
 
 	/* wait for the input stream to become ready; its metadata
@@ -98,13 +94,13 @@ decoder_input_stream_open(struct decoder_control *dc, const char *uri)
 		input_stream_update(is);
 	}
 
-	if (!input_stream_check(is, &error)) {
+	int ret = input_stream_check(is);
+	if (ret != MPD_SUCCESS) {
 		decoder_unlock(dc);
 
-		g_warning("%s", error->message);
-		g_error_free(error);
+		log_warning("Input stream check failed");
 
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	decoder_unlock(dc);
@@ -126,13 +122,13 @@ decoder_stream_decode(const struct decoder_plugin *plugin,
 	assert(input_stream->ready);
 	assert(decoder->dc->state == DECODE_STATE_START);
 
-	g_debug("probing plugin %s", plugin->name);
+	log_debug("probing plugin %s", plugin->name);
 
 	if (decoder->dc->command == DECODE_COMMAND_STOP)
 		return true;
 
 	/* rewind the stream, so each plugin gets a fresh start */
-	input_stream_seek(input_stream, 0, SEEK_SET, NULL);
+	input_stream_seek(input_stream, 0, SEEK_SET);
 
 	decoder_unlock(decoder->dc);
 
@@ -159,7 +155,7 @@ decoder_file_decode(const struct decoder_plugin *plugin,
 	assert(g_path_is_absolute(path));
 	assert(decoder->dc->state == DECODE_STATE_START);
 
-	g_debug("probing plugin %s", plugin->name);
+	log_debug("probing plugin %s", plugin->name);
 
 	if (decoder->dc->command == DECODE_COMMAND_STOP)
 		return true;

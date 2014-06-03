@@ -39,6 +39,9 @@
  * one of them takes effect.
  */
 
+#define LOG_DOMAIN "filter: route"
+
+#include "log.h"
 #include "config.h"
 #include "conf.h"
 #include "audio_format.h"
@@ -120,10 +123,9 @@ struct route_filter {
  * @param filter a route_filter whose min_channels and sources[] to set
  * @return true on success, false on error
  */
-static bool
+static int
 route_filter_parse(const struct config_param *param,
-		   struct route_filter *filter,
-		   GError **error_r) {
+		   struct route_filter *filter) {
 
 	/* TODO:
 	 * With a more clever way of marking "don't copy to output N",
@@ -157,12 +159,11 @@ route_filter_parse(const struct config_param *param,
 		// Split the a>b string into source and destination
 		sd = g_strsplit(tokens[c], ">", 2);
 		if (g_strv_length(sd) != 2) {
-			g_set_error(error_r, config_quark(), 1,
-				"Invalid copy around %d in routes spec: %s",
+			log_err("config: Invalid copy around %d in routes spec: %s",
 				param->line, tokens[c]);
 			g_strfreev(sd);
 			g_strfreev(tokens);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		source = strtol(sd[0], NULL, 10);
@@ -180,10 +181,9 @@ route_filter_parse(const struct config_param *param,
 
 	if (!audio_valid_channel_count(filter->min_output_channels)) {
 		g_strfreev(tokens);
-		g_set_error(error_r, audio_format_quark(), 0,
-			    "Invalid number of output channels requested: %d",
+		log_err("audio_format: Invalid number of output channels requested: %d",
 			    filter->min_output_channels);
-		return false;
+		return -MPD_INVAL;
 	}
 
 	// Allocate a map of "copy nothing to me"
@@ -204,12 +204,11 @@ route_filter_parse(const struct config_param *param,
 		// Split the a>b string into source and destination
 		sd = g_strsplit(tokens[c], ">", 2);
 		if (g_strv_length(sd) != 2) {
-			g_set_error(error_r, config_quark(), 1,
-				"Invalid copy around %d in routes spec: %s",
+			log_err("config: Invalid copy around %d in routes spec: %s",
 				param->line, tokens[c]);
 			g_strfreev(sd);
 			g_strfreev(tokens);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		source = strtol(sd[0], NULL, 10);
@@ -222,18 +221,19 @@ route_filter_parse(const struct config_param *param,
 
 	g_strfreev(tokens);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct filter *
-route_filter_init(const struct config_param *param,
-		 GError **error_r)
+route_filter_init(const struct config_param *param)
 {
 	struct route_filter *filter = g_new(struct route_filter, 1);
 	filter_init(&filter->base, &route_filter_plugin);
 
 	// Allocate and set the filter->sources[] array
-	route_filter_parse(param, filter, error_r);
+	int ret = route_filter_parse(param, filter);
+	if (ret != MPD_SUCCESS)
+		return ERR_PTR(ret);
 
 	return &filter->base;
 }
@@ -248,8 +248,7 @@ route_filter_finish(struct filter *_filter)
 }
 
 static const struct audio_format *
-route_filter_open(struct filter *_filter, struct audio_format *audio_format,
-		  GError **error_r)
+route_filter_open(struct filter *_filter, struct audio_format *audio_format)
 {
 	struct route_filter *filter = (struct route_filter *)_filter;
 
@@ -284,7 +283,7 @@ route_filter_close(struct filter *_filter)
 static const void *
 route_filter_filter(struct filter *_filter,
 		   const void *src, size_t src_size,
-		   size_t *dest_size_r, GError **error_r)
+		   size_t *dest_size_r)
 {
 	struct route_filter *filter = (struct route_filter *)_filter;
 

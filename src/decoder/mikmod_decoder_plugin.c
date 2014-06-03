@@ -127,7 +127,7 @@ mikmod_decoder_init(const struct config_param *param)
 		   DMODE_16BITS);
 
 	if (MikMod_Init(params)) {
-		g_warning("Could not init MikMod: %s\n",
+		log_warning("Could not init MikMod: %s\n",
 			  MikMod_strerror(MikMod_errno));
 		return false;
 	}
@@ -156,7 +156,7 @@ mikmod_decoder_file_decode(struct decoder *decoder, const char *path_fs)
 	g_free(path2);
 
 	if (handle == NULL) {
-		g_warning("failed to open mod: %s", path_fs);
+		log_warning("failed to open mod: %s", path_fs);
 		return;
 	}
 
@@ -187,7 +187,7 @@ mikmod_decoder_scan_file(const char *path_fs,
 
 	if (handle == NULL) {
 		g_free(path2);
-		g_debug("Failed to open file: %s", path_fs);
+		log_debug("Failed to open file: %s", path_fs);
 		return false;
 
 	}

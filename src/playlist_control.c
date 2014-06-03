@@ -40,7 +40,7 @@ playlist_stop(struct playlist *playlist, struct player_control *pc)
 
 	assert(playlist->current >= 0);
 
-	g_debug("stop");
+	log_debug("stop");
 	pc_stop(pc);
 	playlist->queued = -1;
 	playlist->playing = false;
@@ -63,7 +63,7 @@ playlist_stop(struct playlist *playlist, struct player_control *pc)
 	}
 }
 
-enum playlist_result
+int
 playlist_play(struct playlist *playlist, struct player_control *pc,
 	      int song)
 {
@@ -75,13 +75,13 @@ playlist_play(struct playlist *playlist, struct player_control *pc,
 		/* play any song ("current" song, or the first song */
 
 		if (queue_is_empty(&playlist->queue))
-			return PLAYLIST_RESULT_SUCCESS;
+			return MPD_SUCCESS;
 
 		if (playlist->playing) {
 			/* already playing: unpause playback, just in
 			   case it was paused, and return */
 			pc_set_pause(pc, false);
-			return PLAYLIST_RESULT_SUCCESS;
+			return MPD_SUCCESS;
 		}
 
 		/* select a song: "current" song, or the first one */
@@ -89,7 +89,7 @@ playlist_play(struct playlist *playlist, struct player_control *pc,
 			? playlist->current
 			: 0;
 	} else if (!queue_valid_position(&playlist->queue, song))
-		return PLAYLIST_RESULT_BAD_RANGE;
+		return -PLAYLIST_BAD_RANGE;
 
 	if (playlist->queue.random) {
 		if (song >= 0)
@@ -113,10 +113,10 @@ playlist_play(struct playlist *playlist, struct player_control *pc,
 	playlist->error_count = 0;
 
 	playlist_play_order(playlist, pc, i);
-	return PLAYLIST_RESULT_SUCCESS;
+	return MPD_SUCCESS;
 }
 
-enum playlist_result
+int
 playlist_play_id(struct playlist *playlist, struct player_control *pc,
 		 int id)
 {
@@ -128,7 +128,7 @@ playlist_play_id(struct playlist *playlist, struct player_control *pc,
 
 	song = queue_id_to_position(&playlist->queue, id);
 	if (song < 0)
-		return PLAYLIST_RESULT_NO_SUCH_SONG;
+		return -PLAYLIST_NO_SUCH_SONG;
 
 	return playlist_play(playlist, pc, song);
 }
@@ -207,7 +207,7 @@ playlist_previous(struct playlist *playlist, struct player_control *pc)
 	}
 }
 
-enum playlist_result
+int
 playlist_seek_song(struct playlist *playlist, struct player_control *pc,
 		   unsigned song, float seek_time)
 {
@@ -216,7 +216,7 @@ playlist_seek_song(struct playlist *playlist, struct player_control *pc,
 	bool success;
 
 	if (!queue_valid_position(&playlist->queue, song))
-		return PLAYLIST_RESULT_BAD_RANGE;
+		return -PLAYLIST_BAD_RANGE;
 
 	queued = playlist_get_queued_song(playlist);
 
@@ -243,32 +243,32 @@ playlist_seek_song(struct playlist *playlist, struct player_control *pc,
 	if (!success) {
 		playlist_update_queued_song(playlist, pc, queued);
 
-		return PLAYLIST_RESULT_NOT_PLAYING;
+		return -PLAYLIST_NOT_PLAYING;
 	}
 
 	playlist->queued = -1;
 	playlist_update_queued_song(playlist, pc, NULL);
 
-	return PLAYLIST_RESULT_SUCCESS;
+	return MPD_SUCCESS;
 }
 
-enum playlist_result
+int
 playlist_seek_song_id(struct playlist *playlist, struct player_control *pc,
 		      unsigned id, float seek_time)
 {
 	int song = queue_id_to_position(&playlist->queue, id);
 	if (song < 0)
-		return PLAYLIST_RESULT_NO_SUCH_SONG;
+		return -PLAYLIST_NO_SUCH_SONG;
 
 	return playlist_seek_song(playlist, pc, song, seek_time);
 }
 
-enum playlist_result
+int
 playlist_seek_current(struct playlist *playlist, struct player_control *pc,
 		      float seek_time, bool relative)
 {
 	if (!playlist->playing)
-		return PLAYLIST_RESULT_NOT_PLAYING;
+		return -PLAYLIST_NOT_PLAYING;
 
 	if (relative) {
 		struct player_status status;
@@ -276,7 +276,7 @@ playlist_seek_current(struct playlist *playlist, struct player_control *pc,
 
 		if (status.state != PLAYER_STATE_PLAY &&
 		    status.state != PLAYER_STATE_PAUSE)
-			return PLAYLIST_RESULT_NOT_PLAYING;
+			return -PLAYLIST_NOT_PLAYING;
 
 		seek_time += (int)status.elapsed_time;
 	}

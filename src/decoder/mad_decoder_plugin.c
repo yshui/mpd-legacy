@@ -169,7 +169,8 @@ mp3_data_init(struct mp3_data *data, struct decoder *decoder,
 
 static bool mp3_seek(struct mp3_data *data, long offset)
 {
-	if (!input_stream_lock_seek(data->input_stream, offset, SEEK_SET, NULL))
+	if (input_stream_lock_seek(data->input_stream, offset, SEEK_SET)
+			!= MPD_SUCCESS)
 		return false;
 
 	mad_stream_buffer(&data->stream, data->input_buffer, 0);
@@ -332,7 +333,7 @@ static void mp3_parse_id3(struct mp3_data *data, size_t tagsize,
 		}
 
 		if (count != tagsize) {
-			g_debug("error parsing ID3 tag");
+			log_debug("error parsing ID3 tag");
 			g_free(allocated);
 			return;
 		}
@@ -459,7 +460,7 @@ decode_next_frame_header(struct mp3_data *data, struct tag **tag)
 			if ((data->stream).error == MAD_ERROR_BUFLEN)
 				return DECODE_CONT;
 			else {
-				g_warning("unrecoverable frame level error "
+				log_warning("unrecoverable frame level error "
 					  "(%s).\n",
 					  mad_stream_errorstr(&data->stream));
 				return DECODE_BREAK;
@@ -509,7 +510,7 @@ decodeNextFrame(struct mp3_data *data)
 			if ((data->stream).error == MAD_ERROR_BUFLEN)
 				return DECODE_CONT;
 			else {
-				g_warning("unrecoverable frame level error "
+				log_warning("unrecoverable frame level error "
 					  "(%s).\n",
 					  mad_stream_errorstr(&data->stream));
 				return DECODE_BREAK;
@@ -682,7 +683,7 @@ parse_lame(struct lame *lame, struct mad_bitptr *ptr, int *bitlen)
 	           &lame->version.major, &lame->version.minor) != 2)
 		return false;
 
-	g_debug("detected LAME version %i.%i (\"%s\")\n",
+	log_debug("detected LAME version %i.%i (\"%s\")\n",
 		lame->version.major, lame->version.minor, lame->encoder);
 
 	/* The reference volume was changed from the 83dB used in the
@@ -699,7 +700,7 @@ parse_lame(struct lame *lame, struct mad_bitptr *ptr, int *bitlen)
 	mad_bit_read(ptr, 16);
 
 	lame->peak = mad_f_todouble(mad_bit_read(ptr, 32) << 5); /* peak */
-	g_debug("LAME peak found: %f\n", lame->peak);
+	log_debug("LAME peak found: %f\n", lame->peak);
 
 	lame->track_gain = 0;
 	name = mad_bit_read(ptr, 3); /* gain name */
@@ -708,7 +709,7 @@ parse_lame(struct lame *lame, struct mad_bitptr *ptr, int *bitlen)
 	gain = mad_bit_read(ptr, 9); /* gain*10 */
 	if (gain && name == 1 && orig != 0) {
 		lame->track_gain = ((sign ? -gain : gain) / 10.0) + adj;
-		g_debug("LAME track gain found: %f\n", lame->track_gain);
+		log_debug("LAME track gain found: %f\n", lame->track_gain);
 	}
 
 	/* tmz reports that this isn't currently written by any version of lame
@@ -723,7 +724,7 @@ parse_lame(struct lame *lame, struct mad_bitptr *ptr, int *bitlen)
 	gain = mad_bit_read(ptr, 9); /* gain*10 */
 	if (gain && name == 2 && orig != 0) {
 		lame->album_gain = ((sign ? -gain : gain) / 10.0) + adj;
-		g_debug("LAME album gain found: %f\n", lame->track_gain);
+		log_debug("LAME album gain found: %f\n", lame->track_gain);
 	}
 #else
 	mad_bit_read(ptr, 16);
@@ -734,7 +735,7 @@ parse_lame(struct lame *lame, struct mad_bitptr *ptr, int *bitlen)
 	lame->encoder_delay = mad_bit_read(ptr, 12);
 	lame->encoder_padding = mad_bit_read(ptr, 12);
 
-	g_debug("encoder delay is %i, encoder padding is %i\n",
+	log_debug("encoder delay is %i, encoder padding is %i\n",
 	      lame->encoder_delay, lame->encoder_padding);
 
 	mad_bit_read(ptr, 80);
@@ -866,7 +867,7 @@ mp3_decode_first_frame(struct mp3_data *data, struct tag **tag)
 		return false;
 
 	if (data->max_frames > 8 * 1024 * 1024) {
-		g_warning("mp3 file header indicates too many frames: %lu\n",
+		log_warning("mp3 file header indicates too many frames: %lu\n",
 			  data->max_frames);
 		return false;
 	}
@@ -1138,25 +1139,21 @@ static void
 mp3_decode(struct decoder *decoder, struct input_stream *input_stream)
 {
 	struct mp3_data data;
-	GError *error = NULL;
 	struct tag *tag = NULL;
 	struct audio_format audio_format;
 
 	if (!mp3_open(input_stream, &data, decoder, &tag)) {
 		if (decoder_get_command(decoder) == DECODE_COMMAND_NONE)
-			g_warning
+			log_warning
 			    ("Input does not appear to be a mp3 bit stream.\n");
 		return;
 	}
 
-	if (!audio_format_init_checked(&audio_format,
+	if (audio_format_init_checked(&audio_format,
 				       data.frame.header.samplerate,
 				       SAMPLE_FORMAT_S24_P32,
-				       MAD_NCHANNELS(&data.frame.header),
-				       &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
-
+				       MAD_NCHANNELS(&data.frame.header))
+				       != MPD_SUCCESS) {
 		if (tag != NULL)
 			tag_free(tag);
 		mp3_data_finish(&data);

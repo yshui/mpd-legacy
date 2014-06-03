@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include "log.h"
 #include "mapper.h"
 #include "directory.h"
 #include "song.h"
@@ -76,20 +77,20 @@ check_directory(const char *path)
 {
 	struct stat st;
 	if (stat(path, &st) < 0) {
-		g_warning("Failed to stat directory \"%s\": %s",
-			  path, g_strerror(errno));
+		log_warning("Failed to stat directory \"%s\": %s",
+			  path, strerror(errno));
 		return;
 	}
 
 	if (!S_ISDIR(st.st_mode)) {
-		g_warning("Not a directory: %s", path);
+		log_warning("Not a directory: %s", path);
 		return;
 	}
 
 #ifndef WIN32
 	char *x = build_db_filename(path, ".", NULL);
 	if (stat(x, &st) < 0 && errno == EACCES)
-		g_warning("No permission to traverse (\"execute\") directory: %s",
+		log_warning("No permission to traverse (\"execute\") directory: %s",
 			  path);
 	free(x);
 #endif
@@ -98,7 +99,7 @@ check_directory(const char *path)
 	if (dir != NULL)
 		closedir(dir);
 	else if (errno == EACCES)
-		g_warning("No permission to read directory: %s", path);
+		log_warning("No permission to read directory: %s", path);
 }
 
 static void

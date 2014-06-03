@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "decoder: audiofile"
+
+#include "log.h"
 #include "config.h"
 #include "decoder_api.h"
 #include "audio_check.h"
@@ -28,8 +31,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "audiofile"
 
 /* pick 1020 since its devisible for 8,16,24, and 32-bit audio */
 #define CHUNK_SIZE		1020
@@ -52,15 +53,11 @@ static ssize_t
 audiofile_file_read(AFvirtualfile *vfile, void *data, size_t length)
 {
 	struct input_stream *is = (struct input_stream *) vfile->closure;
-	GError *error = NULL;
 	size_t nbytes;
 
-	nbytes = input_stream_lock_read(is, data, length, &error);
-	if (nbytes == 0 && error != NULL) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	nbytes = input_stream_lock_read(is, data, length);
+	if (nbytes <= 0)
 		return -1;
-	}
 
 	return nbytes;
 }
@@ -92,7 +89,7 @@ audiofile_file_seek(AFvirtualfile *vfile, AFfileoffset offset, int is_relative)
 {
 	struct input_stream *is = (struct input_stream *) vfile->closure;
 	int whence = (is_relative ? SEEK_CUR : SEEK_SET);
-	if (input_stream_lock_seek(is, offset, whence, NULL)) {
+	if (input_stream_lock_seek(is, offset, whence) == MPD_SUCCESS) {
 		return is->offset;
 	} else {
 		return -1;
@@ -140,7 +137,7 @@ audiofile_setup_sample_format(AFfilehandle af_fp)
 
 	afGetSampleFormat(af_fp, AF_DEFAULT_TRACK, &fs, &bits);
 	if (!audio_valid_sample_format(audiofile_bits_to_sample_format(bits))) {
-		g_debug("input file has %d bit samples, converting to 16",
+		log_debug("input file has %d bit samples, converting to 16",
 			bits);
 		bits = 16;
 	}
@@ -155,7 +152,6 @@ audiofile_setup_sample_format(AFfilehandle af_fp)
 static void
 audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 {
-	GError *error = NULL;
 	AFvirtualfile *vf;
 	int fs, frame_count;
 	AFfilehandle af_fp;
@@ -167,7 +163,7 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 	enum decoder_command cmd;
 
 	if (!is->seekable) {
-		g_warning("not seekable");
+		log_warning("not seekable");
 		return;
 	}
 
@@ -175,17 +171,15 @@ audiofile_stream_decode(struct decoder *decoder, struct input_stream *is)
 
 	af_fp = afOpenVirtualFile(vf, "r", NULL);
 	if (af_fp == AF_NULL_FILEHANDLE) {
-		g_warning("failed to input stream\n");
+		log_warning("failed to input stream\n");
 		return;
 	}
 
-	if (!audio_format_init_checked(&audio_format,
+	if (audio_format_init_checked(&audio_format,
 				       afGetRate(af_fp, AF_DEFAULT_TRACK),
 				       audiofile_setup_sample_format(af_fp),
-				       afGetVirtualChannels(af_fp, AF_DEFAULT_TRACK),
-				       &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+				       afGetVirtualChannels(af_fp, AF_DEFAULT_TRACK)) !=
+				       MPD_SUCCESS) {
 		afCloseFile(af_fp);
 		return;
 	}
@@ -230,7 +224,7 @@ audiofile_scan_file(const char *file,
 	int total_time = audiofile_get_duration(file);
 
 	if (total_time < 0) {
-		g_debug("Failed to get total song time from: %s\n",
+		log_debug("Failed to get total song time from: %s\n",
 			file);
 		return false;
 	}

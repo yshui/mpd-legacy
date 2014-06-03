@@ -20,8 +20,10 @@
 /**
  * CD-Audio handling (requires libcdio_paranoia)
  */
+#define LOG_DOMAIN "input: cdio_paranoia"
 
 #include "config.h"
+#include "log.h"
 #include "input/cdio_paranoia_input_plugin.h"
 #include "input_internal.h"
 #include "input_plugin.h"
@@ -61,12 +63,6 @@ struct input_cdio_paranoia {
 	int buffer_lsn;
 };
 
-static inline GQuark
-cdio_quark(void)
-{
-	return g_quark_from_static_string("cdio");
-}
-
 static void
 input_cdio_close(struct input_stream *is)
 {
@@ -88,11 +84,11 @@ struct cdio_uri {
 	int track;
 };
 
-static bool
-parse_cdio_uri(struct cdio_uri *dest, const char *src, GError **error_r)
+static int
+parse_cdio_uri(struct cdio_uri *dest, const char *src)
 {
 	if (!g_str_has_prefix(src, "cdda://"))
-		return false;
+		return -MPD_INVAL;
 
 	src += 7;
 
@@ -100,7 +96,7 @@ parse_cdio_uri(struct cdio_uri *dest, const char *src, GError **error_r)
 		/* play the whole CD in the default drive */
 		dest->device[0] = 0;
 		dest->track = -1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	const char *slash = strrchr(src, '/');
@@ -108,7 +104,7 @@ parse_cdio_uri(struct cdio_uri *dest, const char *src, GError **error_r)
 		/* play the whole CD in the specified drive */
 		g_strlcpy(dest->device, src, sizeof(dest->device));
 		dest->track = -1;
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	size_t device_length = slash - src;
@@ -123,16 +119,15 @@ parse_cdio_uri(struct cdio_uri *dest, const char *src, GError **error_r)
 	char *endptr;
 	dest->track = strtoul(track, &endptr, 10);
 	if (*endptr != 0) {
-		g_set_error(error_r, cdio_quark(), 0,
-			    "Malformed track number");
-		return false;
+		log_err("Malformed track number");
+		return -MPD_INVAL;
 	}
 
 	if (endptr == track)
 		/* play the whole CD */
 		dest->track = -1;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static char *
@@ -150,13 +145,12 @@ cdio_detect_device(void)
 
 static struct input_stream *
 input_cdio_open(const char *uri,
-		GMutex *mutex, GCond *cond,
-		GError **error_r)
+		GMutex *mutex, GCond *cond)
 {
 	struct input_cdio_paranoia *i;
 
 	struct cdio_uri parsed_uri;
-	if (!parse_cdio_uri(&parsed_uri, uri, error_r))
+	if (!parse_cdio_uri(&parsed_uri, uri))
 		return NULL;
 
 	i = g_new(struct input_cdio_paranoia, 1);
@@ -174,10 +168,9 @@ input_cdio_open(const char *uri,
 		? g_strdup(parsed_uri.device)
 		: cdio_detect_device();
 	if (device == NULL) {
-		g_set_error(error_r, cdio_quark(), 0,
-			    "Unable find or access a CD-ROM drive with an audio CD in it.");
+		log_err("Unable find or access a CD-ROM drive with an audio CD in it.");
 		input_cdio_close(&i->base);
-		return NULL;
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	/* Found such a CD-ROM with a CD-DA loaded. Use the first drive in the list. */
@@ -187,40 +180,38 @@ input_cdio_open(const char *uri,
 	i->drv = cdio_cddap_identify_cdio(i->cdio, 1, NULL);
 
 	if ( !i->drv ) {
-		g_set_error(error_r, cdio_quark(), 0,
-			    "Unable to identify audio CD disc.");
+		log_err("Unable to identify audio CD disc.");
 		input_cdio_close(&i->base);
-		return NULL;
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	cdda_verbose_set(i->drv, CDDA_MESSAGE_FORGETIT, CDDA_MESSAGE_FORGETIT);
 
 	if ( 0 != cdio_cddap_open(i->drv) ) {
-		g_set_error(error_r, cdio_quark(), 0, "Unable to open disc.");
+		log_err("Unable to open disc.");
 		input_cdio_close(&i->base);
-		return NULL;
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	bool reverse_endian;
 	switch (data_bigendianp(i->drv)) {
 	case -1:
-		g_debug("cdda: drive returns unknown audio data");
+		log_debug("cdda: drive returns unknown audio data");
 		reverse_endian = false;
 		break;
 	case 0:
-		g_debug("cdda: drive returns audio data Little Endian.");
+		log_debug("cdda: drive returns audio data Little Endian.");
 		reverse_endian = G_BYTE_ORDER == G_BIG_ENDIAN;
 		break;
 	case 1:
-		g_debug("cdda: drive returns audio data Big Endian.");
+		log_debug("cdda: drive returns audio data Big Endian.");
 		reverse_endian = G_BYTE_ORDER == G_LITTLE_ENDIAN;
 		break;
 	default:
-		g_set_error(error_r, cdio_quark(), 0,
-			    "Drive returns unknown data type %d",
+		log_err("Drive returns unknown data type %d",
 			    data_bigendianp(i->drv));
 		input_cdio_close(&i->base);
-		return NULL;
+		return ERR_PTR(-MPD_3RD);
 	}
 
 	i->lsn_relofs = 0;
@@ -253,9 +244,9 @@ input_cdio_open(const char *uri,
 	return &i->base;
 }
 
-static bool
+static int
 input_cdio_seek(struct input_stream *is,
-		goffset offset, int whence, GError **error_r)
+		off64_t offset, int whence)
 {
 	struct input_cdio_paranoia *cis = (struct input_cdio_paranoia *)is;
 
@@ -272,15 +263,14 @@ input_cdio_seek(struct input_stream *is,
 	}
 
 	if (offset < 0 || offset > cis->base.size) {
-		g_set_error(error_r, cdio_quark(), 0,
-			    "Invalid offset to seek %ld (%ld)",
+		log_err("Invalid offset to seek %ld (%ld)",
 			    (long int)offset, (long int)cis->base.size);
-		return false;
+		return -MPD_INVAL;
 	}
 
 	/* simple case */
 	if (offset == cis->base.offset)
-		return true;
+		return MPD_SUCCESS;
 
 	/* calculate current LSN */
 	cis->lsn_relofs = offset / CDIO_CD_FRAMESIZE_RAW;
@@ -288,12 +278,11 @@ input_cdio_seek(struct input_stream *is,
 
 	cdio_paranoia_seek(cis->para, cis->lsn_from + cis->lsn_relofs, SEEK_SET);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static size_t
-input_cdio_read(struct input_stream *is, void *ptr, size_t length,
-		GError **error_r)
+static ssize_t
+input_cdio_read(struct input_stream *is, void *ptr, size_t length)
 {
 	struct input_cdio_paranoia *cis = (struct input_cdio_paranoia *)is;
 	size_t nbytes = 0;
@@ -316,7 +305,7 @@ input_cdio_read(struct input_stream *is, void *ptr, size_t length,
 
 			s_err = cdda_errors(cis->drv);
 			if (s_err) {
-				g_warning("paranoia_read: %s", s_err );
+				log_warning("paranoia_read: %s", s_err );
 				free(s_err);
 			}
 			s_mess = cdda_messages(cis->drv);
@@ -324,9 +313,8 @@ input_cdio_read(struct input_stream *is, void *ptr, size_t length,
 				free(s_mess);
 			}
 			if (!rbuf) {
-				g_set_error(error_r, cdio_quark(), 0,
-					"paranoia read error. Stopping.");
-				return 0;
+				log_err("paranoia read error. Stopping.");
+				return -MPD_3RD;
 			}
 			//store current buffer
 			memcpy(cis->buffer, rbuf, CDIO_CD_FRAMESIZE_RAW);

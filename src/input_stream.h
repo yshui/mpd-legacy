@@ -102,8 +102,7 @@ struct input_stream {
 MPD_MALLOC
 struct input_stream *
 input_stream_open(const char *uri,
-		  GMutex *mutex, GCond *cond,
-		  GError **error_r);
+		  GMutex *mutex, GCond *cond);
 
 /**
  * Close the input stream and free resources.
@@ -130,8 +129,8 @@ input_stream_unlock(struct input_stream *is)
  *
  * @return false on error
  */
-bool
-input_stream_check(struct input_stream *is, GError **error_r);
+int
+input_stream_check(struct input_stream *is);
 
 /**
  * Update the public attributes.  Call before accessing attributes
@@ -165,17 +164,15 @@ input_stream_lock_wait_ready(struct input_stream *is);
  * @param offset the relative offset
  * @param whence the base of the seek, one of SEEK_SET, SEEK_CUR, SEEK_END
  */
-bool
-input_stream_seek(struct input_stream *is, goffset offset, int whence,
-		  GError **error_r);
+int
+input_stream_seek(struct input_stream *is, off64_t offset, int whence);
 
 /**
  * Wrapper for input_stream_seek() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-bool
-input_stream_lock_seek(struct input_stream *is, goffset offset, int whence,
-		       GError **error_r);
+int
+input_stream_lock_seek(struct input_stream *is, off64_t offset, int whence);
 
 /**
  * Returns true if the stream has reached end-of-file.
@@ -235,16 +232,14 @@ input_stream_available(struct input_stream *is);
  * @param size the maximum number of bytes to read
  * @return the number of bytes read
  */
-size_t
-input_stream_read(struct input_stream *is, void *ptr, size_t size,
-		  GError **error_r);
+ssize_t
+input_stream_read(struct input_stream *is, void *ptr, ssize_t size);
 
 /**
  * Wrapper for input_stream_tag() which locks and unlocks the
  * mutex; the caller must not be holding it already.
  */
-size_t
-input_stream_lock_read(struct input_stream *is, void *ptr, size_t size,
-		       GError **error_r);
+ssize_t
+input_stream_lock_read(struct input_stream *is, void *ptr, ssize_t size);
 
 #endif

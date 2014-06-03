@@ -92,7 +92,7 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 
 	struct stat st_buf;
 	if(stat(path_fs, &st_buf) != 0){
-		g_warning("Failed to stat %s (%s)\n", path_fs, strerror(errno));
+		log_warning("Failed to stat %s (%s)\n", path_fs, strerror(errno));
 		free(tname);
 		return NULL;
 	}
@@ -102,7 +102,7 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
-		g_warning("Failed to read %s", tname);
+		log_warning("Failed to read %s", tname);
 		free(tname);
 		return NULL;
 	}
@@ -111,7 +111,7 @@ asap_container_scan(const char *path_fs, const unsigned int tnum)
 	if(!ASAPInfo_Load(asap_info, name, buf, len)){
 		free(buf);
 		ASAPInfo_Delete(asap_info);
-		g_warning("Cannot load %s\n", path_fs);
+		log_warning("Cannot load %s\n", path_fs);
 		free(tname);
 		return false;
 	}
@@ -141,7 +141,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	struct stat st_buf;
 	if(stat(tname, &st_buf) != 0){
-		g_warning("Failed to stat %s (%s)\n", tname, strerror(errno));
+		log_warning("Failed to stat %s (%s)\n", tname, strerror(errno));
 		return;
 	}
 
@@ -150,7 +150,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
-		g_warning("Failed to read %s", tname);
+		log_warning("Failed to read %s", tname);
 		return;
 	}
 
@@ -162,7 +162,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 		g_free(tname);
 		ASAP_Delete(asap);
 		ASAPInfo_Delete(asap_info);
-		g_warning("Cannot load %s\n", path_fs);
+		log_warning("Cannot load %s\n", path_fs);
 		return;
 	}
 	g_free(tname);
@@ -175,7 +175,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	float song_len;
 	struct audio_format audio_format;
-	enum decoder_command cmd;
+	enum decoder_command cmd = DECODE_COMMAND_STOP;
 	unsigned char asap_buf[ASAP_BUFFER_LEN];
 
 	if(length > 0){
@@ -189,12 +189,9 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 
 	/* initialize the MPD decoder */
 
-	GError *error = NULL;
-	if (!audio_format_init_checked(&audio_format, ASAP_SAMPLE_RATE,
-				       SAMPLE_FORMAT_S16, ASAPInfo_GetChannels(asap_info),
-				       &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+	if (audio_format_init_checked(&audio_format, ASAP_SAMPLE_RATE,
+			SAMPLE_FORMAT_S16, ASAPInfo_GetChannels(asap_info))
+			!= MPD_SUCCESS) {
 		free(buf);
 		ASAP_Delete(asap);
 		ASAPInfo_Delete(asap_info);
@@ -217,7 +214,7 @@ asap_file_decode(struct decoder *decoder, const char *path_fs)
 		}
 
 	} while(cmd != DECODE_COMMAND_STOP);
-	fprintf(stderr, "asap decode end due to %d\n", cmd);
+	log_info("asap decode end due to %d\n", cmd);
 
 	ASAP_Delete(asap);
 	ASAPInfo_Delete(asap_info);
@@ -233,7 +230,7 @@ asap_scan_file(const char *path_fs,
 
 	struct stat st_buf;
 	if(stat(tname, &st_buf) != 0){
-		g_warning("Failed to stat %s (%s)\n", tname, strerror(errno));
+		log_warning("Failed to stat %s (%s)\n", tname, strerror(errno));
 		return false;
 	}
 
@@ -242,7 +239,7 @@ asap_scan_file(const char *path_fs,
 	int len = fread(buf, 1, st_buf.st_size, f);
 	if(len < 0){
 		free(buf);
-		g_warning("Failed to read %s", tname);
+		log_warning("Failed to read %s", tname);
 		return false;
 	}
 
@@ -251,7 +248,7 @@ asap_scan_file(const char *path_fs,
 		free(buf);
 		free(tname);
 		ASAPInfo_Delete(asap_info);
-		g_warning("Cannot load %s\n", path_fs);
+		log_warning("Cannot load %s\n", path_fs);
 		return false;
 	}
 	free(tname);

@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "input_stream"
+
+#include "log.h"
 #include "config.h"
 #include "input_stream.h"
 #include "input_registry.h"
@@ -26,27 +29,20 @@
 #include <glib.h>
 #include <assert.h>
 
-static inline GQuark
-input_quark(void)
-{
-	return g_quark_from_static_string("input");
-}
-
 struct input_stream *
 input_stream_open(const char *url,
-		  GMutex *mutex, GCond *cond,
-		  GError **error_r)
+		  GMutex *mutex, GCond *cond)
 {
-	GError *error = NULL;
-
 	assert(mutex != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
-	input_plugins_for_each_enabled(plugin) {
+	int i;
+	for(i = 0; input_plugins[i]; i++) {
+		if (!input_plugins_enabled[i])
+			continue;
 		struct input_stream *is;
 
-		is = plugin->open(url, mutex, cond, &error);
-		if (is != NULL) {
+		is = input_plugins[i]->open(url, mutex, cond);
+		if (!IS_ERR_OR_NULL(is)) {
 			assert(is->plugin != NULL);
 			assert(is->plugin->close != NULL);
 			assert(is->plugin->read != NULL);
@@ -54,26 +50,23 @@ input_stream_open(const char *url,
 			assert(!is->seekable || is->plugin->seek != NULL);
 
 			is = input_rewind_open(is);
-
-			return is;
-		} else if (error != NULL) {
-			g_propagate_error(error_r, error);
-			return NULL;
 		}
+		return is;
 	}
 
-	g_set_error(error_r, input_quark(), 0, "Unrecognized URI");
-	return NULL;
+	log_err("Unrecognized URI");
+	return ERR_PTR(-MPD_INVAL);
 }
 
-bool
-input_stream_check(struct input_stream *is, GError **error_r)
+int
+input_stream_check(struct input_stream *is)
 {
 	assert(is != NULL);
 	assert(is->plugin != NULL);
 
-	return is->plugin->check == NULL ||
-		is->plugin->check(is, error_r);
+	if (is->plugin->check == NULL)
+		return MPD_SUCCESS;
+	return is->plugin->check(is);
 }
 
 void
@@ -114,22 +107,22 @@ input_stream_lock_wait_ready(struct input_stream *is)
 	g_mutex_unlock(is->mutex);
 }
 
-bool
-input_stream_seek(struct input_stream *is, goffset offset, int whence,
-		  GError **error_r)
+int
+input_stream_seek(struct input_stream *is, off64_t offset, int whence)
 {
 	assert(is != NULL);
 	assert(is->plugin != NULL);
 
-	if (is->plugin->seek == NULL)
-		return false;
+	if (!is->seekable)
+		return -MPD_NIMPL;
 
-	return is->plugin->seek(is, offset, whence, error_r);
+	assert(is->plugin->seek);
+
+	return is->plugin->seek(is, offset, whence);
 }
 
-bool
-input_stream_lock_seek(struct input_stream *is, goffset offset, int whence,
-		       GError **error_r)
+int
+input_stream_lock_seek(struct input_stream *is, off64_t offset, int whence)
 {
 	assert(is != NULL);
 	assert(is->plugin != NULL);
@@ -139,12 +132,12 @@ input_stream_lock_seek(struct input_stream *is, goffset offset, int whence,
 
 	if (is->mutex == NULL)
 		/* no locking */
-		return input_stream_seek(is, offset, whence, error_r);
+		return input_stream_seek(is, offset, whence);
 
 	g_mutex_lock(is->mutex);
-	bool success = input_stream_seek(is, offset, whence, error_r);
+	int ret = input_stream_seek(is, offset, whence);
 	g_mutex_unlock(is->mutex);
-	return success;
+	return ret;
 }
 
 struct tag *
@@ -188,29 +181,27 @@ input_stream_available(struct input_stream *is)
 		: true;
 }
 
-size_t
-input_stream_read(struct input_stream *is, void *ptr, size_t size,
-		  GError **error_r)
+ssize_t
+input_stream_read(struct input_stream *is, void *ptr, ssize_t size)
 {
 	assert(ptr != NULL);
 	assert(size > 0);
 
-	return is->plugin->read(is, ptr, size, error_r);
+	return is->plugin->read(is, ptr, size);
 }
 
-size_t
-input_stream_lock_read(struct input_stream *is, void *ptr, size_t size,
-		       GError **error_r)
+ssize_t
+input_stream_lock_read(struct input_stream *is, void *ptr, ssize_t size)
 {
 	assert(ptr != NULL);
 	assert(size > 0);
 
 	if (is->mutex == NULL)
 		/* no locking */
-		return input_stream_read(is, ptr, size, error_r);
+		return input_stream_read(is, ptr, size);
 
 	g_mutex_lock(is->mutex);
-	size_t nbytes = input_stream_read(is, ptr, size, error_r);
+	ssize_t nbytes = input_stream_read(is, ptr, size);
 	g_mutex_unlock(is->mutex);
 	return nbytes;
 }

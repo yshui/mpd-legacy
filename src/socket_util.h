@@ -40,15 +40,12 @@ struct sockaddr;
  * @param address the address to listen on
  * @param address_length the size of #address
  * @param backlog the backlog parameter for the listen() system call
- * @param error location to store the error occurring, or NULL to
- * ignore errors
- * @return the socket file descriptor or -1 on error
+ * @return the socket file descriptor or negative error code
  */
 int
 socket_bind_listen(int domain, int type, int protocol,
 		   const struct sockaddr *address, size_t address_length,
-		   int backlog,
-		   GError **error);
+		   int backlog);
 
 int
 socket_keepalive(int fd);

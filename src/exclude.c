@@ -22,6 +22,7 @@
  *
  */
 
+#include "log.h"
 #include "config.h"
 #include "exclude.h"
 #include "path.h"
@@ -45,8 +46,8 @@ exclude_list_load(const char *path_fs)
 	if (file == NULL) {
 		if (errno != ENOENT) {
 			char *path_utf8 = fs_charset_to_utf8(path_fs);
-			g_debug("Failed to open %s: %s",
-				path_utf8, g_strerror(errno));
+			log_debug("Failed to open %s: %s",
+				path_utf8, strerror(errno));
 			free(path_utf8);
 		}
 

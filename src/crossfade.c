@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "log.h"
 #include "config.h"
 #include "crossfade.h"
 #include "chunk.h"
@@ -122,14 +123,14 @@ unsigned cross_fade_calc(float duration, float total_time,
 		  + mixramp_interpolate(mixramp_prev_end, mixramp_db - replay_gain_prev_db);
 		if (!isnan(mixramp_overlap) && (mixramp_delay <= mixramp_overlap)) {
 			chunks = (chunks_f * (mixramp_overlap - mixramp_delay));
-			g_debug("will overlap %d chunks, %fs", chunks,
+			log_debug("will overlap %d chunks, %fs", chunks,
 				mixramp_overlap - mixramp_delay);
 		}
 	}
 
 	if (chunks > max_chunks) {
 		chunks = max_chunks;
-		g_warning("audio_buffer_size too small for computed MixRamp overlap");
+		log_warning("audio_buffer_size too small for computed MixRamp overlap");
 	}
 
 	return chunks;

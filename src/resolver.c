@@ -17,8 +17,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "resolver"
+
 #include "config.h"
 #include "resolver.h"
+#include "log.h"
 
 #ifndef WIN32
 #include <sys/socket.h>
@@ -32,7 +35,7 @@
 #include <stdlib.h>
 
 char *
-sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
+sockaddr_to_string(const struct sockaddr *sa, size_t length)
 {
 #if defined(HAVE_IPV6) && defined(IN6_IS_ADDR_V4MAPPED)
 	const struct sockaddr_in6 *a6 = (const struct sockaddr_in6 *)sa;
@@ -63,9 +66,8 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
 	ret = getnameinfo(sa, length, host, sizeof(host), serv, sizeof(serv),
 			  NI_NUMERICHOST|NI_NUMERICSERV);
 	if (ret != 0) {
-		g_set_error(error, g_quark_from_static_string("netdb"), ret,
-			    "%s", gai_strerror(ret));
-		return NULL;
+		log_err("%s", gai_strerror(ret));
+		return ERR_PTR(-MPD_3RD);
 	}
 
 #ifdef HAVE_UN
@@ -85,8 +87,7 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length, GError **error)
 
 struct addrinfo *
 resolve_host_port(const char *host_port, unsigned default_port,
-		  int flags, int socktype,
-		  GError **error_r)
+		  int flags, int socktype)
 {
 	char *p = strdup(host_port);
 	const char *host = p, *port = NULL;
@@ -134,10 +135,9 @@ resolve_host_port(const char *host_port, unsigned default_port,
 	int ret = getaddrinfo(host, port, &hints, &ai);
 	free(p);
 	if (ret != 0) {
-		g_set_error(error_r, resolver_quark(), ret,
-			    "Failed to look up '%s': %s",
+		log_err("Failed to look up '%s': %s",
 			    host_port, gai_strerror(ret));
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	return ai;

@@ -40,11 +40,11 @@ dnsRegisterCallback(DNSServiceRef sdRef,
 		    void *context)
 {
 	if (errorCode != kDNSServiceErr_NoError) {
-		g_warning("Failed to register zeroconf service.");
+		log_warning("Failed to register zeroconf service.");
 
 		bonjour_finish();
 	} else {
-		g_debug("Registered zeroconf service with name '%s'", name);
+		log_debug("Registered zeroconf service with name '%s'", name);
 	}
 }
 
@@ -69,7 +69,7 @@ void init_zeroconf_osx(const char *serviceName)
 						       NULL);
 
 	if (error != kDNSServiceErr_NoError) {
-		g_warning("Failed to register zeroconf service.");
+		log_warning("Failed to register zeroconf service.");
 
 		if (dnsReference) {
 			DNSServiceRefDeallocate(dnsReference);
@@ -92,6 +92,6 @@ void bonjour_finish(void)
 	if (dnsReference != NULL) {
 		DNSServiceRefDeallocate(dnsReference);
 		dnsReference = NULL;
-		g_debug("Deregistered Zeroconf service.");
+		log_debug("Deregistered Zeroconf service.");
 	}
 }

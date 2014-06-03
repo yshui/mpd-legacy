@@ -59,10 +59,10 @@ dsdlib_skip_to(struct decoder *decoder, struct input_stream *is,
 	       goffset offset)
 {
 	if (is->seekable)
-		return input_stream_seek(is, offset, SEEK_SET, NULL);
+		return input_stream_seek(is, offset, SEEK_SET) == MPD_SUCCESS;
 
 	if (is->offset > offset)
-		return false;
+		return -MPD_INVAL;
 
 	char buffer[8192];
 	while (is->offset < offset) {
@@ -70,13 +70,13 @@ dsdlib_skip_to(struct decoder *decoder, struct input_stream *is,
 		if (offset - is->offset < (goffset)length)
 			length = offset - is->offset;
 
-		size_t nbytes = decoder_read(decoder, is, buffer, length);
-		if (nbytes == 0)
-			return false;
+		ssize_t nbytes = decoder_read(decoder, is, buffer, length);
+		if (nbytes <= 0)
+			return -MPD_ACCESS;
 	}
 
 	assert(is->offset == offset);
-	return true;
+	return MPD_SUCCESS;
 }
 
 /**
@@ -92,7 +92,7 @@ dsdlib_skip(struct decoder *decoder, struct input_stream *is,
 		return true;
 
 	if (is->seekable)
-		return input_stream_seek(is, delta, SEEK_CUR, NULL);
+		return input_stream_seek(is, delta, SEEK_CUR) == MPD_SUCCESS;
 
 	char buffer[8192];
 	while (delta > 0) {

@@ -28,8 +28,8 @@
 void
 io_thread_init(void);
 
-bool
-io_thread_start(GError **error_r);
+int
+io_thread_start(void);
 
 /**
  * Run the I/O event loop synchronously in the current thread.  This

@@ -56,7 +56,7 @@ client_write_deferred_buffer(struct client *client,
 		/* I/O error */
 
 		client_set_expired(client);
-		g_warning("failed to flush buffer for %i: %s",
+		log_warning("failed to flush buffer for %i: %s",
 			  client->num, error->message);
 		g_error_free(error);
 		return 0;
@@ -102,7 +102,7 @@ client_write_deferred(struct client *client)
 	}
 
 	if (g_queue_is_empty(client->deferred_send)) {
-		g_debug("[%u] buffer empty %lu", client->num,
+		log_debug("[%u] buffer empty %lu", client->num,
 			(unsigned long)client->deferred_bytes);
 		assert(client->deferred_bytes == 0);
 	}
@@ -119,7 +119,7 @@ static void client_defer_output(struct client *client,
 	alloc = sizeof(*buf) - sizeof(buf->data) + length;
 	client->deferred_bytes += alloc;
 	if (client->deferred_bytes > client_max_output_buffer_size) {
-		g_warning("[%u] output buffer size (%lu) is "
+		log_warning("[%u] output buffer size (%lu) is "
 			  "larger than the max (%lu)",
 			  client->num,
 			  (unsigned long)client->deferred_bytes,
@@ -166,7 +166,7 @@ static void client_write_direct(struct client *client,
 		/* I/O error */
 
 		client_set_expired(client);
-		g_warning("failed to write to %i: %s",
+		log_warning("failed to write to %i: %s",
 			  client->num, error->message);
 		g_error_free(error);
 		return;
@@ -177,7 +177,7 @@ static void client_write_direct(struct client *client,
 				    length - bytes_written);
 
 	if (!g_queue_is_empty(client->deferred_send))
-		g_debug("[%u] buffer created", client->num);
+		log_debug("[%u] buffer created", client->num);
 }
 
 void

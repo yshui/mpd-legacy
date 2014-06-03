@@ -26,6 +26,7 @@
 #ifndef MPD_DB_PLUGIN_H
 #define MPD_DB_PLUGIN_H
 
+#include "log.h"
 #include "macros.h"
 
 #include <glib.h>
@@ -46,7 +47,7 @@ struct db_plugin {
 	/**
          * Allocates and configures a database.
 	 */
-	struct db *(*init)(const struct config_param *param, GError **error_r);
+	struct db *(*init)(const struct config_param *param);
 
 	/**
 	 * Free instance data.
@@ -56,7 +57,7 @@ struct db_plugin {
 	/**
          * Open the database.  Read it into memory if applicable.
 	 */
-	bool (*open)(struct db *db, GError **error_r);
+	int (*open)(struct db *db);
 
 	/**
          * Close the database, free allocated memory.
@@ -69,21 +70,18 @@ struct db_plugin {
 	 * @param the URI of the song within the music directory
 	 * (UTF-8)
 	 */
-	struct song *(*get_song)(struct db *db, const char *uri,
-				 GError **error_r);
+	struct song *(*get_song)(struct db *db, const char *uri);
 
 	/**
 	 * Visit the selected entities.
 	 */
-	bool (*visit)(struct db *db, const struct db_selection *selection,
-		      const struct db_visitor *visitor, void *ctx,
-		      GError **error_r);
+	int (*visit)(struct db *db, const struct db_selection *selection,
+		      const struct db_visitor *visitor, void *ctx);
 };
 
 MPD_MALLOC
 static inline struct db *
-db_plugin_new(const struct db_plugin *plugin, const struct config_param *param,
-	      GError **error_r)
+db_plugin_new(const struct db_plugin *plugin, const struct config_param *param)
 {
 	assert(plugin != NULL);
 	assert(plugin->init != NULL);
@@ -92,7 +90,8 @@ db_plugin_new(const struct db_plugin *plugin, const struct config_param *param,
 	assert(plugin->visit != NULL);
 	assert(error_r == NULL || *error_r == NULL);
 
-	struct db *db = plugin->init(param, error_r);
+	struct db *db = plugin->init(param);
+	assert(!IS_ERR(db));
 	assert(db == NULL || db->plugin == plugin);
 	assert(db != NULL || error_r == NULL || *error_r != NULL);
 
@@ -109,15 +108,15 @@ db_plugin_free(struct db *db)
 	db->plugin->finish(db);
 }
 
-static inline bool
-db_plugin_open(struct db *db, GError **error_r)
+static inline int
+db_plugin_open(struct db *db)
 {
 	assert(db != NULL);
 	assert(db->plugin != NULL);
 
 	return db->plugin->open != NULL
-		? db->plugin->open(db, error_r)
-		: true;
+		? db->plugin->open(db)
+		: MPD_SUCCESS;
 }
 
 static inline void
@@ -131,28 +130,26 @@ db_plugin_close(struct db *db)
 }
 
 static inline struct song *
-db_plugin_get_song(struct db *db, const char *uri, GError **error_r)
+db_plugin_get_song(struct db *db, const char *uri)
 {
 	assert(db != NULL);
 	assert(db->plugin != NULL);
 	assert(db->plugin->get_song != NULL);
 	assert(uri != NULL);
 
-	return db->plugin->get_song(db, uri, error_r);
+	return db->plugin->get_song(db, uri);
 }
 
-static inline bool
+static inline int
 db_plugin_visit(struct db *db, const struct db_selection *selection,
-		const struct db_visitor *visitor, void *ctx,
-		GError **error_r)
+		const struct db_visitor *visitor, void *ctx)
 {
 	assert(db != NULL);
 	assert(db->plugin != NULL);
 	assert(selection != NULL);
 	assert(visitor != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
-	return db->plugin->visit(db, selection, visitor, ctx, error_r);
+	return db->plugin->visit(db, selection, visitor, ctx);
 }
 
 #endif

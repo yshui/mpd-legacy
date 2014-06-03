@@ -34,8 +34,8 @@ MPD_PURE
 struct directory *
 simple_db_get_root(struct db *db);
 
-bool
-simple_db_save(struct db *db, GError **error_r);
+int
+simple_db_save(struct db *db);
 
 MPD_PURE
 time_t

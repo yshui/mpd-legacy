@@ -11,6 +11,13 @@
 * more accurate idle event.
 * reporting database update progress
 
+# Thoughts on this branch:
+* the playlist api has too low abstraction, there're many duplicated code for reading a stream.
+* Rename the route filter to remap filter.
+* pcm_volume.c should go into utils.
+* Need a function to convert errno to MPD_ERROR.
+* Extract parsing of common encoder param, reduce code dup.
+
 # DB plugin API:
 * After I made the db change, too much internals have been exposed to db plugin (maybe that's just fine)
 * Before that change it's (practically) impossible to write a different db plugin.

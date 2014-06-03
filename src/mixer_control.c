@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "mixer_control"
+
 #include "config.h"
+#include "log.h"
 #include "mixer_control.h"
 #include "mixer_api.h"
 
@@ -29,14 +32,13 @@
 
 struct mixer *
 mixer_new(const struct mixer_plugin *plugin, void *ao,
-	  const struct config_param *param,
-	  GError **error_r)
+	  const struct config_param *param)
 {
 	struct mixer *mixer;
 
 	assert(plugin != NULL);
 
-	mixer = plugin->init(ao, param, error_r);
+	mixer = plugin->init(ao, param);
 
 	assert(mixer == NULL || mixer->plugin == plugin);
 
@@ -59,10 +61,10 @@ mixer_free(struct mixer *mixer)
 	mixer->plugin->finish(mixer);
 }
 
-bool
-mixer_open(struct mixer *mixer, GError **error_r)
+int
+mixer_open(struct mixer *mixer)
 {
-	bool success;
+	int ret;
 
 	assert(mixer != NULL);
 	assert(mixer->plugin != NULL);
@@ -70,17 +72,20 @@ mixer_open(struct mixer *mixer, GError **error_r)
 	g_mutex_lock(mixer->mutex);
 
 	if (mixer->open)
-		success = true;
-	else if (mixer->plugin->open == NULL)
-		success = mixer->open = true;
-	else
-		success = mixer->open = mixer->plugin->open(mixer, error_r);
+		ret = MPD_SUCCESS;
+	else if (mixer->plugin->open == NULL){
+		mixer->open = true;
+		ret = MPD_SUCCESS;
+	} else {
+		ret = mixer->plugin->open(mixer);
+		mixer->open = ret == MPD_SUCCESS;
+	}
 
-	mixer->failed = !success;
+	mixer->failed = ret != MPD_SUCCESS;
 
 	g_mutex_unlock(mixer->mutex);
 
-	return success;
+	return ret;
 }
 
 static void
@@ -132,54 +137,54 @@ mixer_failed(struct mixer *mixer)
 }
 
 int
-mixer_get_volume(struct mixer *mixer, GError **error_r)
+mixer_get_volume(struct mixer *mixer)
 {
 	int volume;
 
 	assert(mixer != NULL);
 
+	int ret = mixer_open(mixer);
 	if (mixer->plugin->global && !mixer->failed &&
-	    !mixer_open(mixer, error_r))
-		return -1;
+	    ret != MPD_SUCCESS)
+		return ret;
 
 	g_mutex_lock(mixer->mutex);
 
 	if (mixer->open) {
-		GError *error = NULL;
-
-		volume = mixer->plugin->get_volume(mixer, &error);
-		if (volume < 0 && error != NULL) {
-			g_propagate_error(error_r, error);
+		volume = mixer->plugin->get_volume(mixer);
+		if (volume < 0) {
+			log_err("Failed to get volume.");
 			mixer_failed(mixer);
+			goto out;
 		}
 	} else
 		volume = -1;
 
+out:
 	g_mutex_unlock(mixer->mutex);
 
 	return volume;
 }
 
-bool
-mixer_set_volume(struct mixer *mixer, unsigned volume, GError **error_r)
+int
+mixer_set_volume(struct mixer *mixer, unsigned volume)
 {
-	bool success;
-
 	assert(mixer != NULL);
 	assert(volume <= 100);
 
+	int ret = mixer_open(mixer);
 	if (mixer->plugin->global && !mixer->failed &&
-	    !mixer_open(mixer, error_r))
-		return false;
+	    ret != MPD_SUCCESS)
+		return ret;
 
 	g_mutex_lock(mixer->mutex);
 
 	if (mixer->open) {
-		success = mixer->plugin->set_volume(mixer, volume, error_r);
+		ret = mixer->plugin->set_volume(mixer, volume);
 	} else
-		success = false;
+		ret = -MPD_NIMPL;
 
 	g_mutex_unlock(mixer->mutex);
 
-	return success;
+	return ret;
 }

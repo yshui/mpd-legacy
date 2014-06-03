@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_io"
+
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_io.h"
 #include "mapper.h"
@@ -28,6 +31,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 int
 stat_directory(const struct directory *directory, struct stat *st)
@@ -38,7 +42,7 @@ stat_directory(const struct directory *directory, struct stat *st)
 
 	int ret = stat(path_fs, st);
 	if (ret < 0)
-		g_warning("Failed to stat %s: %s", path_fs, g_strerror(errno));
+		log_warning("Failed to stat %s: %s", path_fs, strerror(errno));
 
 	free(path_fs);
 	return ret;
@@ -54,7 +58,7 @@ stat_directory_child(const struct directory *parent, const char *name,
 
 	int ret = stat(path_fs, st);
 	if (ret < 0)
-		g_warning("Failed to stat %s: %s", path_fs, g_strerror(errno));
+		log_warning("Failed to stat %s: %s", path_fs, strerror(errno));
 
 	free(path_fs);
 	return ret;

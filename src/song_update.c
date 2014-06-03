@@ -132,12 +132,11 @@ song_file_update(struct song *song)
 			if (is == NULL) {
 				mutex = g_mutex_new();
 				cond = g_cond_new();
-				is = input_stream_open(path_fs, mutex, cond,
-						       NULL);
+				is = input_stream_open(path_fs, mutex, cond);
 			}
 
 			/* now try the stream_tag() method */
-			if (is != NULL) {
+			if (!IS_ERR(is)) {
 				song->tag = tag_new();
 				if (decoder_plugin_scan_stream(plugin, is,
 							       &full_tag_handler,
@@ -147,14 +146,14 @@ song_file_update(struct song *song)
 				tag_free(song->tag);
 				song->tag = NULL;
 
-				input_stream_lock_seek(is, 0, SEEK_SET, NULL);
+				input_stream_lock_seek(is, 0, SEEK_SET);
 			}
 		}
 
 		plugin = decoder_plugin_from_suffix(suffix, plugin);
 	} while (plugin != NULL);
 
-	if (is != NULL)
+	if (!IS_ERR_OR_NULL(is))
 		input_stream_close(is);
 
 	if (mutex != NULL) {

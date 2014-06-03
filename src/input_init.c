@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "input"
+
+#include "log.h"
 #include "config.h"
 #include "input_init.h"
 #include "input_plugin.h"
@@ -26,12 +29,6 @@
 #include <assert.h>
 #include <string.h>
 
-static inline GQuark
-input_quark(void)
-{
-	return g_quark_from_static_string("input");
-}
-
 /**
  * Find the "input" configuration block for the specified plugin.
  *
@@ -39,7 +36,7 @@ input_quark(void)
  * @return the configuration block, or NULL if none was configured
  */
 static const struct config_param *
-input_plugin_config(const char *plugin_name, GError **error_r)
+input_plugin_config(const char *plugin_name)
 {
 	const struct config_param *param = NULL;
 
@@ -47,10 +44,9 @@ input_plugin_config(const char *plugin_name, GError **error_r)
 		const char *name =
 			config_get_block_string(param, "plugin", NULL);
 		if (name == NULL) {
-			g_set_error(error_r, input_quark(), 0,
-				    "input configuration without 'plugin' name in line %d",
+			log_err("input configuration without 'plugin' name in line %d",
 				    param->line);
-			return NULL;
+			return ERR_PTR(-MPD_MISS_VALUE);
 		}
 
 		if (strcmp(name, plugin_name) == 0)
@@ -60,11 +56,9 @@ input_plugin_config(const char *plugin_name, GError **error_r)
 	return NULL;
 }
 
-bool
-input_stream_global_init(GError **error_r)
+int
+input_stream_global_init(void)
 {
-	GError *error = NULL;
-
 	for (unsigned i = 0; input_plugins[i] != NULL; ++i) {
 		const struct input_plugin *plugin = input_plugins[i];
 
@@ -73,32 +67,35 @@ input_stream_global_init(GError **error_r)
 		assert(plugin->open != NULL);
 
 		const struct config_param *param =
-			input_plugin_config(plugin->name, &error);
-		if (param == NULL && error != NULL) {
-			g_propagate_error(error_r, error);
-			return false;
-		}
+			input_plugin_config(plugin->name);
+		if (IS_ERR(param))
+			return PTR_ERR(param);
 
 		if (!config_get_block_bool(param, "enabled", true))
 			/* the plugin is disabled in mpd.conf */
 			continue;
 
-		if (plugin->init == NULL || plugin->init(param, &error))
+		if (plugin->init == NULL)
 			input_plugins_enabled[i] = true;
 		else {
-			g_propagate_prefixed_error(error_r, error,
-						   "Failed to initialize input plugin '%s': ",
-						   plugin->name);
-			return false;
+			int ret = plugin->init(param);
+			if (ret != MPD_SUCCESS) {
+				log_err("Failed to initialize input plugin '%s': ",
+					   plugin->name);
+				return ret;
+			}
 		}
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 void input_stream_global_finish(void)
 {
-	input_plugins_for_each_enabled(plugin)
-		if (plugin->finish != NULL)
-			plugin->finish();
+	int i;
+	for(i = 0; input_plugins[i]; i++) {
+		if (input_plugins_enabled[i] &&
+		    input_plugins[i]->finish != NULL)
+			input_plugins[i]->finish();
+	}
 }

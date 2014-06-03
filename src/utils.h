@@ -41,7 +41,7 @@
 
 
 char *
-parsePath(const char *path, GError **error_r);
+parsePath(const char *path);
 
 char *build_db_filename(const char *, ...);
 

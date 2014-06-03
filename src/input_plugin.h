@@ -40,7 +40,7 @@ struct input_plugin {
 	 * @return true on success, false if the plugin should be
 	 * disabled
 	 */
-	bool (*init)(const struct config_param *param, GError **error_r);
+	int (*init)(const struct config_param *param);
 
 	/**
 	 * Global deinitialization.  Called once before MPD shuts
@@ -49,8 +49,7 @@ struct input_plugin {
 	void (*finish)(void);
 
 	struct input_stream *(*open)(const char *uri,
-				     GMutex *mutex, GCond *cond,
-				     GError **error_r);
+				     GMutex *mutex, GCond *cond);
 	void (*close)(struct input_stream *is);
 
 	/**
@@ -59,7 +58,7 @@ struct input_plugin {
 	 *
 	 * @return false on error
 	 */
-	bool (*check)(struct input_stream *is, GError **error_r);
+	int (*check)(struct input_stream *is);
 
 	/**
 	 * Update the public attributes.  Call before access.  Can be
@@ -79,11 +78,9 @@ struct input_plugin {
 	 */
 	bool (*available)(struct input_stream *is);
 
-	size_t (*read)(struct input_stream *is, void *ptr, size_t size,
-		       GError **error_r);
+	ssize_t (*read)(struct input_stream *is, void *ptr, size_t size);
 	bool (*eof)(struct input_stream *is);
-	bool (*seek)(struct input_stream *is, goffset offset, int whence,
-		     GError **error_r);
+	int (*seek)(struct input_stream *is, off64_t offset, int whence);
 };
 
 #endif

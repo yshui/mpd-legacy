@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "path"
+
 #include "config.h"
+#include "log.h"
 #include "path.h"
 #include "conf.h"
 #include "mpd_error.h"
@@ -88,7 +91,7 @@ path_set_fs_charset(const char *charset)
 	free(fs_charset);
 	fs_charset = strdup(charset);
 
-	g_debug("path_set_fs_charset: fs charset is: %s", fs_charset);
+	log_debug("path_set_fs_charset: fs charset is: %s", fs_charset);
 }
 
 const char *path_get_fs_charset(void)
@@ -123,7 +126,7 @@ void path_global_init(void)
 	if (charset) {
 		path_set_fs_charset(charset);
 	} else {
-		g_message("setting filesystem charset to ISO-8859-1");
+		log_info("setting filesystem charset to ISO-8859-1");
 		path_set_fs_charset("ISO-8859-1");
 	}
 }

@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "inotify"
+
 #include "config.h"
+#include "log.h"
 #include "inotify_source.h"
 #include "fifo_buffer.h"
 #include "fd_util.h"
@@ -27,10 +30,8 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <stdbool.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "inotify"
 
 struct mpd_inotify_source {
 	int fd;
@@ -47,15 +48,6 @@ struct mpd_inotify_source {
 	mpd_inotify_callback_t callback;
 	void *callback_ctx;
 };
-
-/**
- * A GQuark for GError instances.
- */
-static inline GQuark
-mpd_inotify_quark(void)
-{
-	return g_quark_from_static_string("inotify");
-}
 
 static gboolean
 mpd_inotify_in_event(GIOChannel *_source,
@@ -75,7 +67,7 @@ mpd_inotify_in_event(GIOChannel *_source,
 	nbytes = read(source->fd, dest, length);
 	if (nbytes < 0)
 		MPD_ERROR("failed to read from inotify: %s",
-			  g_strerror(errno));
+			  strerror(errno));
 	if (nbytes == 0)
 		MPD_ERROR("end of file from inotify");
 
@@ -104,19 +96,17 @@ mpd_inotify_in_event(GIOChannel *_source,
 }
 
 struct mpd_inotify_source *
-mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx,
-		       GError **error_r)
+mpd_inotify_source_new(mpd_inotify_callback_t callback, void *callback_ctx)
 {
 	struct mpd_inotify_source *source =
 		tmalloc(struct mpd_inotify_source, 1);
 
 	source->fd = inotify_init_cloexec();
 	if (source->fd < 0) {
-		g_set_error(error_r, mpd_inotify_quark(), errno,
-			    "inotify_init() has failed: %s",
-			    g_strerror(errno));
+		log_err("inotify_init() has failed: %s",
+			    strerror(errno));
 		free(source);
-		return NULL;
+		return ERR_PTR(-MPD_ACCESS);
 	}
 
 	source->buffer = fifo_buffer_new(4096);
@@ -143,14 +133,15 @@ mpd_inotify_source_free(struct mpd_inotify_source *source)
 
 int
 mpd_inotify_source_add(struct mpd_inotify_source *source,
-		       const char *path_fs, unsigned mask,
-		       GError **error_r)
+		       const char *path_fs, unsigned mask)
 {
 	int wd = inotify_add_watch(source->fd, path_fs, mask);
-	if (wd < 0)
-		g_set_error(error_r, mpd_inotify_quark(), errno,
-			    "inotify_add_watch() has failed: %s",
-			    g_strerror(errno));
+	if (wd < 0) {
+		log_err("inotify_add_watch() has failed: %s",
+			    strerror(errno));
+		//XXX return wd.
+		return -MPD_ACCESS;
+	}
 
 	return wd;
 }
@@ -160,8 +151,8 @@ mpd_inotify_source_rm(struct mpd_inotify_source *source, unsigned wd)
 {
 	int ret = inotify_rm_watch(source->fd, wd);
 	if (ret < 0 && errno != EINVAL)
-		g_warning("inotify_rm_watch() has failed: %s",
-			  g_strerror(errno));
+		log_warning("inotify_rm_watch() has failed: %s",
+			  strerror(errno));
 
 	/* EINVAL may happen here when the file has been deleted; the
 	   kernel seems to auto-unregister deleted files */

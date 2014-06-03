@@ -40,10 +40,10 @@ struct audio_format;
  * @param mask if true, then "*" is allowed for any number of items
  * @param error_r location to store the error occurring, or NULL to
  * ignore errors
- * @return true on success
+ * @return error code
  */
-bool
+int
 audio_format_parse(struct audio_format *dest, const char *src,
-		   bool mask, GError **error_r);
+		   bool mask);
 
 #endif

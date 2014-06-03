@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "player_thread"
+
 #include "config.h"
+#include "log.h"
 #include "player_thread.h"
 #include "player_control.h"
 #include "decoder_control.h"
@@ -384,7 +387,7 @@ player_check_decoder_startup(struct player *player)
 
 		if (!player->paused && !player_open_output(player)) {
 			char *uri = song_get_uri(dc->song);
-			g_warning("problems opening audio device "
+			log_warning("problems opening audio device "
 				  "while playing \"%s\"", uri);
 			free(uri);
 
@@ -417,7 +420,7 @@ player_send_silence(struct player *player)
 
 	struct music_chunk *chunk = music_buffer_allocate(player_buffer);
 	if (chunk == NULL) {
-		g_warning("Failed to allocate silence buffer");
+		log_warning("Failed to allocate silence buffer");
 		return false;
 	}
 
@@ -839,7 +842,7 @@ player_song_border(struct player *player)
 	player->xfade = XFADE_UNKNOWN;
 
 	char *uri = song_get_uri(player->song);
-	g_message("played \"%s\"", uri);
+	log_info("played \"%s\"", uri);
 	free(uri);
 
 	music_pipe_free(player->pipe);

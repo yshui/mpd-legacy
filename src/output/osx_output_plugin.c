@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: osx"
+
+#include "log.h"
 #include "config.h"
 #include "osx_output_plugin.h"
 #include "output_api.h"
@@ -26,9 +29,6 @@
 #include <CoreAudio/AudioHardware.h>
 #include <AudioUnit/AudioUnit.h>
 #include <CoreServices/CoreServices.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "osx"
 
 struct osx_output {
 	struct audio_output base;
@@ -44,15 +44,6 @@ struct osx_output {
 
 	struct fifo_buffer *buffer;
 };
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-osx_output_quark(void)
-{
-	return g_quark_from_static_string("osx_output");
-}
 
 static bool
 osx_output_test_default_device(void)
@@ -83,12 +74,13 @@ osx_output_configure(struct osx_output *oo, const struct config_param *param)
 }
 
 static struct audio_output *
-osx_output_init(const struct config_param *param, GError **error_r)
+osx_output_init(const struct config_param *param)
 {
 	struct osx_output *oo = g_new(struct osx_output, 1);
-	if (!ao_base_init(&oo->base, &osx_output_plugin, param, error_r)) {
-		g_free(oo);
-		return NULL;
+	int ret = ao_base_init(&oo->base, &osx_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
+		free(oo);
+		return ERR_PTR(ret);
 	}
 
 	osx_output_configure(oo, param);
@@ -108,10 +100,10 @@ osx_output_finish(struct audio_output *ao)
 	g_free(od);
 }
 
-static bool
-osx_output_set_device(struct osx_output *oo, GError **error)
+static int
+osx_output_set_device(struct osx_output *oo)
 {
-	bool ret = true;
+	int ret = MPD_SUCCESS;
 	OSStatus status;
 	UInt32 size, numdevices;
 	AudioDeviceID *deviceids = NULL;
@@ -126,24 +118,22 @@ osx_output_set_device(struct osx_output *oo, GError **error)
 					      &size,
 					      NULL);
 	if (status != noErr) {
-		g_set_error(error, osx_output_quark(), status,
-			    "Unable to determine number of OS X audio devices: %s",
+		log_err("Unable to determine number of OS X audio devices: %s",
 			    GetMacOSStatusCommentString(status));
-		ret = false;
+		ret = -MPD_3RD;
 		goto done;
 	}
 
 	/* what are the available audio device IDs? */
 	numdevices = size / sizeof(AudioDeviceID);
-	deviceids = g_malloc(size);
+	deviceids = malloc(size);
 	status = AudioHardwareGetProperty(kAudioHardwarePropertyDevices,
 					  &size,
 					  deviceids);
 	if (status != noErr) {
-		g_set_error(error, osx_output_quark(), status,
-			    "Unable to determine OS X audio device IDs: %s",
+		log_err("Unable to determine OS X audio device IDs: %s",
 			    GetMacOSStatusCommentString(status));
-		ret = false;
+		ret = -MPD_3RD;
 		goto done;
 	}
 
@@ -154,22 +144,21 @@ osx_output_set_device(struct osx_output *oo, GError **error)
 						kAudioDevicePropertyDeviceName,
 						&size, name);
 		if (status != noErr) {
-			g_set_error(error, osx_output_quark(), status,
-				    "Unable to determine OS X device name "
+			log_err("Unable to determine OS X device name "
 				    "(device %u): %s",
 				    (unsigned int) deviceids[i],
 				    GetMacOSStatusCommentString(status));
-			ret = false;
+			ret = -MPD_3RD;
 			goto done;
 		}
 		if (strcmp(oo->device_name, name) == 0) {
-			g_debug("found matching device: ID=%u, name=%s",
+			log_debug("found matching device: ID=%u, name=%s",
 				(unsigned int) deviceids[i], name);
 			break;
 		}
 	}
 	if (i == numdevices) {
-		g_warning("Found no audio device with name '%s' "
+		log_warning("Found no audio device with name '%s' "
 			  "(will use default audio device)",
 			  oo->device_name);
 		goto done;
@@ -182,18 +171,17 @@ osx_output_set_device(struct osx_output *oo, GError **error)
 				      &(deviceids[i]),
 				      sizeof(AudioDeviceID));
 	if (status != noErr) {
-		g_set_error(error, osx_output_quark(), status,
-			    "Unable to set OS X audio output device: %s",
+		log_err("Unable to set OS X audio output device: %s",
 			    GetMacOSStatusCommentString(status));
-		ret = false;
+		ret = -MPD_3RD;
 		goto done;
 	}
-	g_debug("set OS X audio output device ID=%u, name=%s",
+	log_debug("set OS X audio output device ID=%u, name=%s",
 		(unsigned int) deviceids[i], name);
 
 done:
 	if (deviceids != NULL)
-		g_free(deviceids);
+		free(deviceids);
 	return ret;
 }
 
@@ -239,8 +227,8 @@ osx_render(void *vdata,
 	return 0;
 }
 
-static bool
-osx_output_enable(struct audio_output *ao, GError **error_r)
+static int
+osx_output_enable(struct audio_output *ao)
 {
 	struct osx_output *oo = (struct osx_output *)ao;
 
@@ -253,22 +241,20 @@ osx_output_enable(struct audio_output *ao, GError **error_r)
 
 	Component comp = FindNextComponent(NULL, &desc);
 	if (comp == 0) {
-		g_set_error(error_r, osx_output_quark(), 0,
-			    "Error finding OS X component");
-		return false;
+		log_err("Error finding OS X component");
+		return -MPD_3RD;
 	}
 
 	OSStatus status = OpenAComponent(comp, &oo->au);
 	if (status != noErr) {
-		g_set_error(error_r, osx_output_quark(), status,
-			    "Unable to open OS X component: %s",
+		log_err("Unable to open OS X component: %s",
 			    GetMacOSStatusCommentString(status));
-		return false;
+		return -MPD_3RD;
 	}
 
 	if (!osx_output_set_device(oo, error_r)) {
 		CloseComponent(oo->au);
-		return false;
+		return -MPD_3RD;
 	}
 
 	AURenderCallbackStruct callback;
@@ -282,12 +268,11 @@ osx_output_enable(struct audio_output *ao, GError **error_r)
 				     &callback, sizeof(callback));
 	if (result != noErr) {
 		CloseComponent(oo->au);
-		g_set_error(error_r, osx_output_quark(), result,
-			    "unable to set callback for OS X audio unit");
-		return false;
+		log_err("unable to set callback for OS X audio unit");
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -319,8 +304,8 @@ osx_output_close(struct audio_output *ao)
 	fifo_buffer_free(od->buffer);
 }
 
-static bool
-osx_output_open(struct audio_output *ao, struct audio_format *audio_format, GError **error)
+static int
+osx_output_open(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct osx_output *od = (struct osx_output *)ao;
 
@@ -364,17 +349,15 @@ osx_output_open(struct audio_output *ao, struct audio_format *audio_format, GErr
 				     &stream_description,
 				     sizeof(stream_description));
 	if (result != noErr) {
-		g_set_error(error, osx_output_quark(), result,
-			    "Unable to set format on OS X device");
-		return false;
+		log_err("Unable to set format on OS X device");
+		return -MPD_3RD;
 	}
 
 	OSStatus status = AudioUnitInitialize(od->au);
 	if (status != noErr) {
-		g_set_error(error, osx_output_quark(), status,
-			    "Unable to initialize OS X audio unit: %s",
+		log_err("Unable to initialize OS X audio unit: %s",
 			    GetMacOSStatusCommentString(status));
-		return false;
+		return -MPD_3RD;
 	}
 
 	/* create a buffer of 1s */
@@ -384,18 +367,16 @@ osx_output_open(struct audio_output *ao, struct audio_format *audio_format, GErr
 	status = AudioOutputUnitStart(od->au);
 	if (status != 0) {
 		AudioUnitUninitialize(od->au);
-		g_set_error(error, osx_output_quark(), status,
-			    "unable to start audio output: %s",
+		log_err("unable to start audio output: %s",
 			    GetMacOSStatusCommentString(status));
-		return false;
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static size_t
-osx_output_play(struct audio_output *ao, const void *chunk, size_t size,
-		GError **error)
+osx_output_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct osx_output *od = (struct osx_output *)ao;
 

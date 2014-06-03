@@ -117,15 +117,14 @@ playlist_print_changes_position(struct client *client,
 	queue_print_changes_position(client, &playlist->queue, version);
 }
 
-bool
-spl_print(struct client *client, const char *name_utf8, bool detail,
-	  GError **error_r)
+int
+spl_print(struct client *client, const char *name_utf8, bool detail)
 {
 	GPtrArray *list;
 
-	list = spl_load(name_utf8, error_r);
-	if (list == NULL)
-		return false;
+	list = spl_load(name_utf8);
+	if (IS_ERR(list))
+		return PTR_ERR(list);
 
 	for (unsigned i = 0; i < list->len; ++i) {
 		const char *temp = g_ptr_array_index(list, i);
@@ -145,7 +144,7 @@ spl_print(struct client *client, const char *name_utf8, bool detail,
 	}
 
 	spl_free(list);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void

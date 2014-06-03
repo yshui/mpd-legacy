@@ -56,7 +56,7 @@ add_song(struct despotify_playlist *ctx, struct ds_track *track)
 
 	if (despotify_track_to_uri(track, ds_uri) != ds_uri) {
 		/* Should never really fail, but let's be sure */
-		g_debug("Can't add track %s\n", track->title);
+		log_debug("Can't add track %s\n", track->title);
 		return;
 	}
 
@@ -125,7 +125,7 @@ despotify_playlist_open_uri(const char *url, GMutex *mutex,
 	/* Get link without spt:// */
 	link = despotify_link_from_uri(url + strlen(despotify_playlist_plugin.schemes[0]) + 3);
 	if (!link) {
-		g_debug("Can't find %s\n", url);
+		log_debug("Can't find %s\n", url);
 		goto clean_none;
 	}
 

@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_remove"
+
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_remove.h"
 #include "event_pipe.h"
@@ -52,7 +55,7 @@ song_remove_event(void)
 	assert(removed_song != NULL);
 
 	uri = song_get_uri(removed_song);
-	g_message("removing %s", uri);
+	log_info("removing %s", uri);
 	free(uri);
 
 #ifdef ENABLE_SQLITE

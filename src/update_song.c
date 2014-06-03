@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_song"
+
+#include "log.h"
 #include "config.h" /* must be first for large file support */
 #include "update_song.h"
 #include "update_internal.h"
@@ -43,7 +46,7 @@ update_song_file2(struct directory *directory,
 	db_unlock();
 
 	if (!directory_child_access(directory, name, R_OK)) {
-		g_warning("no read permissions on %s/%s",
+		log_warning("no read permissions on %s/%s",
 			  directory_get_path(directory), name);
 		if (song != NULL) {
 			db_lock();
@@ -67,11 +70,11 @@ update_song_file2(struct directory *directory,
 	}
 
 	if (song == NULL) {
-		g_debug("reading %s/%s",
+		log_debug("reading %s/%s",
 			directory_get_path(directory), name);
 		song = song_file_load(name, directory);
 		if (song == NULL) {
-			g_debug("ignoring unrecognized file %s/%s",
+			log_debug("ignoring unrecognized file %s/%s",
 				directory_get_path(directory), name);
 			return;
 		}
@@ -81,13 +84,13 @@ update_song_file2(struct directory *directory,
 		db_unlock();
 
 		modified = true;
-		g_message("added %s/%s",
+		log_info("added %s/%s",
 			  directory_get_path(directory), name);
 	} else if (st->st_mtime != song->mtime || walk_discard) {
-		g_message("updating %s/%s",
+		log_info("updating %s/%s",
 			  directory_get_path(directory), name);
 		if (!song_file_update(song)) {
-			g_debug("deleting unrecognized file %s/%s",
+			log_debug("deleting unrecognized file %s/%s",
 				directory_get_path(directory), name);
 			db_lock();
 			delete_song(directory, song);

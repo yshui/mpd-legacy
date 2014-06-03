@@ -35,10 +35,10 @@ client_process_command_list(struct client *client, bool list_ok, GSList *list)
 	for (GSList *cur = list; cur != NULL; cur = g_slist_next(cur)) {
 		char *cmd = cur->data;
 
-		g_debug("command_process_list: process command \"%s\"",
+		log_debug("command_process_list: process command \"%s\"",
 			cmd);
 		ret = command_process(client, num++, cmd);
-		g_debug("command_process_list: command returned %i", ret);
+		log_debug("command_process_list: command returned %i", ret);
 		if (ret != COMMAND_RETURN_OK || client_is_expired(client))
 			break;
 		else if (list_ok)
@@ -69,14 +69,14 @@ client_process_line(struct client *client, char *line)
 	} else if (client->idle_waiting) {
 		/* during idle mode, clients must not send anything
 		   except "noidle" */
-		g_warning("[%u] command \"%s\" during idle",
+		log_warning("[%u] command \"%s\" during idle",
 			  client->num, line);
 		return COMMAND_RETURN_CLOSE;
 	}
 
 	if (client->cmd_list_OK >= 0) {
 		if (strcmp(line, CLIENT_LIST_MODE_END) == 0) {
-			g_debug("[%u] process command list",
+			log_debug("[%u] process command list",
 				client->num);
 
 			/* for scalability reasons, we have prepended
@@ -87,7 +87,7 @@ client_process_line(struct client *client, char *line)
 			ret = client_process_command_list(client,
 							  client->cmd_list_OK,
 							  client->cmd_list);
-			g_debug("[%u] process command "
+			log_debug("[%u] process command "
 				"list returned %i", client->num, ret);
 
 			if (ret == COMMAND_RETURN_CLOSE ||
@@ -106,7 +106,7 @@ client_process_line(struct client *client, char *line)
 			client->cmd_list_size += len;
 			if (client->cmd_list_size >
 			    client_max_command_list_size) {
-				g_warning("[%u] command list size (%lu) "
+				log_warning("[%u] command list size (%lu) "
 					  "is larger than the max (%lu)",
 					  client->num,
 					  (unsigned long)client->cmd_list_size,
@@ -125,10 +125,10 @@ client_process_line(struct client *client, char *line)
 			client->cmd_list_OK = 1;
 			ret = COMMAND_RETURN_OK;
 		} else {
-			g_debug("[%u] process command \"%s\"",
+			log_debug("[%u] process command \"%s\"",
 				client->num, line);
 			ret = command_process(client, 0, line);
-			g_debug("[%u] command returned %i",
+			log_debug("[%u] command returned %i",
 				client->num, ret);
 
 			if (ret == COMMAND_RETURN_CLOSE ||

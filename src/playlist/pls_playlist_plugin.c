@@ -41,7 +41,7 @@ static void pls_parser(GKeyFile *keyfile, struct pls_playlist *playlist)
 	int num_entries = g_key_file_get_integer(keyfile, "playlist",
 						 "NumberOfEntries", &error);
 	if (error) {
-		g_debug("Invalid PLS file: '%s'", error->message);
+		log_debug("Invalid PLS file: '%s'", error->message);
 		g_error_free(error);
 		error = NULL;
 
@@ -60,7 +60,7 @@ static void pls_parser(GKeyFile *keyfile, struct pls_playlist *playlist)
 		value = g_key_file_get_string(keyfile, "playlist", key,
 					      &error);
 		if(error) {
-			g_debug("Invalid PLS entry %s: '%s'",key, error->message);
+			log_debug("Invalid PLS entry %s: '%s'",key, error->message);
 			g_error_free(error);
 			g_free(key);
 			return;
@@ -107,7 +107,7 @@ static struct playlist_provider *
 pls_open_stream(struct input_stream *is)
 {
 	GError *error = NULL;
-	size_t nbytes;
+	ssize_t nbytes;
 	char buffer[1024];
 	bool success;
 	GKeyFile *keyfile;
@@ -115,14 +115,11 @@ pls_open_stream(struct input_stream *is)
 	GString *kf_data = g_string_new("");
 
 	do {
-		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer),
-						&error);
-		if (nbytes == 0) {
-			if (error != NULL) {
+		nbytes = input_stream_lock_read(is, buffer, sizeof(buffer));
+		if (nbytes <= 0) {
+			if (nbytes < 0) {
 				g_string_free(kf_data, TRUE);
-				g_warning("%s", error->message);
-				g_error_free(error);
-				return NULL;
+				return ERR_PTR(nbytes);
 			}
 
 			break;
@@ -133,7 +130,7 @@ pls_open_stream(struct input_stream *is)
 	} while(kf_data->len < 65536);
 
 	if (kf_data->len == 0) {
-		g_warning("KeyFile parser failed: No Data");
+		log_warning("KeyFile parser failed: No Data");
 		g_string_free(kf_data, TRUE);
 		return NULL;
 	}
@@ -146,7 +143,7 @@ pls_open_stream(struct input_stream *is)
 	g_string_free(kf_data, TRUE);
 
 	if (!success) {
-		g_warning("KeyFile parser failed: %s", error->message);
+		log_warning("KeyFile parser failed: %s", error->message);
 		g_error_free(error);
 		g_key_file_free(keyfile);
 		return NULL;

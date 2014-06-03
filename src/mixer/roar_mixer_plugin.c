@@ -18,13 +18,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "mixer: roar"
 
+#include "log.h"
 #include "config.h"
 #include "mixer_api.h"
 #include "output_api.h"
 #include "output/roar_output_plugin.h"
-
-#include <glib.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -37,18 +37,8 @@ typedef struct roar_mpd_mixer
 	struct roar *self;
 } roar_mixer_t;
 
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-roar_mixer_quark(void)
-{
-	return g_quark_from_static_string("roar_mixer");
-}
-
 static struct mixer *
-roar_mixer_init(void *ao, const struct config_param *param,
-		GError **error_r)
+roar_mixer_init(void *ao, const struct config_param *param)
 {
 	roar_mixer_t *self = g_new(roar_mixer_t, 1);
 	self->self = ao;
@@ -63,7 +53,7 @@ roar_mixer_finish(struct mixer *data)
 {
 	roar_mixer_t *self = (roar_mixer_t *) data;
 
-	g_free(self);
+	free(self);
 }
 
 static void
@@ -71,23 +61,21 @@ roar_mixer_close(struct mixer *data)
 {
 }
 
-static bool
-roar_mixer_open(struct mixer *data,
-		GError **error_r)
+static int
+roar_mixer_open(struct mixer *data)
 {
-	return true;
+	return MPD_SUCCESS;
 }
 
 static int
-roar_mixer_get_volume(struct mixer *mixer, GError **error_r)
+roar_mixer_get_volume(struct mixer *mixer)
 {
 	roar_mixer_t *self = (roar_mixer_t *)mixer;
 	return roar_output_get_volume(self->self);
 }
 
-static bool
-roar_mixer_set_volume(struct mixer *mixer, unsigned volume,
-		GError **error_r)
+static int
+roar_mixer_set_volume(struct mixer *mixer, unsigned volume)
 {
 	roar_mixer_t *self = (roar_mixer_t *)mixer;
 	return roar_output_set_volume(self->self, volume);

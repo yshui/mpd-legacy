@@ -42,8 +42,8 @@ pulse_output_set_mixer(struct pulse_output *po, struct pulse_mixer *pm);
 void
 pulse_output_clear_mixer(struct pulse_output *po, struct pulse_mixer *pm);
 
-bool
+int
 pulse_output_set_volume(struct pulse_output *po,
-			const struct pa_cvolume *volume, GError **error_r);
+			const struct pa_cvolume *volume);
 
 #endif

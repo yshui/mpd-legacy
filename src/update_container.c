@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "update_container"
+
 #include "config.h" /* must be first for large file support */
 #include "update_container.h"
 #include "update_internal.h"
@@ -108,7 +110,7 @@ update_container_file(struct directory *directory,
 
 		modified = true;
 
-		g_message("added %s/%s",
+		log_info("added %s/%s",
 			  directory_get_path(directory), vtrack);
 		free(vtrack);
 	}

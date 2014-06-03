@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "output: shout"
+
+#include "log.h"
 #include "config.h"
 #include "shout_output_plugin.h"
 #include "output_api.h"
@@ -30,9 +33,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "shout"
 
 #define DEFAULT_CONN_TIMEOUT  2
 
@@ -53,15 +53,6 @@ struct shout_data {
 };
 
 static int shout_init_count;
-
-/**
- * The quark used for GError.domain.
- */
-static inline GQuark
-shout_output_quark(void)
-{
-	return g_quark_from_static_string("shout_output");
-}
 
 static const struct encoder_plugin *
 shout_encoder_plugin_get(const char *name)
@@ -106,23 +97,22 @@ static void free_shout_data(struct shout_data *sd)
 	}
 
 static struct audio_output *
-my_shout_init_driver(const struct config_param *param,
-		     GError **error)
+my_shout_init_driver(const struct config_param *param)
 {
 	struct shout_data *sd = new_shout_data();
-	if (!ao_base_init(&sd->base, &shout_output_plugin, param, error)) {
+	int ret = ao_base_init(&sd->base, &shout_output_plugin, param);
+	if (ret != MPD_SUCCESS) {
 		free_shout_data(sd);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	const struct audio_format *audio_format =
 		&sd->base.config_audio_format;
 	if (!audio_format_fully_defined(audio_format)) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "Need full audio format specification");
+		log_err("Need full audio format specification");
 		ao_base_finish(&sd->base);
 		free_shout_data(sd);
-		return NULL;
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	if (shout_init_count == 0)
@@ -138,9 +128,10 @@ my_shout_init_driver(const struct config_param *param,
 	char *mount = block_param->value;
 
 	unsigned port = config_get_block_unsigned(param, "port", 0);
+	int err = MPD_SUCCESS;
 	if (port == 0) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "shout port must be configured");
+		log_err("shout port must be configured");
+		err = -MPD_MISS_VALUE;
 		goto failure;
 	}
 
@@ -160,24 +151,24 @@ my_shout_init_driver(const struct config_param *param,
 		sd->quality = strtod(value, &test);
 
 		if (*test != '\0' || sd->quality < -1.0 || sd->quality > 10.0) {
-			g_set_error(error, shout_output_quark(), 0,
-				    "shout quality \"%s\" is not a number in the "
+			log_err("shout quality \"%s\" is not a number in the "
 				    "range -1 to 10, line %i",
 				    value, param->line);
+			err = -MPD_INVAL;
 			goto failure;
 		}
 
 		if (config_get_block_string(param, "bitrate", NULL) != NULL) {
-			g_set_error(error, shout_output_quark(), 0,
-				    "quality and bitrate are "
+			log_err("quality and bitrate are "
 				    "both defined");
+			err = -MPD_INVAL;
 			goto failure;
 		}
 	} else {
 		value = config_get_block_string(param, "bitrate", NULL);
 		if (value == NULL) {
-			g_set_error(error, shout_output_quark(), 0,
-				    "neither bitrate nor quality defined");
+			log_err("neither bitrate nor quality defined");
+			err = -MPD_MISS_VALUE;
 			goto failure;
 		}
 
@@ -185,8 +176,8 @@ my_shout_init_driver(const struct config_param *param,
 		sd->bitrate = strtol(value, &test, 10);
 
 		if (*test != '\0' || sd->bitrate <= 0) {
-			g_set_error(error, shout_output_quark(), 0,
-				    "bitrate must be a positive integer");
+			log_err("bitrate must be a positive integer");
+			err = -MPD_INVAL;
 			goto failure;
 		}
 	}
@@ -196,15 +187,17 @@ my_shout_init_driver(const struct config_param *param,
 	const struct encoder_plugin *encoder_plugin =
 		shout_encoder_plugin_get(encoding);
 	if (encoder_plugin == NULL) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "couldn't find shout encoder plugin \"%s\"",
+		log_err("couldn't find shout encoder plugin \"%s\"",
 			    encoding);
+		err = -MPD_3RD;
 		goto failure;
 	}
 
-	sd->encoder = encoder_init(encoder_plugin, param, error);
-	if (sd->encoder == NULL)
+	sd->encoder = encoder_init(encoder_plugin, param);
+	if (IS_ERR(sd->encoder)) {
+		err = PTR_ERR(sd->encoder);
 		goto failure;
+	}
 
 	unsigned shout_format;
 	if (strcmp(encoding, "mp3") == 0 || strcmp(encoding, "lame") == 0)
@@ -217,9 +210,9 @@ my_shout_init_driver(const struct config_param *param,
 	if (value != NULL) {
 		if (0 == strcmp(value, "shoutcast") &&
 		    0 != strcmp(encoding, "mp3")) {
-			g_set_error(error, shout_output_quark(), 0,
-				    "you cannot stream \"%s\" to shoutcast, use mp3",
+			log_err("you cannot stream \"%s\" to shoutcast, use mp3",
 				    encoding);
+			err = -MPD_INVAL;
 			goto failure;
 		} else if (0 == strcmp(value, "shoutcast"))
 			protocol = SHOUT_PROTOCOL_ICY;
@@ -228,10 +221,10 @@ my_shout_init_driver(const struct config_param *param,
 		else if (0 == strcmp(value, "icecast2"))
 			protocol = SHOUT_PROTOCOL_HTTP;
 		else {
-			g_set_error(error, shout_output_quark(), 0,
-				    "shout protocol \"%s\" is not \"shoutcast\" or "
+			log_err("shout protocol \"%s\" is not \"shoutcast\" or "
 				    "\"icecast1\"or \"icecast2\"",
 				    value);
+			err = -MPD_INVAL;
 			goto failure;
 		}
 	} else {
@@ -249,8 +242,8 @@ my_shout_init_driver(const struct config_param *param,
 	    != SHOUTERR_SUCCESS ||
 	    shout_set_protocol(sd->shout_conn, protocol) != SHOUTERR_SUCCESS ||
 	    shout_set_agent(sd->shout_conn, "MPD") != SHOUTERR_SUCCESS) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "%s", shout_get_error(sd->shout_conn));
+		log_err("%s", shout_get_error(sd->shout_conn));
+		err = -MPD_3RD;
 		goto failure;
 	}
 
@@ -260,22 +253,22 @@ my_shout_init_driver(const struct config_param *param,
 
 	value = config_get_block_string(param, "genre", NULL);
 	if (value != NULL && shout_set_genre(sd->shout_conn, value)) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "%s", shout_get_error(sd->shout_conn));
+		log_err("%s", shout_get_error(sd->shout_conn));
+		err = -MPD_3RD;
 		goto failure;
 	}
 
 	value = config_get_block_string(param, "description", NULL);
 	if (value != NULL && shout_set_description(sd->shout_conn, value)) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "%s", shout_get_error(sd->shout_conn));
+		log_err("%s", shout_get_error(sd->shout_conn));
+		err = -MPD_3RD;
 		goto failure;
 	}
 
 	value = config_get_block_string(param, "url", NULL);
 	if (value != NULL && shout_set_url(sd->shout_conn, value)) {
-		g_set_error(error, shout_output_quark(), 0,
-			    "%s", shout_get_error(sd->shout_conn));
+		log_err("%s", shout_get_error(sd->shout_conn));
+		err = -MPD_3RD;
 		goto failure;
 	}
 
@@ -304,13 +297,14 @@ my_shout_init_driver(const struct config_param *param,
 	return &sd->base;
 
 failure:
+	assert(err != MPD_SUCCESS);
 	ao_base_finish(&sd->base);
 	free_shout_data(sd);
-	return NULL;
+	return ERR_PTR(err);
 }
 
-static bool
-handle_shout_error(struct shout_data *sd, int err, GError **error)
+static int
+print_shout_error(struct shout_data *sd, int err)
 {
 	switch (err) {
 	case SHOUTERR_SUCCESS:
@@ -318,27 +312,25 @@ handle_shout_error(struct shout_data *sd, int err, GError **error)
 
 	case SHOUTERR_UNCONNECTED:
 	case SHOUTERR_SOCKET:
-		g_set_error(error, shout_output_quark(), err,
-			    "Lost shout connection to %s:%i: %s",
+		log_err("Lost shout connection to %s:%i: %s",
 			    shout_get_host(sd->shout_conn),
 			    shout_get_port(sd->shout_conn),
 			    shout_get_error(sd->shout_conn));
-		return false;
+		return -MPD_3RD;
 
 	default:
-		g_set_error(error, shout_output_quark(), err,
-			    "connection to %s:%i error: %s",
+		log_err("connection to %s:%i error: %s",
 			    shout_get_host(sd->shout_conn),
 			    shout_get_port(sd->shout_conn),
 			    shout_get_error(sd->shout_conn));
-		return false;
+		return -MPD_3RD;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static bool
-write_page(struct shout_data *sd, GError **error)
+write_page(struct shout_data *sd)
 {
 	assert(sd->encoder != NULL);
 
@@ -349,8 +341,8 @@ write_page(struct shout_data *sd, GError **error)
 			return true;
 
 		int err = shout_send(sd->shout_conn, sd->buffer, nbytes);
-		if (!handle_shout_error(sd, err, error))
-			return false;
+		if (err != SHOUTERR_SUCCESS)
+			return print_shout_error(sd, err);
 	}
 
 	return true;
@@ -359,15 +351,15 @@ write_page(struct shout_data *sd, GError **error)
 static void close_shout_conn(struct shout_data * sd)
 {
 	if (sd->encoder != NULL) {
-		if (encoder_end(sd->encoder, NULL))
-			write_page(sd, NULL);
+		if (encoder_end(sd->encoder) == MPD_SUCCESS)
+			write_page(sd);
 
 		encoder_close(sd->encoder);
 	}
 
 	if (shout_get_connected(sd->shout_conn) != SHOUTERR_UNCONNECTED &&
 	    shout_close(sd->shout_conn) != SHOUTERR_SUCCESS) {
-		g_warning("problem closing connection to shout server: %s\n",
+		log_warning("problem closing connection to shout server: %s\n",
 			  shout_get_error(sd->shout_conn));
 	}
 }
@@ -406,7 +398,7 @@ my_shout_close_device(struct audio_output *ao)
 }
 
 static bool
-shout_connect(struct shout_data *sd, GError **error)
+shout_connect(struct shout_data *sd)
 {
 	switch (shout_open(sd->shout_conn)) {
 	case SHOUTERR_SUCCESS:
@@ -414,8 +406,7 @@ shout_connect(struct shout_data *sd, GError **error)
 		return true;
 
 	default:
-		g_set_error(error, shout_output_quark(), 0,
-			    "problem opening connection to shout server %s:%i: %s",
+		log_err("problem opening connection to shout server %s:%i: %s",
 			    shout_get_host(sd->shout_conn),
 			    shout_get_port(sd->shout_conn),
 			    shout_get_error(sd->shout_conn));
@@ -423,27 +414,27 @@ shout_connect(struct shout_data *sd, GError **error)
 	}
 }
 
-static bool
-my_shout_open_device(struct audio_output *ao, struct audio_format *audio_format,
-		     GError **error)
+static int
+my_shout_open_device(struct audio_output *ao, struct audio_format *audio_format)
 {
 	struct shout_data *sd = (struct shout_data *)ao;
 
-	if (!shout_connect(sd, error))
-		return false;
+	if (!shout_connect(sd))
+		return -MPD_3RD;
 
-	if (!encoder_open(sd->encoder, audio_format, error)) {
+	int ret = encoder_open(sd->encoder, audio_format);
+	if (ret != MPD_SUCCESS) {
 		shout_close(sd->shout_conn);
-		return false;
+		return ret;
 	}
 
-	if (!write_page(sd, error)) {
+	if (!write_page(sd)) {
 		encoder_close(sd->encoder);
 		shout_close(sd->shout_conn);
-		return false;
+		return -MPD_ACCESS;
 	}
 
-	return true;
+	return -MPD_SUCCESS;
 }
 
 static unsigned
@@ -459,13 +450,12 @@ my_shout_delay(struct audio_output *ao)
 }
 
 static size_t
-my_shout_play(struct audio_output *ao, const void *chunk, size_t size,
-	      GError **error)
+my_shout_play(struct audio_output *ao, const void *chunk, size_t size)
 {
 	struct shout_data *sd = (struct shout_data *)ao;
 
-	return encoder_write(sd->encoder, chunk, size, error) &&
-		write_page(sd, error)
+	return encoder_write(sd->encoder, chunk, size) >= 0 &&
+		write_page(sd)
 		? size
 		: 0;
 }
@@ -475,7 +465,7 @@ my_shout_pause(struct audio_output *ao)
 {
 	static const char silence[1020];
 
-	return my_shout_play(ao, silence, sizeof(silence), NULL);
+	return my_shout_play(ao, silence, sizeof(silence));
 }
 
 static void
@@ -508,24 +498,17 @@ static void my_shout_set_tag(struct audio_output *ao,
 			     const struct tag *tag)
 {
 	struct shout_data *sd = (struct shout_data *)ao;
-	GError *error = NULL;
 
 	if (sd->encoder->plugin->tag != NULL) {
 		/* encoder plugin supports stream tags */
 
-		if (!encoder_pre_tag(sd->encoder, &error)) {
-			g_warning("%s", error->message);
-			g_error_free(error);
-			return;
-		}
-
-		if (!write_page(sd, NULL))
+		if (!encoder_pre_tag(sd->encoder))
 			return;
 
-		if (!encoder_tag(sd->encoder, tag, &error)) {
-			g_warning("%s", error->message);
-			g_error_free(error);
-		}
+		if (!write_page(sd))
+			return;
+
+		encoder_tag(sd->encoder, tag);
 	} else {
 		/* no stream tag support: fall back to icy-metadata */
 		char song[1024];
@@ -534,12 +517,13 @@ static void my_shout_set_tag(struct audio_output *ao,
 		shout_metadata_add(sd->shout_meta, "song", song);
 		if (SHOUTERR_SUCCESS != shout_set_metadata(sd->shout_conn,
 							   sd->shout_meta)) {
-			g_warning("error setting shout metadata\n");
+			log_warning("error setting shout metadata\n");
 		}
 	}
 
-	write_page(sd, NULL);
+	write_page(sd);
 }
+
 
 const struct audio_output_plugin shout_output_plugin = {
 	.name = "shout",

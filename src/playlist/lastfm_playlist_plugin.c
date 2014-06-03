@@ -51,7 +51,7 @@ lastfm_init(const struct config_param *param)
 	const char *passwd = config_get_block_string(param, "password", NULL);
 
 	if (user == NULL || passwd == NULL) {
-		g_debug("disabling the last.fm playlist plugin "
+		log_debug("disabling the last.fm playlist plugin "
 			"because account is not configured");
 		return false;
 	}
@@ -83,19 +83,13 @@ static char *
 lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 {
 	struct input_stream *input_stream;
-	GError *error = NULL;
 	char buffer[4096];
-	size_t length = 0, nbytes;
+	size_t length = 0;
+	ssize_t nbytes;
 
-	input_stream = input_stream_open(url, mutex, cond, &error);
-	if (input_stream == NULL) {
-		if (error != NULL) {
-			g_warning("%s", error->message);
-			g_error_free(error);
-		}
-
-		return NULL;
-	}
+	input_stream = input_stream_open(url, mutex, cond);
+	if (IS_ERR(input_stream))
+		return (char *)input_stream;
 
 	g_mutex_lock(mutex);
 
@@ -103,20 +97,15 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 
 	do {
 		nbytes = input_stream_read(input_stream, buffer + length,
-					   sizeof(buffer) - length, &error);
-		if (nbytes == 0) {
-			if (error != NULL) {
-				g_warning("%s", error->message);
-				g_error_free(error);
-			}
-
+					   sizeof(buffer) - length);
+		if (nbytes <= 0) {
 			if (input_stream_eof(input_stream))
 				break;
 
 			/* I/O error */
 			g_mutex_unlock(mutex);
 			input_stream_close(input_stream);
-			return NULL;
+			return ERR_PTR(-MPD_ACCESS);
 		}
 
 		length += nbytes;
@@ -132,7 +121,7 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
  * Ini-style value fetcher.
  * @param response data through which to search.
  * @param name name of value to search for.
- * @return value for param name in param response or NULL on error. Free with g_free.
+ * @return value for param name in param response or NULL on error. Free with free.
  */
 static char *
 lastfm_find(const char *response, const char *name)
@@ -158,7 +147,6 @@ static struct playlist_provider *
 lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 {
 	struct lastfm_playlist *playlist;
-	GError *error = NULL;
 	char *p, *q, *response, *session;
 
 	/* handshake */
@@ -178,7 +166,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	session = lastfm_find(response, "session");
 	g_free(response);
 	if (session == NULL) {
-		g_warning("last.fm handshake failed");
+		log_warning("last.fm handshake failed");
 		return NULL;
 	}
 
@@ -186,7 +174,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	g_free(session);
 	session = q;
 
-	g_debug("session='%s'", session);
+	log_debug("session='%s'", session);
 
 	/* "adjust" last.fm radio */
 
@@ -222,18 +210,13 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 			NULL);
 	g_free(session);
 
-	playlist->is = input_stream_open(p, mutex, cond, &error);
+	playlist->is = input_stream_open(p, mutex, cond);
 	g_free(p);
 
-	if (playlist->is == NULL) {
-		if (error != NULL) {
-			g_warning("Failed to load XSPF playlist: %s",
-				  error->message);
-			g_error_free(error);
-		} else
-			g_warning("Failed to load XSPF playlist");
-		g_free(playlist);
-		return NULL;
+	if (IS_ERR(playlist->is)) {
+		log_warning("Failed to load XSPF playlist");
+		free(playlist);
+		return (void *)playlist->is;
 	}
 
 	g_mutex_lock(mutex);
@@ -242,7 +225,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 
 	/* last.fm does not send a MIME type, we have to fake it here
 	   :-( */
-	g_free(playlist->is->mime);
+	free(playlist->is->mime);
 	playlist->is->mime = g_strdup("application/xspf+xml");
 
 	g_mutex_unlock(mutex);
@@ -253,7 +236,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	if (playlist->xspf == NULL) {
 		input_stream_close(playlist->is);
 		g_free(playlist);
-		g_warning("Failed to parse XSPF playlist");
+		log_warning("Failed to parse XSPF playlist");
 		return NULL;
 	}
 

@@ -106,7 +106,7 @@ playlist_state_load(FILE *fp, GString *buffer, struct playlist *playlist)
 {
 	const char *line = read_text_line(fp, buffer);
 	if (line == NULL) {
-		g_warning("No playlist in state file");
+		log_warning("No playlist in state file");
 		return;
 	}
 
@@ -115,7 +115,7 @@ playlist_state_load(FILE *fp, GString *buffer, struct playlist *playlist)
 
 		line = read_text_line(fp, buffer);
 		if (line == NULL) {
-			g_warning("'" PLAYLIST_STATE_FILE_PLAYLIST_END
+			log_warning("'" PLAYLIST_STATE_FILE_PLAYLIST_END
 				  "' not found in state file");
 			break;
 		}

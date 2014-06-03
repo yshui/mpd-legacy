@@ -79,7 +79,7 @@ queue_load_song(FILE *fp, GString *buffer, const char *line,
 	char *endptr;
 	long ret = strtol(line, &endptr, 10);
 	if (ret < 0 || *endptr != ':' || endptr[1] == 0) {
-		g_warning("Malformed playlist line in state file");
+		log_warning("Malformed playlist line in state file");
 		return;
 	}
 

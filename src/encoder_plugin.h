@@ -20,7 +20,7 @@
 #ifndef MPD_ENCODER_PLUGIN_H
 #define MPD_ENCODER_PLUGIN_H
 
-#include <glib.h>
+#include "err.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -42,29 +42,25 @@ struct encoder {
 struct encoder_plugin {
 	const char *name;
 
-	struct encoder *(*init)(const struct config_param *param,
-				GError **error);
+	struct encoder *(*init)(const struct config_param *param);
 
 	void (*finish)(struct encoder *encoder);
 
-	bool (*open)(struct encoder *encoder,
-		     struct audio_format *audio_format,
-		     GError **error);
+	int (*open)(struct encoder *encoder,
+		     struct audio_format *audio_format);
 
 	void (*close)(struct encoder *encoder);
 
-	bool (*end)(struct encoder *encoder, GError **error);
+	int (*end)(struct encoder *encoder);
 
-	bool (*flush)(struct encoder *encoder, GError **error);
+	int (*flush)(struct encoder *encoder);
 
-	bool (*pre_tag)(struct encoder *encoder, GError **error);
+	int (*pre_tag)(struct encoder *encoder);
 
-	bool (*tag)(struct encoder *encoder, const struct tag *tag,
-		    GError **error);
+	int (*tag)(struct encoder *encoder, const struct tag *tag);
 
-	bool (*write)(struct encoder *encoder,
-		      const void *data, size_t length,
-		      GError **error);
+	ssize_t (*write)(struct encoder *encoder,
+		      const void *data, size_t length);
 
 	size_t (*read)(struct encoder *encoder, void *dest, size_t length);
 
@@ -96,9 +92,9 @@ encoder_struct_init(struct encoder *encoder,
  */
 static inline struct encoder *
 encoder_init(const struct encoder_plugin *plugin,
-	     const struct config_param *param, GError **error)
+	     const struct config_param *param)
 {
-	return plugin->init(param, error);
+	return plugin->init(param);
 }
 
 /**
@@ -129,18 +125,17 @@ encoder_finish(struct encoder *encoder)
  * @param error location to store the error occurring, or NULL to ignore errors.
  * @return true on success
  */
-static inline bool
-encoder_open(struct encoder *encoder, struct audio_format *audio_format,
-	     GError **error)
+static inline int
+encoder_open(struct encoder *encoder, struct audio_format *audio_format)
 {
 	assert(!encoder->open);
 
-	bool success = encoder->plugin->open(encoder, audio_format, error);
+	int ret = encoder->plugin->open(encoder, audio_format);
 #ifndef NDEBUG
-	encoder->open = success;
+	encoder->open = ret == MPD_SUCCESS;
 	encoder->pre_tag = encoder->tag = encoder->end = false;
 #endif
-	return success;
+	return ret;
 }
 
 /**
@@ -172,11 +167,10 @@ encoder_close(struct encoder *encoder)
  * called.
  *
  * @param encoder the encoder
- * @param error location to store the error occuring, or NULL to ignore errors.
- * @return true on success
+ * @return error code
  */
-static inline bool
-encoder_end(struct encoder *encoder, GError **error)
+static inline int
+encoder_end(struct encoder *encoder)
 {
 	assert(encoder->open);
 	assert(!encoder->end);
@@ -187,8 +181,8 @@ encoder_end(struct encoder *encoder, GError **error)
 
 	/* this method is optional */
 	return encoder->plugin->end != NULL
-		? encoder->plugin->end(encoder, error)
-		: true;
+		? encoder->plugin->end(encoder)
+		: MPD_SUCCESS;
 }
 
 /**
@@ -199,8 +193,8 @@ encoder_end(struct encoder *encoder, GError **error)
  * @param error location to store the error occurring, or NULL to ignore errors.
  * @return true on success
  */
-static inline bool
-encoder_flush(struct encoder *encoder, GError **error)
+static inline int
+encoder_flush(struct encoder *encoder)
 {
 	assert(encoder->open);
 	assert(!encoder->pre_tag);
@@ -209,8 +203,8 @@ encoder_flush(struct encoder *encoder, GError **error)
 
 	/* this method is optional */
 	return encoder->plugin->flush != NULL
-		? encoder->plugin->flush(encoder, error)
-		: true;
+		? encoder->plugin->flush(encoder)
+		: MPD_SUCCESS;
 }
 
 /**
@@ -220,11 +214,10 @@ encoder_flush(struct encoder *encoder, GError **error)
  *
  * @param encoder the encoder
  * @param tag the tag object
- * @param error location to store the error occuring, or NULL to ignore errors.
  * @return true on success
  */
-static inline bool
-encoder_pre_tag(struct encoder *encoder, GError **error)
+static inline int
+encoder_pre_tag(struct encoder *encoder)
 {
 	assert(encoder->open);
 	assert(!encoder->pre_tag);
@@ -232,14 +225,14 @@ encoder_pre_tag(struct encoder *encoder, GError **error)
 	assert(!encoder->end);
 
 	/* this method is optional */
-	bool success = encoder->plugin->pre_tag != NULL
-		? encoder->plugin->pre_tag(encoder, error)
-		: true;
+	int ret = encoder->plugin->pre_tag != NULL
+		? encoder->plugin->pre_tag(encoder)
+		: MPD_SUCCESS;
 
 #ifndef NDEBUG
-	encoder->pre_tag = success;
+	encoder->pre_tag = ret == MPD_SUCCESS;
 #endif
-	return success;
+	return ret;
 }
 
 /**
@@ -250,11 +243,10 @@ encoder_pre_tag(struct encoder *encoder, GError **error)
  *
  * @param encoder the encoder
  * @param tag the tag object
- * @param error location to store the error occurring, or NULL to ignore errors.
- * @return true on success
+ * @return error code 
  */
 static inline bool
-encoder_tag(struct encoder *encoder, const struct tag *tag, GError **error)
+encoder_tag(struct encoder *encoder, const struct tag *tag)
 {
 	assert(encoder->open);
 	assert(!encoder->pre_tag);
@@ -267,8 +259,8 @@ encoder_tag(struct encoder *encoder, const struct tag *tag, GError **error)
 
 	/* this method is optional */
 	return encoder->plugin->tag != NULL
-		? encoder->plugin->tag(encoder, tag, error)
-		: true;
+		? encoder->plugin->tag(encoder, tag)
+		: MPD_SUCCESS;
 }
 
 /**
@@ -277,19 +269,17 @@ encoder_tag(struct encoder *encoder, const struct tag *tag, GError **error)
  * @param encoder the encoder
  * @param data the buffer containing PCM samples
  * @param length the length of the buffer in bytes
- * @param error location to store the error occurring, or NULL to ignore errors.
  * @return true on success
  */
 static inline bool
-encoder_write(struct encoder *encoder, const void *data, size_t length,
-	      GError **error)
+encoder_write(struct encoder *encoder, const void *data, size_t length)
 {
 	assert(encoder->open);
 	assert(!encoder->pre_tag);
 	assert(!encoder->tag);
 	assert(!encoder->end);
 
-	return encoder->plugin->write(encoder, data, length, error);
+	return encoder->plugin->write(encoder, data, length);
 }
 
 /**

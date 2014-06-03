@@ -17,7 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "config"
+
 #include "config.h"
+#include "log.h"
 #include "conf.h"
 #include "utils.h"
 #include "string_util.h"
@@ -209,7 +212,7 @@ config_param_check(gpointer data, gpointer user_data)
 		struct block_param *bp = &param->block_params[i];
 
 		if (!bp->used)
-			g_warning("option '%s' on line %i was not recognized",
+			log_warning("option '%s' on line %i was not recognized",
 				  bp->name, bp->line);
 	}
 }
@@ -245,52 +248,46 @@ config_add_block_param(struct config_param * param, const char *name,
 	bp->used = false;
 }
 
-static bool
-config_read_name_value(struct config_param *param, char *input, unsigned line,
-		       GError **error_r)
+static int
+config_read_name_value(struct config_param *param, char *input, unsigned line)
 {
-	const char *name = tokenizer_next_word(&input, error_r);
-	if (name == NULL) {
+	const char *name = tokenizer_next_word(&input);
+	if (IS_ERR(name)) {
 		assert(*input != 0);
-		return false;
+		return PTR_ERR(name);
 	}
 
-	const char *value = tokenizer_next_string(&input, error_r);
-	if (value == NULL) {
-		if (*input == 0) {
-			assert(error_r == NULL || *error_r == NULL);
-			g_set_error(error_r, config_quark(), 0,
-				    "Value missing");
-		} else {
-			assert(error_r == NULL || *error_r != NULL);
+	const char *value = tokenizer_next_string(&input);
+	if (IS_ERR_OR_NULL(value)) {
+		if (*input == 0){
+			log_err("line %i, Missing value", line);
+			return -MPD_MISS_VALUE;
 		}
 
-		return false;
+		log_err("line %i, Invalid value", line);
+		return -MPD_INVAL;
 	}
 
-	if (*input != 0 && *input != CONF_COMMENT) {
-		g_set_error(error_r, config_quark(), 0,
-			    "Unknown tokens after value");
-		return false;
+	if (*input != 0 && *input != CONF_COMMENT){
+		log_err("line %i, Syntax error", line);
+		return -MPD_INVAL;
 	}
 
 	const struct block_param *bp = config_get_block_param(param, name);
 	if (bp != NULL) {
-		g_set_error(error_r, config_quark(), 0,
-			    "\"%s\" is duplicate, first defined on line %i",
-			    name, bp->line);
-		return false;
+		log_err("line %i, \"%s\" is duplicate, first defined on line %i",
+			    line, name, bp->line);
+		return -MPD_DUP;
 	}
 
 	config_add_block_param(param, name, value, line);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct config_param *
-config_read_block(FILE *fp, int *count, char *string, GError **error_r)
+config_read_block(FILE *fp, int *count, char *string)
 {
 	struct config_param *ret = config_new_param(NULL, *count);
-	GError *error = NULL;
 
 	while (true) {
 		char *line;
@@ -298,8 +295,7 @@ config_read_block(FILE *fp, int *count, char *string, GError **error_r)
 		line = fgets(string, MAX_STRING_SIZE, fp);
 		if (line == NULL) {
 			config_param_free(ret);
-			g_set_error(error_r, config_quark(), 0,
-				    "Expected '}' before end-of-file");
+			log_err("Expected '}' before end-of-file");
 			return NULL;
 		}
 
@@ -315,8 +311,7 @@ config_read_block(FILE *fp, int *count, char *string, GError **error_r)
 			line = strchug_fast(line + 1);
 			if (*line != 0 && *line != CONF_COMMENT) {
 				config_param_free(ret);
-				g_set_error(error_r, config_quark(), 0,
-					    "line %i: Unknown tokens after '}'",
+				log_err("line %i: Unknown tokens after '}'",
 					    *count);
 				return NULL;
 			}
@@ -326,18 +321,16 @@ config_read_block(FILE *fp, int *count, char *string, GError **error_r)
 
 		/* parse name and value */
 
-		if (!config_read_name_value(ret, line, *count, &error)) {
+		if (config_read_name_value(ret, line, *count != MPD_SUCCESS)) {
 			assert(*line != 0);
 			config_param_free(ret);
-			g_propagate_prefixed_error(error_r, error,
-						   "line %i: ", *count);
 			return NULL;
 		}
 	}
 }
 
-bool
-config_read_file(const char *file, GError **error_r)
+int
+config_read_file(const char *file)
 {
 	FILE *fp;
 	char string[MAX_STRING_SIZE + 1];
@@ -345,19 +338,16 @@ config_read_file(const char *file, GError **error_r)
 	struct config_entry *entry;
 	struct config_param *param;
 
-	g_debug("loading file %s", file);
+	log_debug("loading file %s", file);
 
 	if (!(fp = fopen(file, "r"))) {
-		g_set_error(error_r, config_quark(), errno,
-			    "Failed to open %s: %s",
-			    file, g_strerror(errno));
-		return false;
+		log_err("Failed to open %s: %s", file, strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	while (fgets(string, MAX_STRING_SIZE, fp)) {
 		char *line;
 		const char *name, *value;
-		GError *error = NULL;
 
 		count++;
 
@@ -368,13 +358,12 @@ config_read_file(const char *file, GError **error_r)
 		/* the first token in each line is the name, followed
 		   by either the value or '{' */
 
-		name = tokenizer_next_word(&line, &error);
-		if (name == NULL) {
+		name = tokenizer_next_word(&line);
+		if (IS_ERR(name)) {
 			assert(*line != 0);
-			g_propagate_prefixed_error(error_r, error,
-						   "line %i: ", count);
+			log_err("Syntax error at line %i", count);
 			fclose(fp);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		/* get the definition of that option, and check the
@@ -382,21 +371,19 @@ config_read_file(const char *file, GError **error_r)
 
 		entry = config_entry_get(name);
 		if (entry == NULL) {
-			g_set_error(error_r, config_quark(), 0,
-				    "unrecognized parameter in config file at "
+			log_err("unrecognized parameter in config file at "
 				    "line %i: %s\n", count, name);
 			fclose(fp);
-			return false;
+			return -MPD_INVAL;
 		}
 
 		if (entry->params != NULL && !entry->repeatable) {
 			param = entry->params->data;
-			g_set_error(error_r, config_quark(), 0,
-				    "config parameter \"%s\" is first defined "
+			log_err("config parameter \"%s\" is first defined "
 				    "on line %i and redefined on line %i\n",
 				    name, param->line, count);
 			fclose(fp);
-			return false;
+			return -MPD_DUP;
 		}
 
 		/* now parse the block or the value */
@@ -405,52 +392,45 @@ config_read_file(const char *file, GError **error_r)
 			/* it's a block, call config_read_block() */
 
 			if (*line != '{') {
-				g_set_error(error_r, config_quark(), 0,
-					    "line %i: '{' expected", count);
+				log_err("line %i: '{' expected", count);
 				fclose(fp);
-				return false;
+				return -MPD_INVAL;
 			}
 
 			line = strchug_fast(line + 1);
 			if (*line != 0 && *line != CONF_COMMENT) {
-				g_set_error(error_r, config_quark(), 0,
-					    "line %i: Unknown tokens after '{'",
+				log_err("line %i: Unknown tokens after '{'",
 					    count);
 				fclose(fp);
-				return false;
+				return -MPD_INVAL;
 			}
 
-			param = config_read_block(fp, &count, string, error_r);
+			param = config_read_block(fp, &count, string);
 			if (param == NULL) {
 				fclose(fp);
-				return false;
+				return -MPD_MISS_VALUE;
 			}
 		} else {
 			/* a string value */
 
-			value = tokenizer_next_string(&line, &error);
-			if (value == NULL) {
-				if (*line == 0)
-					g_set_error(error_r, config_quark(), 0,
-						    "line %i: Value missing",
+			value = tokenizer_next_string(&line);
+			if (IS_ERR(value)) {
+				fclose(fp);
+				if (*line == 0){
+					log_err("line %i: Value missing",
 						    count);
-				else {
-					g_set_error(error_r, config_quark(), 0,
-						    "line %i: %s", count,
-						    error->message);
-					g_error_free(error);
+					return -MPD_MISS_VALUE;
 				}
 
-				fclose(fp);
-				return false;
+				log_err("at line %i", count);
+				return -MPD_INVAL;
 			}
 
 			if (*line != 0 && *line != CONF_COMMENT) {
-				g_set_error(error_r, config_quark(), 0,
-					    "line %i: Unknown tokens after value",
+				log_err("line %i: Unknown tokens after value",
 					    count);
 				fclose(fp);
-				return false;
+				return -MPD_INVAL;
 			}
 
 			param = config_new_param(value, count);
@@ -460,7 +440,7 @@ config_read_file(const char *file, GError **error_r)
 	}
 	fclose(fp);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 const struct config_param *
@@ -504,20 +484,17 @@ config_get_string(const char *name, const char *default_value)
 }
 
 char *
-config_dup_path(const char *name, GError **error_r)
+config_dup_path(const char *name)
 {
-	assert(error_r != NULL);
-	assert(*error_r == NULL);
-
 	const struct config_param *param = config_get_param(name);
 	if (param == NULL)
 		return NULL;
 
-	char *path = parsePath(param->value, error_r);
-	if (unlikely(path == NULL))
-		g_prefix_error(error_r,
-			       "Invalid path in \"%s\" at line %i: ",
+	char *path = parsePath(param->value);
+	if (unlikely(IS_ERR(path))) {
+		log_err("Invalid path in \"%s\" at line %i",
 			       name, param->line);
+	}
 
 	return path;
 }
@@ -607,8 +584,7 @@ config_get_block_string(const struct config_param *param, const char *name,
 }
 
 char *
-config_dup_block_path(const struct config_param *param, const char *name,
-		      GError **error_r)
+config_dup_block_path(const struct config_param *param, const char *name)
 {
 	assert(error_r != NULL);
 	assert(*error_r == NULL);
@@ -617,11 +593,9 @@ config_dup_block_path(const struct config_param *param, const char *name,
 	if (bp == NULL)
 		return NULL;
 
-	char *path = parsePath(bp->value, error_r);
+	char *path = parsePath(bp->value);
 	if (unlikely(path == NULL))
-		g_prefix_error(error_r,
-			       "Invalid path in \"%s\" at line %i: ",
-			       name, bp->line);
+		log_err("Invalid path in \"%s\" at line %i", name, bp->line);
 
 	return path;
 }

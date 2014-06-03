@@ -41,7 +41,7 @@ struct player_control;
  * @param start_index the index of the first song
  * @param end_index the index of the last song (excluding)
  */
-enum playlist_result
+int
 playlist_load_into_queue(const char *uri, struct playlist_provider *source,
 			 unsigned start_index, unsigned end_index,
 			 struct playlist *dest, struct player_control *pc,
@@ -51,7 +51,7 @@ playlist_load_into_queue(const char *uri, struct playlist_provider *source,
  * Opens a playlist with a playlist plugin and append to the specified
  * play queue.
  */
-enum playlist_result
+int
 playlist_open_into_queue(const char *uri,
 			 unsigned start_index, unsigned end_index,
 			 struct playlist *dest, struct player_control *pc,

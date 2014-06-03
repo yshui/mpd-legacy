@@ -57,7 +57,6 @@ static bool
 mpd_mpg123_open(mpg123_handle *handle, const char *path_fs,
 		struct audio_format *audio_format)
 {
-	GError *gerror = NULL;
 	char *path_dup;
 	int error;
 	int channels, encoding;
@@ -69,7 +68,7 @@ mpd_mpg123_open(mpg123_handle *handle, const char *path_fs,
 	error = mpg123_open(handle, path_dup);
 	g_free(path_dup);
 	if (error != MPG123_OK) {
-		g_warning("libmpg123 failed to open %s: %s",
+		log_warning("libmpg123 failed to open %s: %s",
 			  path_fs, mpg123_plain_strerror(error));
 		return false;
 	}
@@ -78,23 +77,20 @@ mpd_mpg123_open(mpg123_handle *handle, const char *path_fs,
 
 	error = mpg123_getformat(handle, &rate, &channels, &encoding);
 	if (error != MPG123_OK) {
-		g_warning("mpg123_getformat() failed: %s",
+		log_warning("mpg123_getformat() failed: %s",
 			  mpg123_plain_strerror(error));
 		return false;
 	}
 
 	if (encoding != MPG123_ENC_SIGNED_16) {
 		/* other formats not yet implemented */
-		g_warning("expected MPG123_ENC_SIGNED_16, got %d", encoding);
+		log_warning("expected MPG123_ENC_SIGNED_16, got %d", encoding);
 		return false;
 	}
 
-	if (!audio_format_init_checked(audio_format, rate, SAMPLE_FORMAT_S16,
-				       channels, &gerror)) {
-		g_warning("%s", gerror->message);
-		g_error_free(gerror);
+	if (audio_format_init_checked(audio_format, rate, SAMPLE_FORMAT_S16,
+				       channels) != MPD_SUCCESS)
 		return false;
-	}
 
 	return true;
 }
@@ -113,7 +109,7 @@ mpd_mpg123_file_decode(struct decoder *decoder, const char *path_fs)
 
 	handle = mpg123_new(NULL, &error);
 	if (handle == NULL) {
-		g_warning("mpg123_new() failed: %s",
+		log_warning("mpg123_new() failed: %s",
 			  mpg123_plain_strerror(error));
 		return;
 	}
@@ -157,7 +153,7 @@ mpd_mpg123_file_decode(struct decoder *decoder, const char *path_fs)
 		error = mpg123_read(handle, buffer, sizeof(buffer), &nbytes);
 		if (error != MPG123_OK) {
 			if (error != MPG123_DONE)
-				g_warning("mpg123_read() failed: %s",
+				log_warning("mpg123_read() failed: %s",
 					  mpg123_plain_strerror(error));
 			break;
 		}
@@ -204,7 +200,7 @@ mpd_mpg123_scan_file(const char *path_fs,
 
 	handle = mpg123_new(NULL, &error);
 	if (handle == NULL) {
-		g_warning("mpg123_new() failed: %s",
+		log_warning("mpg123_new() failed: %s",
 			  mpg123_plain_strerror(error));
 		return false;
 	}

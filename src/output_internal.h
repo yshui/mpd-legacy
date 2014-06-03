@@ -20,6 +20,7 @@
 #ifndef MPD_OUTPUT_INTERNAL_H
 #define MPD_OUTPUT_INTERNAL_H
 
+#include "log.h"
 #include "audio_format.h"
 #include "pcm_buffer.h"
 
@@ -252,13 +253,12 @@ audio_output_command_is_finished(const struct audio_output *ao)
 
 struct audio_output *
 audio_output_new(const struct config_param *param,
-		 struct player_control *pc,
-		 GError **error_r);
+		 struct player_control *pc);
 
-bool
+int
 ao_base_init(struct audio_output *ao,
 	     const struct audio_output_plugin *plugin,
-	     const struct config_param *param, GError **error_r);
+	     const struct config_param *param);
 
 void
 ao_base_finish(struct audio_output *ao);

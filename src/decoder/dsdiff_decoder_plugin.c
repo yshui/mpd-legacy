@@ -26,6 +26,7 @@
  * All functions common to both DSD decoders have been moved to dsdlib
  */
 
+#include "log.h"
 #include "config.h"
 #include "dsdiff_decoder_plugin.h"
 #include "decoder_api.h"
@@ -304,15 +305,12 @@ dsdiff_stream_decode(struct decoder *decoder, struct input_stream *is)
 	if (!dsdiff_read_metadata(decoder, is, &metadata, &chunk_header))
 		return;
 
-	GError *error = NULL;
 	struct audio_format audio_format;
-	if (!audio_format_init_checked(&audio_format, metadata.sample_rate / 8,
+	int ret;
+	if ((ret = audio_format_init_checked(&audio_format, metadata.sample_rate / 8,
 				       SAMPLE_FORMAT_DSD,
-				       metadata.channels, &error)) {
-		g_warning("%s", error->message);
-		g_error_free(error);
+				       metadata.channels)) != MPD_SUCCESS)
 		return;
-	}
 
 	/* calculate song time from DSD chunk size and sample frequency */
 	uint64_t chunk_size = metadata.chunk_size;
@@ -363,9 +361,9 @@ dsdiff_scan_stream(struct input_stream *is,
 		return false;
 
 	struct audio_format audio_format;
-	if (!audio_format_init_checked(&audio_format, metadata.sample_rate / 8,
+	if (audio_format_init_checked(&audio_format, metadata.sample_rate / 8,
 				       SAMPLE_FORMAT_DSD,
-				       metadata.channels, NULL))
+				       metadata.channels) != MPD_SUCCESS)
 		/* refuse to parse files which we cannot play anyway */
 		return false;
 

@@ -42,12 +42,12 @@ static GByteArray *mod_loadfile(struct decoder *decoder, struct input_stream *is
 	size_t ret;
 
 	if (is->size == 0) {
-		g_warning("file is empty");
+		log_warning("file is empty");
 		return NULL;
 	}
 
 	if (is->size > MODPLUG_FILE_LIMIT) {
-		g_warning("file too large");
+		log_warning("file too large");
 		return NULL;
 	}
 
@@ -74,7 +74,7 @@ static GByteArray *mod_loadfile(struct decoder *decoder, struct input_stream *is
 		}
 
 		if (bdatas->len + ret > MODPLUG_FILE_LIMIT) {
-			g_warning("stream too large\n");
+			log_warning("stream too large\n");
 			g_free(data);
 			g_byte_array_free(bdatas, TRUE);
 			return NULL;
@@ -102,7 +102,7 @@ mod_decode(struct decoder *decoder, struct input_stream *is)
 	bdatas = mod_loadfile(decoder, is);
 
 	if (!bdatas) {
-		g_warning("could not load stream\n");
+		log_warning("could not load stream\n");
 		return;
 	}
 
@@ -118,7 +118,7 @@ mod_decode(struct decoder *decoder, struct input_stream *is)
 	f = ModPlug_Load(bdatas->data, bdatas->len);
 	g_byte_array_free(bdatas, TRUE);
 	if (!f) {
-		g_warning("could not decode stream\n");
+		log_warning("could not decode stream\n");
 		return;
 	}
 

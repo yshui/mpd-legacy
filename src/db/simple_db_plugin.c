@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "database: simple_db"
+
 #include "config.h"
 #include "simple_db_plugin.h"
 #include "song.h"
@@ -139,13 +141,6 @@ static inline int db_error(db_file file){
 }
 #endif
 
-MPD_CONST
-static inline GQuark
-simple_db_quark(void)
-{
-	return g_quark_from_static_string("simple_db");
-}
-
 static inline void
 simple_db_tag_save(db_file file, const struct tag *tag)
 {
@@ -180,7 +175,7 @@ simple_db_song_save(db_file fp, const struct song *song)
 
 static inline struct song *
 simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
-	  GString *buffer, GError **error_r)
+	  GString *buffer)
 {
 	struct song *song = parent != NULL
 		? song_file_new(uri, parent)
@@ -197,9 +192,8 @@ simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
 				tag_end_add(song->tag);
 			song_free(song);
 
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "song_save: unknown line in db: %s", line);
-			return NULL;
+			log_err("song_save: unknown line in db: %s", line);
+			return ERR_PTR(-DB_MALFORM);
 		}
 
 		*colon++ = 0;
@@ -239,9 +233,8 @@ simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
 				tag_end_add(song->tag);
 			song_free(song);
 
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "song_save: unknown line in db: %s", line);
-			return NULL;
+			log_err("song_save: unknown line in db: %s", line);
+			return ERR_PTR(-DB_MALFORM);
 		}
 	}
 
@@ -262,9 +255,9 @@ simple_db_playlist_vector_save(db_file fp, const struct list_head *pv)
 			pm->name, (long)pm->mtime);
 }
 
-static inline bool
+static inline int
 playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
-		       GString *buffer, GError **error_r)
+		       GString *buffer)
 {
 	struct playlist_metadata pm = {
 		.mtime = 0,
@@ -276,9 +269,8 @@ playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
 	       strcmp(line, "playlist_end") != 0) {
 		colon = strchr(line, ':');
 		if (colon == NULL || colon == line) {
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "playlist: unknown line in db: %s", line);
-			return false;
+			log_err("playlist: unknown line in db: %s", line);
+			return -DB_MALFORM;
 		}
 
 		*colon++ = 0;
@@ -287,14 +279,13 @@ playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
 		if (strcmp(line, "mtime") == 0)
 			pm.mtime = strtol(value, NULL, 10);
 		else {
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "playlist: unknown line in db: %s", line);
-			return false;
+			log_err("playlist: unknown line in db: %s", line);
+			return -DB_MALFORM;
 		}
 	}
 
 	playlist_vector_update_or_add(pv, name, pm.mtime);
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -333,38 +324,34 @@ simple_db_directory_save(db_file fp, const struct directory *directory)
 }
 
 static struct directory *
-simple_db_directory_load_subdir(db_file , struct directory *, const char *, GString *,
-	       GError **);
+simple_db_directory_load_subdir(db_file , struct directory *, const char *, GString *);
 
-static bool
+static int
 simple_db_directory_load(db_file fp, struct directory *directory,
-	       GString *buffer, GError **error)
+	       GString *buffer)
 {
 	const char *line;
 
 	while ((line = db_read_text_line(fp, buffer)) != NULL &&
 	       !g_str_has_prefix(line, DIRECTORY_END)) {
 		if (g_str_has_prefix(line, DIRECTORY_DIR)) {
-			struct directory *subdir =
-				simple_db_directory_load_subdir(fp, directory,
-						      line + sizeof(DIRECTORY_DIR) - 1,
-						      buffer, error);
-			if (subdir == NULL)
-				return false;
+			struct directory *subdir = simple_db_directory_load_subdir(fp, directory,
+					      line + sizeof(DIRECTORY_DIR) - 1, buffer);
+			if (IS_ERR(subdir))
+				return PTR_ERR(subdir);
 		} else if (g_str_has_prefix(line, SONG_BEGIN)) {
 			const char *name = line + sizeof(SONG_BEGIN) - 1;
 			struct song *song;
 
 			if (directory_get_song(directory, name) != NULL) {
-				g_set_error(error, simple_db_quark(), 0,
-					    "directory: Duplicate song '%s'", name);
-				return NULL;
+				log_err("directory: Duplicate song '%s'", name);
+				return -DB_DUP;
 			}
 
 			song = simple_db_song_load(fp, directory, name,
-					 buffer, error);
-			if (song == NULL)
-				return false;
+					 buffer);
+			if (IS_ERR(song))
+				return PTR_ERR(song);
 
 			directory_add_song(directory, song);
 		} else if (g_str_has_prefix(line, PLAYLIST_META_BEGIN)) {
@@ -373,44 +360,40 @@ simple_db_directory_load(db_file fp, struct directory *directory,
 			   buffer */
 			char *name = g_strdup(line + sizeof(PLAYLIST_META_BEGIN) - 1);
 
-			if (!playlist_metadata_load(fp, &directory->playlists,
-						    name, buffer, error)) {
-				g_free(name);
-				return false;
+			int ret = playlist_metadata_load(fp, &directory->playlists,
+						    name, buffer);
+			if (ret != MPD_SUCCESS) {
+				free(name);
+				return ret;
 			}
 
-			g_free(name);
+			free(name);
 		} else {
-			g_set_error(error, simple_db_quark(), 0,
-				    "Malformed line: %s", line);
-			return false;
+			log_err("Malformed line: %s", line);
+			return -DB_MALFORM;
 		}
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct directory *
 simple_db_directory_load_subdir(db_file fp, struct directory *parent, const char *name,
-		      GString *buffer, GError **error_r)
+		      GString *buffer)
 {
 	const char *line;
-	bool success;
-
 	if (directory_get_child(parent, name) != NULL) {
-		g_set_error(error_r, simple_db_quark(), 0,
-			    "directory: Duplicate subdirectory '%s'", name);
-		return NULL;
+		log_err("directory: Duplicate subdirectory '%s'", name);
+		return ERR_PTR(-DB_DUP);
 	}
 
 	struct directory *directory = directory_new_child(parent, name);
 
 	line = db_read_text_line(fp, buffer);
 	if (line == NULL) {
-		g_set_error(error_r, simple_db_quark(), 0,
-			    "directory: Unexpected end of file");
+		log_err("directory: Unexpected end of file");
 		directory_delete(directory);
-		return NULL;
+		return ERR_PTR(-DB_CORRUPT);
 	}
 
 	if (g_str_has_prefix(line, DIRECTORY_MTIME)) {
@@ -420,24 +403,22 @@ simple_db_directory_load_subdir(db_file fp, struct directory *parent, const char
 
 		line = db_read_text_line(fp, buffer);
 		if (line == NULL) {
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "directory: Unexpected end of file");
+			log_err("directory: Unexpected end of file");
 			directory_delete(directory);
-			return NULL;
+			return ERR_PTR(-DB_CORRUPT);
 		}
 	}
 
 	if (!g_str_has_prefix(line, DIRECTORY_BEGIN)) {
-		g_set_error(error_r, simple_db_quark(), 0,
-			    "directory: Malformed line: %s", line);
+		log_err("directory: Malformed line: %s", line);
 		directory_delete(directory);
-		return NULL;
+		return ERR_PTR(-DB_MALFORM);
 	}
 
-	success = simple_db_directory_load(fp, directory, buffer, error_r);
-	if (!success) {
+	int ret = simple_db_directory_load(fp, directory, buffer);
+	if (ret != MPD_SUCCESS) {
 		directory_delete(directory);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	return directory;
@@ -462,14 +443,13 @@ simple_db_save_internal(db_file fp, const struct directory *music_root)
 	simple_db_directory_save(fp, music_root);
 }
 
-static inline bool
-simple_db_load_internal(db_file fp, struct directory *music_root, GError **error)
+static inline int
+simple_db_load_internal(db_file fp, struct directory *music_root)
 {
 	GString *buffer = g_string_sized_new(1024);
 	char *line;
 	int format = 0;
 	bool found_charset = false, found_version = false;
-	bool success;
 	bool tags[TAG_NUM_OF_ITEM_TYPES];
 
 	assert(music_root != NULL);
@@ -477,9 +457,9 @@ simple_db_load_internal(db_file fp, struct directory *music_root, GError **error
 	/* get initial info */
 	line = db_read_text_line(fp, buffer);
 	if (line == NULL || strcmp(DIRECTORY_INFO_BEGIN, line) != 0) {
-		g_set_error(error, db_quark(), 0, "Database corrupted");
+		log_err("Database corrupted");
 		g_string_free(buffer, true);
-		return false;
+		return -DB_CORRUPT;
 	}
 
 	memset(tags, false, sizeof(tags));
@@ -490,20 +470,18 @@ simple_db_load_internal(db_file fp, struct directory *music_root, GError **error
 			format = atoi(line + sizeof(DB_FORMAT_PREFIX) - 1);
 		} else if (g_str_has_prefix(line, DIRECTORY_MPD_VERSION)) {
 			if (found_version) {
-				g_set_error(error, db_quark(), 0,
-					    "Duplicate version line");
+				log_err("Duplicate version line");
 				g_string_free(buffer, true);
-				return false;
+				return -DB_MALFORM;
 			}
 
 			found_version = true;
 		} else if (g_str_has_prefix(line, DIRECTORY_FS_CHARSET)) {
 			const char *new_charset, *old_charset;
 			if (found_charset) {
-				g_set_error(error, db_quark(), 0,
-					    "Duplicate charset line");
+				log_err("Duplicate charset line");
 				g_string_free(buffer, true);
-				return false;
+				return -DB_MALFORM;
 			}
 
 			found_charset = true;
@@ -512,58 +490,53 @@ simple_db_load_internal(db_file fp, struct directory *music_root, GError **error
 			old_charset = path_get_fs_charset();
 			if (old_charset != NULL
 			    && strcmp(new_charset, old_charset)) {
-				g_set_error(error, db_quark(), 0,
-					    "Existing database has charset "
+				log_err("Existing database has charset "
 					    "\"%s\" instead of \"%s\"; "
 					    "discarding database file",
 					    new_charset, old_charset);
 				g_string_free(buffer, true);
-				return false;
+				return -DB_MALFORM;
 			}
 		} else if (g_str_has_prefix(line, DB_TAG_PREFIX)) {
 			const char *name = line + sizeof(DB_TAG_PREFIX) - 1;
 			enum tag_type tag = tag_name_parse(name);
 			if (tag == TAG_NUM_OF_ITEM_TYPES) {
-				g_set_error(error, db_quark(), 0,
-					    "Unrecognized tag '%s', "
+				log_err("Unrecognized tag '%s', "
 					    "discarding database file",
 					    name);
-				return false;
+				return -DB_MALFORM;
 			}
 
 			tags[tag] = true;
 		} else {
-			g_set_error(error, db_quark(), 0,
-				    "Malformed line: %s", line);
+			log_err("Malformed line: %s", line);
 			g_string_free(buffer, true);
-			return false;
+			return -DB_MALFORM;
 		}
 	}
 
 	if (format != DB_FORMAT) {
-		g_set_error(error, db_quark(), 0,
-			    "Database format mismatch, "
+		log_err("Database format mismatch, "
 			    "discarding database file");
-		return false;
+		return -DB_MALFORM;
 	}
 
 	for (unsigned i = 0; i < TAG_NUM_OF_ITEM_TYPES; ++i) {
 		if (!ignore_tag_items[i] && !tags[i]) {
-			g_set_error(error, db_quark(), 0,
-				    "Tag list mismatch, "
+			log_err("Tag list mismatch, "
 				    "discarding database file");
-			return false;
+			return -DB_MALFORM;
 		}
 	}
 
-	g_debug("reading DB");
+	log_debug("reading DB");
 
 	db_lock();
-	success = simple_db_directory_load(fp, music_root, buffer, error);
+	int ret = simple_db_directory_load(fp, music_root, buffer);
 	db_unlock();
 	g_string_free(buffer, true);
 
-	return success;
+	return ret;
 }
 
 MPD_PURE
@@ -582,20 +555,15 @@ simple_db_lookup_directory(const struct simple_db *db, const char *uri)
 }
 
 static struct db *
-simple_db_init(const struct config_param *param, GError **error_r)
+simple_db_init(const struct config_param *param)
 {
-	struct simple_db *db = g_malloc(sizeof(*db));
+	struct simple_db *db = malloc(sizeof(*db));
 	db_base_init(&db->base, &simple_db_plugin);
 
-	GError *error = NULL;
-	db->path = config_dup_block_path(param, "path", &error);
+	db->path = config_dup_block_path(param, "path");
 	if (db->path == NULL) {
-		g_free(db);
-		if (error != NULL)
-			g_propagate_error(error_r, error);
-		else
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "No \"path\" parameter specified");
+		free(db);
+			log_err("No \"path\" parameter specified");
 		return NULL;
 	}
 
@@ -611,8 +579,8 @@ simple_db_finish(struct db *_db)
 	g_free(db);
 }
 
-static bool
-simple_db_check(struct simple_db *db, GError **error_r)
+static int
+simple_db_check(struct simple_db *db)
 {
 	assert(db != NULL);
 	assert(db->path != NULL);
@@ -627,66 +595,60 @@ simple_db_check(struct simple_db *db, GError **error_r)
 		/* Check that the parent part of the path is a directory */
 		struct stat st;
 		if (stat(dirPath, &st) < 0) {
-			g_free(dirPath);
-			g_set_error(error_r, simple_db_quark(), errno,
-				    "Couldn't stat parent directory of db file "
+			free(dirPath);
+			log_err("Couldn't stat parent directory of db file "
 				    "\"%s\": %s",
-				    db->path, g_strerror(errno));
-			return false;
+				    db->path, strerror(errno));
+			return -DB_ACCESS;
 		}
 
 		if (!S_ISDIR(st.st_mode)) {
-			g_free(dirPath);
-			g_set_error(error_r, simple_db_quark(), 0,
-				    "Couldn't create db file \"%s\" because the "
+			free(dirPath);
+			log_err("Couldn't create db file \"%s\" because the "
 				    "parent path is not a directory",
 				    db->path);
-			return false;
+			return -DB_ACCESS;
 		}
 
 		/* Check if we can write to the directory */
 		if (access(dirPath, X_OK | W_OK)) {
-			g_set_error(error_r, simple_db_quark(), errno,
-				    "Can't create db file in \"%s\": %s",
-				    dirPath, g_strerror(errno));
-			g_free(dirPath);
-			return false;
+			log_err("Can't create db file in \"%s\": %s",
+				    dirPath, strerror(errno));
+			free(dirPath);
+			return -DB_ACCESS;
 		}
 
-		g_free(dirPath);
+		free(dirPath);
 
-		return true;
+		return MPD_SUCCESS;
 	}
 
 	/* Path exists, now check if it's a regular file */
 	struct stat st;
 	if (stat(db->path, &st) < 0) {
-		g_set_error(error_r, simple_db_quark(), errno,
-			    "Couldn't stat db file \"%s\": %s",
-			    db->path, g_strerror(errno));
-		return false;
+		log_err("Couldn't stat db file \"%s\": %s",
+			    db->path, strerror(errno));
+		return -DB_ACCESS;
 	}
 
 	if (!S_ISREG(st.st_mode)) {
-		g_set_error(error_r, simple_db_quark(), 0,
-			    "db file \"%s\" is not a regular file",
+		log_err("db file \"%s\" is not a regular file",
 			    db->path);
-		return false;
+		return -DB_ACCESS;
 	}
 
 	/* And check that we can write to it */
 	if (access(db->path, R_OK | W_OK)) {
-		g_set_error(error_r, simple_db_quark(), errno,
-			    "Can't open db file \"%s\" for reading/writing: %s",
-			    db->path, g_strerror(errno));
-		return false;
+		log_err("Can't open db file \"%s\" for reading/writing: %s",
+			    db->path, strerror(errno));
+		return -DB_ACCESS;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-simple_db_load(struct simple_db *db, GError **error_r)
+static int
+simple_db_load(struct simple_db *db)
 {
 	assert(db != NULL);
 	assert(db->path != NULL);
@@ -694,15 +656,15 @@ simple_db_load(struct simple_db *db, GError **error_r)
 
 	db_file fp = db_open(db->path, "r");
 	if (fp == NULL) {
-		g_set_error(error_r, simple_db_quark(), errno,
-			    "Failed to open database file \"%s\": %s",
-			    db->path, g_strerror(errno));
-		return false;
+		log_err("Failed to open database file \"%s\": %s",
+			    db->path, strerror(errno));
+		return -DB_ERRNO;
 	}
 
-	if (!simple_db_load_internal(fp, db->root, error_r)) {
+	int ret = simple_db_load_internal(fp, db->root);
+	if (ret != MPD_SUCCESS) {
 		db_close(fp);
-		return false;
+		return ret;
 	}
 
 	db_close(fp);
@@ -711,31 +673,31 @@ simple_db_load(struct simple_db *db, GError **error_r)
 	if (stat(db->path, &st) == 0)
 		db->mtime = st.st_mtime;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
-simple_db_open(struct db *_db, GError **error_r)
+static int
+simple_db_open(struct db *_db)
 {
 	struct simple_db *db = (struct simple_db *)_db;
 
 	db->root = directory_new_root();
 	db->mtime = 0;
 
-	GError *error = NULL;
-	if (!simple_db_load(db, &error)) {
+	int ret = simple_db_load(db);
+	if (ret != MPD_SUCCESS) {
 		directory_free(db->root);
 
-		g_warning("Failed to load database: %s", error->message);
-		g_error_free(error);
+		log_warning("Failed to load database.");
 
-		if (!simple_db_check(db, error_r))
-			return false;
+		ret = simple_db_check(db);
+		if (ret != MPD_SUCCESS)
+			return ret;
 
 		db->root = directory_new_root();
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static void
@@ -749,7 +711,7 @@ simple_db_close(struct db *_db)
 }
 
 static struct song *
-simple_db_get_song(struct db *_db, const char *uri, GError **error_r)
+simple_db_get_song(struct db *_db, const char *uri)
 {
 	struct simple_db *db = (struct simple_db *)_db;
 
@@ -759,16 +721,14 @@ simple_db_get_song(struct db *_db, const char *uri, GError **error_r)
 	struct song *song = directory_lookup_song(db->root, uri);
 	db_unlock();
 	if (song == NULL)
-		g_set_error(error_r, db_quark(), DB_NOT_FOUND,
-			    "No such song: %s", uri);
+		log_err("No such song: %s", uri);
 
 	return song;
 }
 
-static bool
+static int
 simple_db_visit(struct db *_db, const struct db_selection *selection,
-		const struct db_visitor *visitor, void *ctx,
-		GError **error_r)
+		const struct db_visitor *visitor, void *ctx)
 {
 	const struct simple_db *db = (const struct simple_db *)_db;
 	const struct directory *directory =
@@ -776,21 +736,23 @@ simple_db_visit(struct db *_db, const struct db_selection *selection,
 	if (directory == NULL) {
 		struct song *song;
 		if (visitor->song != NULL &&
-		    (song = simple_db_get_song(_db, selection->uri, NULL)) != NULL)
-			return visitor->song(song, ctx, error_r);
+		    (song = simple_db_get_song(_db, selection->uri)) != NULL)
+			return visitor->song(song, ctx);
 
-		g_set_error(error_r, db_quark(), DB_NOT_FOUND,
-			    "No such directory");
-		return false;
+		log_err("No such directory");
+		return -DB_NOENT;
 	}
 
-	if (selection->recursive && visitor->directory != NULL &&
-	    !visitor->directory(directory, ctx, error_r))
-		return false;
+	int ret;
+	if (selection->recursive && visitor->directory != NULL) {
+		ret = visitor->directory(directory, ctx);
+		if (ret != MPD_SUCCESS)
+			return ret;
+	}
 
 	db_lock();
-	bool ret = directory_walk(directory, selection->recursive,
-				  visitor, ctx, error_r);
+	ret = directory_walk(directory, selection->recursive,
+				  visitor, ctx);
 	db_unlock();
 	return ret;
 }
@@ -816,40 +778,38 @@ simple_db_get_root(struct db *_db)
 	return db->root;
 }
 
-bool
-simple_db_save(struct db *_db, GError **error_r)
+int
+simple_db_save(struct db *_db)
 {
 	struct simple_db *db = (struct simple_db *)_db;
 	struct directory *music_root = db->root;
 
 	db_lock();
 
-	g_debug("removing empty directories from DB");
+	log_debug("removing empty directories from DB");
 	directory_prune_empty(music_root);
 
-	g_debug("sorting DB");
+	log_debug("sorting DB");
 	directory_sort(music_root);
 
 	db_unlock();
 
-	g_debug("writing DB");
+	log_debug("writing DB");
 
 	db_file fp = db_open(db->path, "w");
 	if (!fp) {
-		g_set_error(error_r, simple_db_quark(), errno,
-			    "unable to write to db file \"%s\": %s",
-			    db->path, g_strerror(errno));
-		return false;
+		log_err("unable to write to db file \"%s\": %s",
+			    db->path, strerror(errno));
+		return -DB_ACCESS;
 	}
 
 	simple_db_save_internal(fp, music_root);
 
 	if (db_error(fp)) {
-		g_set_error(error_r, simple_db_quark(), errno,
-			    "Failed to write to database file: %s",
-			    g_strerror(errno));
+		log_err("Failed to write to database file: %s",
+			    strerror(errno));
 		db_close(fp);
-		return false;
+		return -DB_ACCESS;
 	}
 
 	db_close(fp);
@@ -858,7 +818,7 @@ simple_db_save(struct db *_db, GError **error_r)
 	if (stat(db->path, &st) == 0)
 		db->mtime = st.st_mtime;
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 time_t

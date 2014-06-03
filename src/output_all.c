@@ -107,7 +107,6 @@ audio_output_all_init(struct player_control *pc)
 {
 	const struct config_param *param = NULL;
 	unsigned int i;
-	GError *error = NULL;
 
 	notify_init(&audio_output_client_notify);
 
@@ -123,13 +122,12 @@ audio_output_all_init(struct player_control *pc)
 		/* only allow param to be NULL if there just one audioOutput */
 		assert(param || (num_audio_outputs == 1));
 
-		struct audio_output *output = audio_output_new(param, pc, &error);
+		struct audio_output *output = audio_output_new(param, pc);
 		if (output == NULL) {
 			if (param != NULL)
-				MPD_ERROR("line %i: %s",
-					  param->line, error->message);
+				MPD_ERROR("at line %i", param->line);
 			else
-				MPD_ERROR("%s", error->message);
+				MPD_ERROR("Failed to parse audio output");
 		}
 
 		audio_outputs[i] = output;
@@ -334,7 +332,7 @@ audio_output_all_open(const struct audio_format *audio_format,
 	}
 
 	if (!enabled)
-		g_warning("All audio outputs are disabled");
+		log_warning("All audio outputs are disabled");
 
 	if (!ret)
 		/* close all devices if there was an error */

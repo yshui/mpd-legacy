@@ -35,27 +35,25 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-#include <glib.h>
+#include <ctype.h>
 
-#ifdef HAVE_SYSLOG
-#include <syslog.h>
-#endif
+//In this file log might not be initialized yet, 
+//so we just use fprintf(stderr, .
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "log"
-
-#define LOG_LEVEL_SECURE G_LOG_LEVEL_INFO
+#define LOG_LEVEL_SECURE LOG_INFO
 
 #define LOG_DATE_BUF_SIZE 16
 #define LOG_DATE_LEN (LOG_DATE_BUF_SIZE - 1)
 
-static GLogLevelFlags log_threshold = G_LOG_LEVEL_MESSAGE;
+static int log_threshold = LOG_INFO;
 
 static const char *log_charset;
 
 static bool stdout_mode = true;
-static int out_fd;
+static int out_fd = -1;
 static char *out_filename;
+
+void (*log_handler)(int log_level, const char *str);
 
 static void redirect_logs(int fd)
 {
@@ -83,16 +81,14 @@ chomp_length(const char *p)
 {
 	size_t length = strlen(p);
 
-	while (length > 0 && g_ascii_isspace(p[length - 1]))
+	while (length > 0 && isspace(p[length - 1]))
 		--length;
 
 	return (int)length;
 }
 
 static void
-file_log_func(const gchar *log_domain,
-	      GLogLevelFlags log_level,
-	      const gchar *message, gpointer user_data)
+file_log_func(int log_level, const char *str)
 {
 	char *converted;
 
@@ -100,29 +96,25 @@ file_log_func(const gchar *log_domain,
 		return;
 
 	if (log_charset != NULL) {
-		converted = g_convert_with_fallback(message, -1,
+		converted = g_convert_with_fallback(str, -1,
 						    log_charset, "utf-8",
 						    NULL, NULL, NULL, NULL);
 		if (converted != NULL)
-			message = converted;
+			str = converted;
 	} else
 		converted = NULL;
 
-	if (log_domain == NULL)
-		log_domain = "";
-
-	fprintf(stderr, "%s%s%s%.*s\n",
+	fprintf(stderr, "%s%.*s\n",
 		stdout_mode ? "" : log_date(),
-		log_domain, *log_domain == 0 ? "" : ": ",
-		chomp_length(message), message);
+		chomp_length(str), str);
 
-	g_free(converted);
+	free(converted);
 }
 
-static void
+static inline void
 log_init_stdout(void)
 {
-	g_log_set_default_handler(file_log_func, NULL);
+	log_handler = file_log_func;
 }
 
 static int
@@ -134,71 +126,36 @@ open_log_file(void)
 }
 
 static bool
-log_init_file(unsigned line, GError **error_r)
+log_init_file(unsigned line)
 {
 	assert(out_filename != NULL);
 
 	out_fd = open_log_file();
 	if (out_fd < 0) {
-		g_set_error(error_r, log_quark(), errno,
-			    "failed to open log file \"%s\" (config line %u): %s",
-			    out_filename, line, g_strerror(errno));
+		fprintf(stderr, "log: failed to open log file \"%s\" (config line %u): %s",
+			    out_filename, line, strerror(errno));
 		return false;
 	}
 
-	g_log_set_default_handler(file_log_func, NULL);
+	log_handler = file_log_func;
 	return true;
 }
 
 #ifdef HAVE_SYSLOG
-
-static int
-glib_to_syslog_level(GLogLevelFlags log_level)
-{
-	switch (log_level & G_LOG_LEVEL_MASK) {
-	case G_LOG_LEVEL_ERROR:
-	case G_LOG_LEVEL_CRITICAL:
-		return LOG_ERR;
-
-	case G_LOG_LEVEL_WARNING:
-		return LOG_WARNING;
-
-	case G_LOG_LEVEL_MESSAGE:
-		return LOG_NOTICE;
-
-	case G_LOG_LEVEL_INFO:
-		return LOG_INFO;
-
-	case G_LOG_LEVEL_DEBUG:
-		return LOG_DEBUG;
-
-	default:
-		return LOG_NOTICE;
-	}
-}
-
 static void
-syslog_log_func(const gchar *log_domain,
-		GLogLevelFlags log_level, const gchar *message,
-		gpointer user_data)
+syslog_log_func(int log_level, const char *str)
 {
 	if (stdout_mode) {
 		/* fall back to the file log function during
 		   startup */
-		file_log_func(log_domain, log_level,
-			      message, user_data);
+		file_log_func(log_level, str);
 		return;
 	}
 
 	if (log_level > log_threshold)
 		return;
 
-	if (log_domain == NULL)
-		log_domain = "";
-
-	syslog(glib_to_syslog_level(log_level), "%s%s%.*s",
-	       log_domain, *log_domain == 0 ? "" : ": ",
-	       chomp_length(message), message);
+	syslog(log_level, "%.*s", chomp_length(str), str);
 }
 
 static void
@@ -207,24 +164,23 @@ log_init_syslog(void)
 	assert(out_filename == NULL);
 
 	openlog(PACKAGE, 0, LOG_DAEMON);
-	g_log_set_default_handler(syslog_log_func, NULL);
+	log_handler = syslog_log_func;
 }
-
 #endif
 
-static inline GLogLevelFlags
+static inline int
 parse_log_level(const char *value, unsigned line)
 {
 	if (0 == strcmp(value, "default"))
-		return G_LOG_LEVEL_MESSAGE;
+		return LOG_INFO;
 	if (0 == strcmp(value, "secure"))
 		return LOG_LEVEL_SECURE;
 	else if (0 == strcmp(value, "verbose"))
-		return G_LOG_LEVEL_DEBUG;
+		return LOG_DEBUG;
 	else {
 		MPD_ERROR("unknown log level \"%s\" at line %u\n",
 			  value, line);
-		return G_LOG_LEVEL_MESSAGE;
+		return LOG_NOTICE;
 	}
 }
 
@@ -232,20 +188,20 @@ void
 log_early_init(bool verbose)
 {
 	if (verbose)
-		log_threshold = G_LOG_LEVEL_DEBUG;
+		log_threshold = LOG_DEBUG;
 
 	log_init_stdout();
 }
 
 bool
-log_init(bool verbose, bool use_stdout, GError **error_r)
+log_init(bool verbose, bool use_stdout)
 {
 	const struct config_param *param;
 
 	g_get_charset(&log_charset);
 
 	if (verbose)
-		log_threshold = G_LOG_LEVEL_DEBUG;
+		log_threshold = LOG_DEBUG;
 	else if ((param = config_get_param(CONF_LOG_LEVEL)) != NULL)
 		log_threshold = parse_log_level(param->value, param->line);
 
@@ -261,8 +217,7 @@ log_init(bool verbose, bool use_stdout, GError **error_r)
 			log_init_syslog();
 			return true;
 #else
-			g_set_error(error_r, log_quark(), 0,
-				    "config parameter \"%s\" not found",
+			fprintf(stderr, "log: config parameter \"%s\" not found",
 				    CONF_LOG_FILE);
 			return false;
 #endif
@@ -272,9 +227,9 @@ log_init(bool verbose, bool use_stdout, GError **error_r)
 			return true;
 #endif
 		} else {
-			out_filename = config_dup_path(CONF_LOG_FILE, error_r);
+			out_filename = config_dup_path(CONF_LOG_FILE);
 			return out_filename != NULL &&
-				log_init_file(param->line, error_r);
+				log_init_file(param->line);
 		}
 	}
 }
@@ -284,6 +239,9 @@ close_log_files(void)
 {
 	if (stdout_mode)
 		return;
+
+	if(out_fd >= 0)
+		close(out_fd);
 
 #ifdef HAVE_SYSLOG
 	if (out_filename == NULL)
@@ -296,6 +254,8 @@ log_deinit(void)
 {
 	close_log_files();
 	free(out_filename);
+	out_filename = NULL;
+	out_fd = -1;
 }
 
 
@@ -326,16 +286,16 @@ int cycle_log_files(void)
 		return 0;
 	assert(out_filename);
 
-	g_debug("Cycling log files...\n");
+	log_debug("Cycling log files...\n");
 	close_log_files();
 
 	fd = open_log_file();
 	if (fd < 0) {
-		g_warning("error re-opening log file: %s\n", out_filename);
+		log_warning("error re-opening log file: %s\n", out_filename);
 		return -1;
 	}
 
 	redirect_logs(fd);
-	g_debug("Done cycling log files\n");
+	log_debug("Done cycling log files\n");
 	return 0;
 }

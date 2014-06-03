@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter: normalize"
+
+#include "log.h"
 #include "config.h"
 #include "filter_plugin.h"
 #include "filter_internal.h"
@@ -36,15 +39,8 @@ struct normalize_filter {
 	struct pcm_buffer buffer;
 };
 
-static inline GQuark
-normalize_quark(void)
-{
-	return g_quark_from_static_string("normalize");
-}
-
 static struct filter *
-normalize_filter_init(const struct config_param *param,
-		      GError **error_r)
+normalize_filter_init(const struct config_param *param)
 {
 	struct normalize_filter *filter = g_new(struct normalize_filter, 1);
 
@@ -61,8 +57,7 @@ normalize_filter_finish(struct filter *filter)
 
 static const struct audio_format *
 normalize_filter_open(struct filter *_filter,
-		      struct audio_format *audio_format,
-		      GError **error_r)
+		      struct audio_format *audio_format)
 {
 	struct normalize_filter *filter = (struct normalize_filter *)_filter;
 
@@ -86,8 +81,7 @@ normalize_filter_close(struct filter *_filter)
 
 static const void *
 normalize_filter_filter(struct filter *_filter,
-			const void *src, size_t src_size, size_t *dest_size_r,
-			GError **error_r)
+			const void *src, size_t src_size, size_t *dest_size_r)
 {
 	struct normalize_filter *filter = (struct normalize_filter *)_filter;
 	void *dest;

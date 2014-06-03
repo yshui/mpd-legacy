@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter: volume"
+
+#include "log.h"
 #include "config.h"
 #include "filter/volume_filter_plugin.h"
 #include "filter_plugin.h"
@@ -43,15 +46,8 @@ struct volume_filter {
 	struct pcm_buffer buffer;
 };
 
-static inline GQuark
-volume_quark(void)
-{
-	return g_quark_from_static_string("pcm_volume");
-}
-
 static struct filter *
-volume_filter_init(const struct config_param *param,
-		   GError **error_r)
+volume_filter_init(const struct config_param *param)
 {
 	struct volume_filter *filter = g_new(struct volume_filter, 1);
 
@@ -68,8 +64,7 @@ volume_filter_finish(struct filter *filter)
 }
 
 static const struct audio_format *
-volume_filter_open(struct filter *_filter, struct audio_format *audio_format,
-		   GError **error_r)
+volume_filter_open(struct filter *_filter, struct audio_format *audio_format)
 {
 	struct volume_filter *filter = (struct volume_filter *)_filter;
 
@@ -89,7 +84,7 @@ volume_filter_close(struct filter *_filter)
 
 static const void *
 volume_filter_filter(struct filter *_filter, const void *src, size_t src_size,
-		     size_t *dest_size_r, GError **error_r)
+		     size_t *dest_size_r)
 {
 	struct volume_filter *filter = (struct volume_filter *)_filter;
 	bool success;
@@ -116,9 +111,8 @@ volume_filter_filter(struct filter *_filter, const void *src, size_t src_size,
 	success = pcm_volume(dest, src_size, filter->audio_format.format,
 			     filter->volume);
 	if (!success) {
-		g_set_error(error_r, volume_quark(), 0,
-			    "pcm_volume() has failed");
-		return NULL;
+		log_err("pcm_volume() has failed");
+		return ERR_PTR(-MPD_UNKNOWN);
 	}
 
 	return dest;

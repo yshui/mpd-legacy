@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "filter_plugin"
+
+#include "log.h"
 #include "config.h"
 #include "filter_plugin.h"
 #include "filter_internal.h"
@@ -31,38 +34,34 @@
 
 struct filter *
 filter_new(const struct filter_plugin *plugin,
-	   const struct config_param *param, GError **error_r)
+	   const struct config_param *param)
 {
 	assert(plugin != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
-	return plugin->init(param, error_r);
+	return plugin->init(param);
 }
 
 struct filter *
-filter_configured_new(const struct config_param *param, GError **error_r)
+filter_configured_new(const struct config_param *param)
 {
 	const char *plugin_name;
 	const struct filter_plugin *plugin;
 
 	assert(param != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
 	plugin_name = config_get_block_string(param, "plugin", NULL);
 	if (plugin_name == NULL) {
-		g_set_error(error_r, config_quark(), 0,
-			    "No filter plugin specified");
-		return NULL;
+		log_err("No filter plugin specified");
+		return ERR_PTR(-MPD_INVAL);
 	}
 
 	plugin = filter_plugin_by_name(plugin_name);
 	if (plugin == NULL) {
-		g_set_error(error_r, config_quark(), 0,
-			    "No such filter plugin: %s", plugin_name);
-		return NULL;
+		log_err("No such filter plugin: %s", plugin_name);
+		return ERR_PTR(-MPD_INVAL);
 	}
 
-	return filter_new(plugin, param, error_r);
+	return filter_new(plugin, param);
 }
 
 void
@@ -74,17 +73,15 @@ filter_free(struct filter *filter)
 }
 
 const struct audio_format *
-filter_open(struct filter *filter, struct audio_format *audio_format,
-	    GError **error_r)
+filter_open(struct filter *filter, struct audio_format *audio_format)
 {
 	const struct audio_format *out_audio_format;
 
 	assert(filter != NULL);
 	assert(audio_format != NULL);
 	assert(audio_format_valid(audio_format));
-	assert(error_r == NULL || *error_r == NULL);
 
-	out_audio_format = filter->plugin->open(filter, audio_format, error_r);
+	out_audio_format = filter->plugin->open(filter, audio_format);
 
 	assert(out_audio_format == NULL || audio_format_valid(audio_format));
 	assert(out_audio_format == NULL ||
@@ -103,14 +100,12 @@ filter_close(struct filter *filter)
 
 const void *
 filter_filter(struct filter *filter, const void *src, size_t src_size,
-	      size_t *dest_size_r,
-	      GError **error_r)
+	      size_t *dest_size_r)
 {
 	assert(filter != NULL);
 	assert(src != NULL);
 	assert(src_size > 0);
 	assert(dest_size_r != NULL);
-	assert(error_r == NULL || *error_r == NULL);
 
-	return filter->plugin->filter(filter, src, src_size, dest_size_r, error_r);
+	return filter->plugin->filter(filter, src, src_size, dest_size_r);
 }

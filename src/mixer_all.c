@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "mixer_all"
+
+#include "log.h"
 #include "config.h"
 #include "mixer_all.h"
 #include "mixer_control.h"
@@ -40,7 +43,6 @@ output_mixer_get_volume(unsigned i)
 	struct audio_output *output;
 	struct mixer *mixer;
 	int volume;
-	GError *error = NULL;
 
 	assert(i < audio_output_count());
 
@@ -52,12 +54,10 @@ output_mixer_get_volume(unsigned i)
 	if (mixer == NULL)
 		return -1;
 
-	volume = mixer_get_volume(mixer, &error);
-	if (volume < 0 && error != NULL) {
-		g_warning("Failed to read mixer for '%s': %s",
-			  output->name, error->message);
-		g_error_free(error);
-	}
+	volume = mixer_get_volume(mixer);
+	if (volume < 0)
+		log_warning("Failed to read mixer for '%s'",
+			  output->name);
 
 	return volume;
 }
@@ -82,13 +82,11 @@ mixer_all_get_volume(void)
 	return total / ok;
 }
 
-static bool
+static int
 output_mixer_set_volume(unsigned i, unsigned volume)
 {
 	struct audio_output *output;
 	struct mixer *mixer;
-	bool success;
-	GError *error = NULL;
 
 	assert(i < audio_output_count());
 	assert(volume <= 100);
@@ -101,14 +99,12 @@ output_mixer_set_volume(unsigned i, unsigned volume)
 	if (mixer == NULL)
 		return false;
 
-	success = mixer_set_volume(mixer, volume, &error);
-	if (!success && error != NULL) {
-		g_warning("Failed to set mixer for '%s': %s",
-			  output->name, error->message);
-		g_error_free(error);
-	}
+	int ret = mixer_set_volume(mixer, volume);
+	if (ret != MPD_SUCCESS)
+		log_warning("Failed to set mixer for '%s'",
+			  output->name);
 
-	return success;
+	return ret;
 }
 
 bool
@@ -142,7 +138,7 @@ output_mixer_get_software_volume(unsigned i)
 	if (mixer == NULL || mixer->plugin != &software_mixer_plugin)
 		return -1;
 
-	return mixer_get_volume(mixer, NULL);
+	return mixer_get_volume(mixer);
 }
 
 int
@@ -176,6 +172,6 @@ mixer_all_set_software_volume(unsigned volume)
 		struct audio_output *output = audio_output_get(i);
 		if (output->mixer != NULL &&
 		    output->mixer->plugin == &software_mixer_plugin)
-			mixer_set_volume(output->mixer, volume, NULL);
+			mixer_set_volume(output->mixer, volume);
 	}
 }

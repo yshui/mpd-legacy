@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "pcm"
+
+#include "log.h"
 #include "config.h"
 #include "pcm_convert.h"
 #include "pcm_channels.h"
@@ -29,9 +32,6 @@
 #include <string.h>
 #include <math.h>
 #include <glib.h>
-
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "pcm"
 
 void pcm_convert_init(struct pcm_convert_state *state)
 {
@@ -65,8 +65,7 @@ static const void *
 pcm_convert_channels(struct pcm_buffer *buffer, enum sample_format format,
 		     uint8_t dest_channels,
 		     uint8_t src_channels, const void *src,
-		     size_t src_size, size_t *dest_size_r,
-		     GError **error_r)
+		     size_t src_size, size_t *dest_size_r)
 {
 	const void *dest = NULL;
 
@@ -75,10 +74,9 @@ pcm_convert_channels(struct pcm_buffer *buffer, enum sample_format format,
 	case SAMPLE_FORMAT_S8:
 	case SAMPLE_FORMAT_FLOAT:
 	case SAMPLE_FORMAT_DSD:
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Channel conversion not implemented for format '%s'",
+		log_err("Channel conversion not implemented for format '%s'",
 			    sample_format_to_string(format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 
 	case SAMPLE_FORMAT_S16:
 		dest = pcm_convert_channels_16(buffer, dest_channels,
@@ -100,11 +98,10 @@ pcm_convert_channels(struct pcm_buffer *buffer, enum sample_format format,
 	}
 
 	if (dest == NULL) {
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Conversion from %u to %u channels "
+		log_err("Conversion from %u to %u channels "
 			    "is not implemented",
 			    src_channels, dest_channels);
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	return dest;
@@ -114,8 +111,7 @@ static const int16_t *
 pcm_convert_16(struct pcm_convert_state *state,
 	       const struct audio_format *src_format,
 	       const void *src_buffer, size_t src_size,
-	       const struct audio_format *dest_format, size_t *dest_size_r,
-	       GError **error_r)
+	       const struct audio_format *dest_format, size_t *dest_size_r)
 {
 	const int16_t *buf;
 	size_t len;
@@ -126,10 +122,9 @@ pcm_convert_16(struct pcm_convert_state *state,
 				src_format->format, src_buffer, src_size,
 				&len);
 	if (buf == NULL) {
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Conversion from %s to 16 bit is not implemented",
+		log_err("Conversion from %s to 16 bit is not implemented",
 			    sample_format_to_string(src_format->format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	if (src_format->channels != dest_format->channels) {
@@ -138,12 +133,11 @@ pcm_convert_16(struct pcm_convert_state *state,
 					      src_format->channels,
 					      buf, len, &len);
 		if (buf == NULL) {
-			g_set_error(error_r, pcm_convert_quark(), 0,
-				    "Conversion from %u to %u channels "
+			log_err("Conversion from %u to %u channels "
 				    "is not implemented",
 				    src_format->channels,
 				    dest_format->channels);
-			return NULL;
+			return ERR_PTR(-MPD_NIMPL);
 		}
 	}
 
@@ -151,10 +145,9 @@ pcm_convert_16(struct pcm_convert_state *state,
 		buf = pcm_resample_16(&state->resample,
 				      dest_format->channels,
 				      src_format->sample_rate, buf, len,
-				      dest_format->sample_rate, &len,
-				      error_r);
-		if (buf == NULL)
-			return NULL;
+				      dest_format->sample_rate, &len);
+		if (IS_ERR_OR_NULL(buf))
+			return buf;
 	}
 
 	*dest_size_r = len;
@@ -165,8 +158,7 @@ static const int32_t *
 pcm_convert_24(struct pcm_convert_state *state,
 	       const struct audio_format *src_format,
 	       const void *src_buffer, size_t src_size,
-	       const struct audio_format *dest_format, size_t *dest_size_r,
-	       GError **error_r)
+	       const struct audio_format *dest_format, size_t *dest_size_r)
 {
 	const int32_t *buf;
 	size_t len;
@@ -176,10 +168,9 @@ pcm_convert_24(struct pcm_convert_state *state,
 	buf = pcm_convert_to_24(&state->format_buffer, src_format->format,
 				src_buffer, src_size, &len);
 	if (buf == NULL) {
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Conversion from %s to 24 bit is not implemented",
+		log_err("Conversion from %s to 24 bit is not implemented",
 			    sample_format_to_string(src_format->format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	if (src_format->channels != dest_format->channels) {
@@ -188,12 +179,11 @@ pcm_convert_24(struct pcm_convert_state *state,
 					      src_format->channels,
 					      buf, len, &len);
 		if (buf == NULL) {
-			g_set_error(error_r, pcm_convert_quark(), 0,
-				    "Conversion from %u to %u channels "
+			log_err("Conversion from %u to %u channels "
 				    "is not implemented",
 				    src_format->channels,
 				    dest_format->channels);
-			return NULL;
+			return ERR_PTR(-MPD_NIMPL);
 		}
 	}
 
@@ -201,10 +191,9 @@ pcm_convert_24(struct pcm_convert_state *state,
 		buf = pcm_resample_24(&state->resample,
 				      dest_format->channels,
 				      src_format->sample_rate, buf, len,
-				      dest_format->sample_rate, &len,
-				      error_r);
-		if (buf == NULL)
-			return NULL;
+				      dest_format->sample_rate, &len);
+		if (IS_ERR_OR_NULL(buf))
+			return buf;
 	}
 
 	*dest_size_r = len;
@@ -215,8 +204,7 @@ static const int32_t *
 pcm_convert_32(struct pcm_convert_state *state,
 	       const struct audio_format *src_format,
 	       const void *src_buffer, size_t src_size,
-	       const struct audio_format *dest_format, size_t *dest_size_r,
-	       GError **error_r)
+	       const struct audio_format *dest_format, size_t *dest_size_r)
 {
 	const int32_t *buf;
 	size_t len;
@@ -225,11 +213,10 @@ pcm_convert_32(struct pcm_convert_state *state,
 
 	buf = pcm_convert_to_32(&state->format_buffer, src_format->format,
 				src_buffer, src_size, &len);
-	if (buf == NULL) {
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Conversion from %s to 32 bit is not implemented",
+	if (IS_ERR_OR_NULL(buf)) {
+		log_err("Conversion from %s to 32 bit is not implemented",
 			    sample_format_to_string(src_format->format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	if (src_format->channels != dest_format->channels) {
@@ -238,12 +225,11 @@ pcm_convert_32(struct pcm_convert_state *state,
 					      src_format->channels,
 					      buf, len, &len);
 		if (buf == NULL) {
-			g_set_error(error_r, pcm_convert_quark(), 0,
-				    "Conversion from %u to %u channels "
+			log_err("Conversion from %u to %u channels "
 				    "is not implemented",
 				    src_format->channels,
 				    dest_format->channels);
-			return NULL;
+			return ERR_PTR(-MPD_NIMPL);
 		}
 	}
 
@@ -251,9 +237,8 @@ pcm_convert_32(struct pcm_convert_state *state,
 		buf = pcm_resample_32(&state->resample,
 				      dest_format->channels,
 				      src_format->sample_rate, buf, len,
-				      dest_format->sample_rate, &len,
-				      error_r);
-		if (buf == NULL)
+				      dest_format->sample_rate, &len);
+		if (IS_ERR_OR_NULL(buf))
 			return buf;
 	}
 
@@ -265,8 +250,7 @@ static const float *
 pcm_convert_float(struct pcm_convert_state *state,
 		  const struct audio_format *src_format,
 		  const void *src_buffer, size_t src_size,
-		  const struct audio_format *dest_format, size_t *dest_size_r,
-		  GError **error_r)
+		  const struct audio_format *dest_format, size_t *dest_size_r)
 {
 	const float *buffer = src_buffer;
 	size_t size = src_size;
@@ -281,9 +265,9 @@ pcm_convert_float(struct pcm_convert_state *state,
 					      src_format->format,
 					      dest_format->channels,
 					      src_format->channels,
-					      buffer, size, &size, error_r);
-		if (buffer == NULL)
-			return NULL;
+					      buffer, size, &size);
+		if (IS_ERR_OR_NULL(buffer))
+			return buffer;
 	}
 
 	/* convert to float now */
@@ -291,11 +275,10 @@ pcm_convert_float(struct pcm_convert_state *state,
 	buffer = pcm_convert_to_float(&state->format_buffer,
 				      src_format->format,
 				      buffer, size, &size);
-	if (buffer == NULL) {
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "Conversion from %s to float is not implemented",
+	if (IS_ERR_OR_NULL(buffer)) {
+		log_err("Conversion from %s to float is not implemented",
 			    sample_format_to_string(src_format->format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 
 	/* resample with float, because this is the best format for
@@ -306,10 +289,9 @@ pcm_convert_float(struct pcm_convert_state *state,
 					    dest_format->channels,
 					    src_format->sample_rate,
 					    buffer, size,
-					    dest_format->sample_rate, &size,
-					    error_r);
-		if (buffer == NULL)
-			return NULL;
+					    dest_format->sample_rate, &size);
+		if (IS_ERR_OR_NULL(buffer))
+			return buffer;
 	}
 
 	*dest_size_r = size;
@@ -321,8 +303,7 @@ pcm_convert(struct pcm_convert_state *state,
 	    const struct audio_format *src_format,
 	    const void *src, size_t src_size,
 	    const struct audio_format *dest_format,
-	    size_t *dest_size_r,
-	    GError **error_r)
+	    size_t *dest_size_r)
 {
 	struct audio_format float_format;
 	if (src_format->format == SAMPLE_FORMAT_DSD) {
@@ -332,8 +313,7 @@ pcm_convert(struct pcm_convert_state *state,
 						  false, src, src_size,
 						  &f_size);
 		if (f == NULL) {
-			g_set_error_literal(error_r, pcm_convert_quark(), 0,
-					    "DSD to PCM conversion failed");
+			log_err("DSD to PCM conversion failed");
 			return NULL;
 		}
 
@@ -349,31 +329,26 @@ pcm_convert(struct pcm_convert_state *state,
 	case SAMPLE_FORMAT_S16:
 		return pcm_convert_16(state,
 				      src_format, src, src_size,
-				      dest_format, dest_size_r,
-				      error_r);
+				      dest_format, dest_size_r);
 
 	case SAMPLE_FORMAT_S24_P32:
 		return pcm_convert_24(state,
 				      src_format, src, src_size,
-				      dest_format, dest_size_r,
-				      error_r);
+				      dest_format, dest_size_r);
 
 	case SAMPLE_FORMAT_S32:
 		return pcm_convert_32(state,
 				      src_format, src, src_size,
-				      dest_format, dest_size_r,
-				      error_r);
+				      dest_format, dest_size_r);
 
 	case SAMPLE_FORMAT_FLOAT:
 		return pcm_convert_float(state,
 					 src_format, src, src_size,
-					 dest_format, dest_size_r,
-					 error_r);
+					 dest_format, dest_size_r);
 
 	default:
-		g_set_error(error_r, pcm_convert_quark(), 0,
-			    "PCM conversion to %s is not implemented",
+		log_err("PCM conversion to %s is not implemented",
 			    sample_format_to_string(dest_format->format));
-		return NULL;
+		return ERR_PTR(-MPD_NIMPL);
 	}
 }

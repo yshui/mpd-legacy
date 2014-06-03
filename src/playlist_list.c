@@ -37,6 +37,7 @@
 #include "conf.h"
 #include "mpd_error.h"
 #include "utils.h"
+#include "log.h"
 
 #include <assert.h>
 #include <string.h>
@@ -239,7 +240,7 @@ playlist_list_open_stream_mime2(struct input_stream *is, const char *mime)
 		    string_array_contains(plugin->mime_types, mime)) {
 			/* rewind the stream, so each plugin gets a
 			   fresh start */
-			input_stream_seek(is, 0, SEEK_SET, NULL);
+			input_stream_seek(is, 0, SEEK_SET);
 
 			playlist = playlist_plugin_open_stream(plugin, is);
 			if (playlist != NULL)
@@ -284,7 +285,7 @@ playlist_list_open_stream_suffix(struct input_stream *is, const char *suffix)
 		    string_array_contains(plugin->suffixes, suffix)) {
 			/* rewind the stream, so each plugin gets a
 			   fresh start */
-			input_stream_seek(is, 0, SEEK_SET, NULL);
+			input_stream_seek(is, 0, SEEK_SET);
 
 			playlist = playlist_plugin_open_stream(plugin, is);
 			if (playlist != NULL)
@@ -337,7 +338,6 @@ struct playlist_provider *
 playlist_list_open_path(const char *path_fs, GMutex *mutex, GCond *cond,
 			struct input_stream **is_r)
 {
-	GError *error = NULL;
 	const char *suffix;
 	struct input_stream *is;
 	struct playlist_provider *playlist;
@@ -348,15 +348,9 @@ playlist_list_open_path(const char *path_fs, GMutex *mutex, GCond *cond,
 	if (suffix == NULL || !playlist_suffix_supported(suffix))
 		return NULL;
 
-	is = input_stream_open(path_fs, mutex, cond, &error);
-	if (is == NULL) {
-		if (error != NULL) {
-			g_warning("%s", error->message);
-			g_error_free(error);
-		}
-
-		return NULL;
-	}
+	is = input_stream_open(path_fs, mutex, cond);
+	if (IS_ERR(is))
+		return (void *)is;
 
 	input_stream_lock_wait_ready(is);
 

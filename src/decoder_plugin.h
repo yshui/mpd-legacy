@@ -20,6 +20,8 @@
 #ifndef MPD_DECODER_PLUGIN_H
 #define MPD_DECODER_PLUGIN_H
 
+#include "log.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 

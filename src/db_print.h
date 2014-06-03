@@ -29,35 +29,30 @@ struct locate_item_list;
 struct db_selection;
 struct db_visitor;
 
-bool
+int
 db_selection_print(struct client *client, const struct db_selection *selection,
-		   bool full, GError **error_r);
+		   bool full);
 
-bool
-printAllIn(struct client *client, const char *uri_utf8, GError **error_r);
+int
+printAllIn(struct client *client, const char *uri_utf8);
 
-bool
-printInfoForAllIn(struct client *client, const char *uri_utf8,
-		  GError **error_r);
+int
+printInfoForAllIn(struct client *client, const char *uri_utf8);
 
-bool
+int
 searchForSongsIn(struct client *client, const char *name,
-		 const struct locate_item_list *criteria,
-		 GError **error_r);
+		 const struct locate_item_list *criteria);
 
-bool
+int
 findSongsIn(struct client *client, const char *name,
-	    const struct locate_item_list *criteria,
-	    GError **error_r);
+	    const struct locate_item_list *criteria);
 
-bool
+int
 searchStatsForSongsIn(struct client *client, const char *name,
-		      const struct locate_item_list *criteria,
-		      GError **error_r);
+		      const struct locate_item_list *criteria);
 
-bool
+int
 listAllUniqueTags(struct client *client, int type,
-		  const struct locate_item_list *criteria,
-		  GError **error_r);
+		  const struct locate_item_list *criteria);
 
 #endif

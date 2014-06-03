@@ -49,7 +49,7 @@ input_archive_open(const char *pathname,
 	pname = g_strdup(pathname);
 	// archive_lookup will modify pname when true is returned
 	if (!archive_lookup(pname, &archive, &filename, &suffix)) {
-		g_debug("not an archive, lookup %s failed\n", pname);
+		log_debug("not an archive, lookup %s failed\n", pname);
 		g_free(pname);
 		return NULL;
 	}
@@ -57,7 +57,7 @@ input_archive_open(const char *pathname,
 	//check which archive plugin to use (by ext)
 	arplug = archive_plugin_from_suffix(suffix);
 	if (!arplug) {
-		g_warning("can't handle archive %s\n",archive);
+		log_warning("can't handle archive %s\n",archive);
 		g_free(pname);
 		return NULL;
 	}

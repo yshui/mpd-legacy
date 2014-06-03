@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "event_pipe"
+
+#include "log.h"
 #include "config.h"
 #include "event_pipe.h"
 #include "fd_util.h"
@@ -161,4 +164,6 @@ void event_pipe_emit_fast(enum pipe_event event)
 	pipe_events[event] = true;
 
 	ssize_t nbytes = write(event_pipe[1], "", 1);
+	if (nbytes < 0)
+		log_warning("Failed to write.");
 }

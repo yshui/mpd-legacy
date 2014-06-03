@@ -48,7 +48,7 @@ struct archive_plugin {
 	 * returns pointer to handle used is all operations with this archive
 	 * or NULL when opening fails
 	 */
-	struct archive_file *(*open)(const char *path_fs, GError **error_r);
+	struct archive_file *(*open)(const char *path_fs);
 
 	/**
 	 * reset routine will move current read index in archive to default
@@ -73,8 +73,7 @@ struct archive_plugin {
 	 */
 	struct input_stream *(*open_stream)(struct archive_file *af,
 					    const char *path,
-					    GMutex *mutex, GCond *cond,
-					    GError **error_r);
+					    GMutex *mutex, GCond *cond);
 
 	/**
 	 * closes archive file.
@@ -89,8 +88,7 @@ struct archive_plugin {
 };
 
 struct archive_file *
-archive_file_open(const struct archive_plugin *plugin, const char *path,
-		  GError **error_r);
+archive_file_open(const struct archive_plugin *plugin, const char *path);
 
 void
 archive_file_close(struct archive_file *file);
@@ -103,7 +101,6 @@ archive_file_scan_next(struct archive_file *file);
 
 struct input_stream *
 archive_file_open_stream(struct archive_file *file, const char *path,
-			 GMutex *mutex, GCond *cond,
-			 GError **error_r);
+			 GMutex *mutex, GCond *cond);
 
 #endif

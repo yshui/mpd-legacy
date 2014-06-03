@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <sys/types.h>
 
 #include "file_utils.h"
 #include "macros.h"

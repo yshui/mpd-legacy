@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "err.h"
 #include "config.h"
 #include "directory.h"
 #include "song.h"
@@ -277,39 +278,39 @@ directory_sort(struct directory *directory)
 		directory_sort(child);
 }
 
-bool
+int
 directory_walk(const struct directory *directory, bool recursive,
-	       const struct db_visitor *visitor, void *ctx,
-	       GError **error_r)
+	       const struct db_visitor *visitor, void *ctx)
 {
 	assert(directory != NULL);
 	assert(visitor != NULL);
 	assert(error_r == NULL || *error_r == NULL);
+	int ret;
 
 	if (visitor->song != NULL) {
 		struct song *song;
 		directory_for_each_song(song, directory)
-			if (!visitor->song(song, ctx, error_r))
-				return false;
+			if ((ret = visitor->song(song, ctx)) != MPD_SUCCESS)
+				return ret;
 	}
 
 	if (visitor->playlist != NULL) {
 		struct playlist_metadata *i;
 		directory_for_each_playlist(i, directory)
-			if (!visitor->playlist(i, directory, ctx, error_r))
-				return false;
+			if ((ret = visitor->playlist(i, directory, ctx)) != MPD_SUCCESS)
+				return ret;
 	}
 
 	struct directory *child;
 	directory_for_each_child(child, directory) {
 		if (visitor->directory != NULL &&
-		    !visitor->directory(child, ctx, error_r))
-			return false;
+		    (ret = visitor->directory(child, ctx)) != MPD_SUCCESS)
+			return ret;
 
 		if (recursive &&
-		    !directory_walk(child, recursive, visitor, ctx, error_r))
-			return false;
+		    (ret = directory_walk(child, recursive, visitor, ctx)) != MPD_SUCCESS)
+			return ret;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }

@@ -22,6 +22,7 @@
 
 
 #include "macros.h"
+#include "db_error.h"
 
 #include <glib.h>
 
@@ -38,8 +39,8 @@ struct db_visitor;
  *
  * @param path the absolute path of the database file
  */
-bool
-db_init(const struct config_param *path, GError **error_r);
+int
+db_init(const struct config_param *path);
 
 void
 db_finish(void);
@@ -63,21 +64,19 @@ MPD_PURE
 struct song *
 db_get_song(const char *file);
 
-bool
+int
 db_visit(const struct db_selection *selection,
-	 const struct db_visitor *visitor, void *ctx,
-	 GError **error_r);
+	 const struct db_visitor *visitor, void *ctx);
 
-bool
+int
 db_walk(const char *uri,
-	const struct db_visitor *visitor, void *ctx,
-	GError **error_r);
+	const struct db_visitor *visitor, void *ctx);
 
-bool
-db_save(GError **error_r);
+int
+db_save(void);
 
-bool
-db_load(GError **error);
+int
+db_load(void);
 
 MPD_PURE
 time_t

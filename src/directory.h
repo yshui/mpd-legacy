@@ -255,9 +255,8 @@ directory_sort(struct directory *directory);
 /**
  * Caller must lock #db_mutex.
  */
-bool
+int
 directory_walk(const struct directory *directory, bool recursive,
-	       const struct db_visitor *visitor, void *ctx,
-	       GError **error_r);
+	       const struct db_visitor *visitor, void *ctx);
 
 #endif

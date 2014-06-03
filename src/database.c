@@ -17,9 +17,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "database"
+
+#include "log.h"
 #include "config.h"
 #include "database.h"
-#include "db_error.h"
 #include "db_selection.h"
 #include "db_visitor.h"
 #include "db_plugin.h"
@@ -38,14 +40,11 @@
 #include <string.h>
 #include <errno.h>
 
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "database"
-
 static struct db *db;
 static bool db_is_open;
 
-bool
-db_init(const struct config_param *path, GError **error_r)
+int
+db_init(const struct config_param *path)
 {
 	assert(db == NULL);
 	assert(!db_is_open);
@@ -56,11 +55,11 @@ db_init(const struct config_param *path, GError **error_r)
 	struct config_param *param = config_new_param("database", path->line);
 	config_add_block_param(param, "path", path->value, path->line);
 
-	db = db_plugin_new(&simple_db_plugin, param, error_r);
+	db = db_plugin_new(&simple_db_plugin, param);
 
 	config_param_free(param);
 
-	return db != NULL;
+	return db ? (IS_ERR(db) ? PTR_ERR(db) : MPD_SUCCESS) : -MPD_UNKNOWN;
 }
 
 void
@@ -101,62 +100,60 @@ db_get_song(const char *file)
 {
 	assert(file != NULL);
 
-	g_debug("get song: %s", file);
+	log_debug("get song: %s", file);
 
 	if (db == NULL)
 		return NULL;
 
-	return db_plugin_get_song(db, file, NULL);
+	return db_plugin_get_song(db, file);
 }
 
-bool
+int
 db_visit(const struct db_selection *selection,
-	 const struct db_visitor *visitor, void *ctx,
-	 GError **error_r)
+	 const struct db_visitor *visitor, void *ctx)
 {
 	if (db == NULL) {
-		g_set_error_literal(error_r, db_quark(), DB_DISABLED,
-				    "No database");
-		return false;
+		log_err("No database");
+		return -DB_DISABLED;
 	}
 
-	return db_plugin_visit(db, selection, visitor, ctx, error_r);
+	return db_plugin_visit(db, selection, visitor, ctx);
 }
 
-bool
+int
 db_walk(const char *uri,
-	const struct db_visitor *visitor, void *ctx,
-	GError **error_r)
+	const struct db_visitor *visitor, void *ctx)
 {
 	struct db_selection selection;
 	db_selection_init(&selection, uri, true);
 
-	return db_visit(&selection, visitor, ctx, error_r);
+	return db_visit(&selection, visitor, ctx);
 }
 
-bool
-db_save(GError **error_r)
+int
+db_save(void)
 {
 	assert(db != NULL);
 	assert(db_is_open);
 
-	return simple_db_save(db, error_r);
+	return simple_db_save(db);
 }
 
-bool
-db_load(GError **error)
+int
+db_load(void)
 {
 	assert(db != NULL);
 	assert(!db_is_open);
 
-	if (!db_plugin_open(db, error))
-		return false;
+	int ret = db_plugin_open(db);
+	if (ret != MPD_SUCCESS)
+		return ret;
 
 	db_is_open = true;
 
 	stats_update();
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 time_t

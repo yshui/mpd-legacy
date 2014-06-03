@@ -17,6 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "socket"
+
+#include "log.h"
 #include "config.h"
 #include "socket_util.h"
 #include "fd_util.h"
@@ -35,51 +38,40 @@
 #include <string.h>
 #endif
 
-static GQuark
-listen_quark(void)
-{
-	return g_quark_from_static_string("listen");
-}
-
 int
 socket_bind_listen(int domain, int type, int protocol,
 		   const struct sockaddr *address, size_t address_length,
-		   int backlog,
-		   GError **error)
+		   int backlog)
 {
 	int fd, ret;
 	const int reuse = 1;
 
 	fd = socket_cloexec_nonblock(domain, type, protocol);
 	if (fd < 0) {
-		g_set_error(error, listen_quark(), errno,
-			    "Failed to create socket: %s", g_strerror(errno));
-		return -1;
+		log_err("Failed to create socket: %s", strerror(errno));
+		return -errno;
 	}
 
 	ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
 			 (const char *) &reuse, sizeof(reuse));
 	if (ret < 0) {
-		g_set_error(error, listen_quark(), errno,
-			    "setsockopt() failed: %s", g_strerror(errno));
+		log_err("setsockopt() failed: %s", strerror(errno));
 		close_socket(fd);
-		return -1;
+		return -errno;
 	}
 
 	ret = bind(fd, address, address_length);
 	if (ret < 0) {
-		g_set_error(error, listen_quark(), errno,
-			    "%s", g_strerror(errno));
+		log_err("%s", strerror(errno));
 		close_socket(fd);
-		return -1;
+		return -errno;
 	}
 
 	ret = listen(fd, backlog);
 	if (ret < 0) {
-		g_set_error(error, listen_quark(), errno,
-			    "listen() failed: %s", g_strerror(errno));
+		log_err("listen() failed: %s", strerror(errno));
 		close_socket(fd);
-		return -1;
+		return -errno;
 	}
 
 #ifdef HAVE_STRUCT_UCRED

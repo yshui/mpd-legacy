@@ -23,6 +23,9 @@
 #define _GNU_SOURCE 1
 #endif
 
+#define LOG_DOMAIN "server_socket"
+
+#include "log.h"
 #include "server_socket.h"
 #include "socket_util.h"
 #include "resolver.h"
@@ -77,12 +80,6 @@ struct server_socket {
 	unsigned next_serial;
 };
 
-static GQuark
-server_socket_quark(void)
-{
-	return g_quark_from_static_string("server_socket");
-}
-
 struct server_socket *
 server_socket_new(server_socket_callback_t callback, void *callback_ctx)
 {
@@ -119,7 +116,7 @@ server_socket_free(struct server_socket *ss)
 static char *
 one_socket_to_string(const struct one_socket *s)
 {
-	char *p = sockaddr_to_string(&s->address, s->address_length, NULL);
+	char *p = sockaddr_to_string(&s->address, s->address_length);
 	if (p == NULL)
 		p = strdup("[unknown]");
 	return p;
@@ -163,13 +160,13 @@ server_socket_in_event(GIOChannel *source,
 					 &address_length);
 	if (fd >= 0) {
 		if (socket_keepalive(fd))
-			g_warning("Could not set TCP keepalive option: %s",
-				  g_strerror(errno));
+			log_warning("Could not set TCP keepalive option: %s",
+				  strerror(errno));
 		s->parent->callback(fd, (const struct sockaddr*)&address,
 				    address_length, get_remote_uid(fd),
 				    s->parent->callback_ctx);
 	} else {
-		g_warning("accept() failed: %s", g_strerror(errno));
+		log_warning("accept() failed: %s", strerror(errno));
 	}
 
 	return true;
@@ -190,50 +187,35 @@ set_fd(struct one_socket *s, int fd)
 	g_io_channel_unref(channel);
 }
 
-bool
-server_socket_open(struct server_socket *ss, GError **error_r)
+int
+server_socket_open(struct server_socket *ss)
 {
-	struct one_socket *good = NULL, *bad = NULL;
-	GError *last_error = NULL;
+	struct one_socket *good = NULL;
 
 	for (struct one_socket *s = ss->sockets; s != NULL; s = s->next) {
 		assert(s->serial > 0);
 		assert(good == NULL || s->serial >= good->serial);
 		assert(s->fd < 0);
 
-		if (bad != NULL && s->serial != bad->serial) {
-			server_socket_close(ss);
-			g_propagate_error(error_r, last_error);
-			return false;
-		}
-
-		GError *error = NULL;
 		int fd = socket_bind_listen(s->address.sa_family,
 					    SOCK_STREAM, 0,
-					    &s->address, s->address_length, 5,
-					    &error);
+					    &s->address, s->address_length, 5);
 		if (fd < 0) {
 			if (good != NULL && good->serial == s->serial) {
 				char *address_string = one_socket_to_string(s);
 				char *good_string = one_socket_to_string(good);
-				g_warning("bind to '%s' failed: %s "
+				log_warning("bind to '%s' failed: %s "
 					  "(continuing anyway, because "
 					  "binding to '%s' succeeded)",
-					  address_string, error->message,
+					  address_string, strerror(-fd),
 					  good_string);
 				free(address_string);
 				free(good_string);
-				g_error_free(error);
-			} else if (bad == NULL) {
-				bad = s;
-
+			} else  {
 				char *address_string = one_socket_to_string(s);
-				g_propagate_prefixed_error(&last_error, error,
-							   "Failed to bind to '%s': ",
-							   address_string);
+				log_err("Failed to bind to '%s', errno %s", address_string, strerror(-fd));
 				free(address_string);
-			} else
-				g_error_free(error);
+			}
 			continue;
 		}
 
@@ -246,25 +228,17 @@ server_socket_open(struct server_socket *ss, GError **error_r)
 
 		set_fd(s, fd);
 
-		/* mark this socket as "good", and clear previous
-		   errors */
+		/* mark this socket as "good" */
 
 		good = s;
-
-		if (bad != NULL) {
-			bad = NULL;
-			g_error_free(last_error);
-			last_error = NULL;
-		}
 	}
 
-	if (bad != NULL) {
+	if (good == NULL) {
 		server_socket_close(ss);
-		g_propagate_error(error_r, last_error);
-		return false;
+		return -MPD_ACCESS;
 	}
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 void
@@ -299,8 +273,8 @@ one_socket_new(unsigned serial, const struct sockaddr *address,
 	return s;
 }
 
-bool
-server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r)
+int
+server_socket_add_fd(struct server_socket *ss, int fd)
 {
 	assert(ss != NULL);
 	assert(ss->sockets_tail_r != NULL);
@@ -311,10 +285,9 @@ server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r)
 	socklen_t address_length;
 	if (getsockname(fd, (struct sockaddr *)&address,
 			&address_length) < 0) {
-		g_set_error(error_r, server_socket_quark(), errno,
-			    "Failed to get socket address: %s",
-			    g_strerror(errno));
-		return false;
+		log_err("Failed to get socket address: %s",
+			    strerror(errno));
+		return -MPD_ACCESS;
 	}
 
 	struct one_socket *s = one_socket_new(ss->next_serial,
@@ -326,7 +299,7 @@ server_socket_add_fd(struct server_socket *ss, int fd, GError **error_r)
 
 	set_fd(s, fd);
 
-	return true;
+	return MPD_SUCCESS;
 }
 
 static struct one_socket *
@@ -388,15 +361,13 @@ server_socket_add_port_ipv6(struct server_socket *ss, unsigned port)
 
 #endif /* HAVE_TCP */
 
-bool
-server_socket_add_port(struct server_socket *ss, unsigned port,
-		       GError **error_r)
+int
+server_socket_add_port(struct server_socket *ss, unsigned port)
 {
 #ifdef HAVE_TCP
 	if (port == 0 || port > 0xffff) {
-		g_set_error(error_r, server_socket_quark(), 0,
-			    "Invalid TCP port");
-		return false;
+		log_err("Invalid TCP port");
+		return -MPD_ACCESS;
 	}
 
 #ifdef HAVE_IPV6
@@ -406,27 +377,25 @@ server_socket_add_port(struct server_socket *ss, unsigned port,
 
 	++ss->next_serial;
 
-	return true;
+	return MPD_SUCCESS;
 #else /* HAVE_TCP */
 	(void)ss;
 	(void)port;
 
-	g_set_error(error_r, server_socket_quark(), 0,
-		    "TCP support is disabled");
-	return false;
+	log_warning("TCP support is disabled");
+	return -MPD_INVAL;
 #endif /* HAVE_TCP */
 }
 
-bool
+int
 server_socket_add_host(struct server_socket *ss, const char *hostname,
-		       unsigned port, GError **error_r)
+		       unsigned port)
 {
 #ifdef HAVE_TCP
 	struct addrinfo *ai = resolve_host_port(hostname, port,
-						AI_PASSIVE, SOCK_STREAM,
-						error_r);
-	if (ai == NULL)
-		return false;
+						AI_PASSIVE, SOCK_STREAM);
+	if (IS_ERR(ai))
+		return PTR_ERR(ai);
 
 	for (const struct addrinfo *i = ai; i != NULL; i = i->ai_next)
 		server_socket_add_address(ss, i->ai_addr, i->ai_addrlen);
@@ -435,30 +404,27 @@ server_socket_add_host(struct server_socket *ss, const char *hostname,
 
 	++ss->next_serial;
 
-	return true;
+	return MPD_SUCCESS;
 #else /* HAVE_TCP */
 	(void)ss;
 	(void)hostname;
 	(void)port;
 
-	g_set_error(error_r, server_socket_quark(), 0,
-		    "TCP support is disabled");
-	return false;
+	log_warning("TCP support is disabled");
+	return -MPD_INVAL;
 #endif /* HAVE_TCP */
 }
 
-bool
-server_socket_add_path(struct server_socket *ss, const char *path,
-		       GError **error_r)
+int
+server_socket_add_path(struct server_socket *ss, const char *path)
 {
 #ifdef HAVE_UN
 	struct sockaddr_un s_un;
 
 	size_t path_length = strlen(path);
 	if (path_length >= sizeof(s_un.sun_path)) {
-		g_set_error(error_r, server_socket_quark(), 0,
-			    "UNIX socket path is too long");
-		return false;
+		log_err("UNIX socket path is too long");
+		return -MPD_INVAL;
 	}
 
 	unlink(path);
@@ -471,14 +437,13 @@ server_socket_add_path(struct server_socket *ss, const char *path,
 					  sizeof(s_un));
 	s->path = strdup(path);
 
-	return true;
+	return MPD_SUCCESS;
 #else /* !HAVE_UN */
 	(void)ss;
 	(void)path;
 
-	g_set_error(error_r, server_socket_quark(), 0,
-		    "UNIX domain socket support is disabled");
-	return false;
+	log_warning("UNIX domain socket support is disabled");
+	return -MPD_INVAL;
 #endif /* !HAVE_UN */
 }
 

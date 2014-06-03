@@ -26,8 +26,8 @@
 
 extern int listen_port;
 
-bool
-listen_global_init(GError **error_r);
+int
+listen_global_init(void);
 
 void listen_global_finish(void);
 

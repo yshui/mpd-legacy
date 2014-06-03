@@ -34,15 +34,8 @@ struct null_encoder {
 
 extern const struct encoder_plugin null_encoder_plugin;
 
-static inline GQuark
-null_encoder_quark(void)
-{
-	return g_quark_from_static_string("null_encoder");
-}
-
 static struct encoder *
-null_encoder_init(const struct config_param *param,
-		  GError **error)
+null_encoder_init(const struct config_param *param)
 {
 	struct null_encoder *encoder;
 
@@ -69,21 +62,19 @@ null_encoder_close(struct encoder *_encoder)
 }
 
 
-static bool
+static int
 null_encoder_open(struct encoder *_encoder,
-		  struct audio_format *audio_format,
-		  GError **error)
+		  struct audio_format *audio_format)
 {
 	struct null_encoder *encoder = (struct null_encoder *)_encoder;
 
 	encoder->buffer = growing_fifo_new();
-	return true;
+	return MPD_SUCCESS;
 }
 
-static bool
+static ssize_t
 null_encoder_write(struct encoder *_encoder,
-		   const void *data, size_t length,
-		   GError **error)
+		   const void *data, size_t length)
 {
 	struct null_encoder *encoder = (struct null_encoder *)_encoder;
 
