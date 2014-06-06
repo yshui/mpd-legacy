@@ -129,8 +129,13 @@ client_new(struct player_control *player_control,
 	client_list_add(client);
 
 	remote = sockaddr_to_string(sa, sa_length);
-	log_info("[%u] opened from %s", client->num, remote);
-	free(remote);
+
+	if (IS_ERR_OR_NULL(remote))
+		log_info("[%u] opened from unknown?", client->num);
+	else {
+		log_info("[%u] opened from %s", client->num, remote);
+		free(remote);
+	}
 }
 
 static void
