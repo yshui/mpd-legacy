@@ -111,9 +111,10 @@ spl_map_to_fs(const char *name_utf8)
 		return ERR_PTR(ret);
 
 	char *path_fs = map_spl_utf8_to_fs(name_utf8);
-	if (path_fs == NULL)
+	if (path_fs == NULL) {
 		log_err("Bad playlist name");
 		return ERR_PTR(-PLAYLIST_BAD_NAME);
+	}
 
 	return path_fs;
 }
@@ -128,7 +129,7 @@ playlist_errno(void)
 	case ENOENT:
 		return -PLAYLIST_NO_SUCH_LIST;
 	default:
-		log_err(strerror(errno));
+		log_err("%s", strerror(errno));
 		return -PLAYLIST_ERRNO;
 	}
 }
@@ -183,7 +184,7 @@ spl_list(void)
 
 	dir = opendir(parent_path_fs);
 	if (dir == NULL) {
-		log_err(strerror(errno));
+		log_err("%s", strerror(errno));
 		return ERR_PTR(-PLAYLIST_ERRNO);
 	}
 
