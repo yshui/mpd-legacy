@@ -1,6 +1,9 @@
 # Upstream changes to pull in:
 * Remove whence from seek().
 
+# (Possibly) undocumented feature:
+* rename command.
+
 # Learn the code:
 * Read the filter plugin code.
 

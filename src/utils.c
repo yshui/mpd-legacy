@@ -117,9 +117,8 @@ parsePath(const char *path)
 
 char *strdup_printf(const char *fmt, ...){
 	va_list args;
+	char *buf;
 	va_start(args, fmt);
-	int len = vsnprintf(NULL, 0, fmt, args);
-	char *buf = malloc(len);
-	vsnprintf(buf, len, fmt, args);
+	vasprintf(&buf, fmt, args);
 	return buf;
 }
