@@ -142,7 +142,7 @@ gme_file_decode(struct decoder *decoder, const char *path_fs)
 
 	/* initialize the MPD decoder */
 
-	if (!audio_format_init_checked(&audio_format, GME_SAMPLE_RATE,
+	if (audio_format_init_checked(&audio_format, GME_SAMPLE_RATE,
 				       SAMPLE_FORMAT_S16, GME_CHANNELS) !=
 				       MPD_SUCCESS) {
 		gme_free_info(ti);

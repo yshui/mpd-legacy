@@ -159,7 +159,7 @@ flac_got_first_frame(struct flac_data *data, const FLAC__FrameHeader *header)
 	if (data->unsupported)
 		return false;
 
-	if (!audio_format_init_checked(&data->audio_format,
+	if (audio_format_init_checked(&data->audio_format,
 				       header->sample_rate,
 				       flac_sample_format(header->bits_per_sample),
 				       header->channels) != MPD_SUCCESS) {
