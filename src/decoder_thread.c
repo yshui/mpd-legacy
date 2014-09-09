@@ -352,7 +352,7 @@ decoder_run_file(struct decoder *decoder, const char *path_fs)
 			bool success;
 
 			input_stream = decoder_input_stream_open(dc, path_fs);
-			if (input_stream == NULL)
+			if (IS_ERR_OR_NULL(input_stream))
 				continue;
 
 			decoder_lock(dc);
