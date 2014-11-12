@@ -51,11 +51,9 @@ make_directory_if_modified(struct directory *parent, const char *name,
 
 	// directory exists already
 	if (directory != NULL) {
-		if (directory->mtime == st->st_mtime && !walk_discard) {
+		if (directory->mtime == st->st_mtime && !walk_discard)
 			/* not modified */
-			db_unlock();
 			return NULL;
-		}
 
 		delete_directory(directory);
 		modified = true;
