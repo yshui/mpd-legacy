@@ -20,7 +20,6 @@
 #ifndef MPD_PCM_DSD_USB_H
 #define MPD_PCM_DSD_USB_H
 
-#include "check.h"
 
 #include <stdbool.h>
 #include <stdint.h>

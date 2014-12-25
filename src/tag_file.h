@@ -20,8 +20,6 @@
 #ifndef MPD_TAG_FILE_H
 #define MPD_TAG_FILE_H
 
-#include "check.h"
-
 #include <stdbool.h>
 
 struct tag_handler;

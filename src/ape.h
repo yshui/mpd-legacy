@@ -20,8 +20,6 @@
 #ifndef MPD_APE_H
 #define MPD_APE_H
 
-#include "check.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 

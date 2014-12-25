@@ -20,7 +20,6 @@
 #ifndef MPD_DIRECTORY_H
 #define MPD_DIRECTORY_H
 
-#include "check.h"
 #include "util/list.h"
 #include "macros.h"
 

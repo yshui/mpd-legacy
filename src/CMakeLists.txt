@@ -53,6 +53,10 @@ pkg_check_modules(GLIB REQUIRED glib-2.0 gthread-2.0)
 include_directories(${GLIB_INCLUDE_DIRS})
 add_definitions(-std=gnu11 -D_GNU_SOURCE)
 
+if("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
+	add_definitions(-D_DARWIN_USE_64_BIT_INODE=1)
+endif()
+
 include_directories(.)
 set(MPD_SRC
 	output_list.c

@@ -20,7 +20,6 @@
 #ifndef MPD_PROTOCOL_RESULT_H
 #define MPD_PROTOCOL_RESULT_H
 
-#include "check.h"
 #include "ack.h"
 
 #include <glib.h>

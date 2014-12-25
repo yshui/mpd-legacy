@@ -20,7 +20,6 @@
 #ifndef MPD_VORBIS_COMMENTS_H
 #define MPD_VORBIS_COMMENTS_H
 
-#include "check.h"
 
 #include <stdbool.h>
 

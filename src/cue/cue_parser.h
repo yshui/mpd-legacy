@@ -20,7 +20,6 @@
 #ifndef MPD_CUE_PARSER_H
 #define MPD_CUE_PARSER_H
 
-#include "check.h"
 
 #include <stdbool.h>
 

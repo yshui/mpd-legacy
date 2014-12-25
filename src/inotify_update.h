@@ -20,8 +20,6 @@
 #ifndef MPD_INOTIFY_UPDATE_H
 #define MPD_INOTIFY_UPDATE_H
 
-#include "check.h"
-
 #ifdef HAVE_INOTIFY_INIT
 
 void

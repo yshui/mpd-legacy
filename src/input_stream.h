@@ -20,7 +20,6 @@
 #ifndef MPD_INPUT_STREAM_H
 #define MPD_INPUT_STREAM_H
 
-#include "check.h"
 #include "macros.h"
 
 #include <glib.h>

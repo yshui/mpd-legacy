@@ -26,7 +26,6 @@
 #ifndef MPD_DB_LOCK_H
 #define MPD_DB_LOCK_H
 
-#include "check.h"
 #include "macros.h"
 
 #include <glib.h>

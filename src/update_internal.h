@@ -20,7 +20,6 @@
 #ifndef MPD_UPDATE_INTERNAL_H
 #define MPD_UPDATE_INTERNAL_H
 
-#include "check.h"
 #include "log.h"
 
 #include <stdbool.h>

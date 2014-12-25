@@ -20,7 +20,6 @@
 #ifndef PCM_EXPORT_H
 #define PCM_EXPORT_H
 
-#include "check.h"
 #include "pcm_buffer.h"
 #include "audio_format.h"
 #include "macros.h"

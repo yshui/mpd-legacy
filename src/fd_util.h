@@ -36,8 +36,6 @@
 #ifndef FD_UTIL_H
 #define FD_UTIL_H
 
-#include "check.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 

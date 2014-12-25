@@ -20,8 +20,6 @@
 #ifndef MPD_UPDATE_WALK_H
 #define MPD_UPDATE_WALK_H
 
-#include "check.h"
-
 #include <stdbool.h>
 
 void

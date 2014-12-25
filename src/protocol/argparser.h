@@ -20,7 +20,6 @@
 #ifndef MPD_PROTOCOL_ARGPARSER_H
 #define MPD_PROTOCOL_ARGPARSER_H
 
-#include "check.h"
 
 #include <stdbool.h>
 #include <stdint.h>

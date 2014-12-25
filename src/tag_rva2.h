@@ -20,8 +20,6 @@
 #ifndef MPD_TAG_RVA2_H
 #define MPD_TAG_RVA2_H
 
-#include "check.h"
-
 #include <stdbool.h>
 
 struct id3_tag;

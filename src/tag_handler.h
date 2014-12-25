@@ -20,7 +20,6 @@
 #ifndef MPD_TAG_HANDLER_H
 #define MPD_TAG_HANDLER_H
 
-#include "check.h"
 #include "tag.h"
 
 #include <assert.h>

@@ -20,8 +20,6 @@
 #ifndef MPD_INPUT_INTERNAL_H
 #define MPD_INPUT_INTERNAL_H
 
-#include "check.h"
-
 #include <glib.h>
 
 struct input_stream;

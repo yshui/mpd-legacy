@@ -20,8 +20,6 @@
 #ifndef MPD_REPLAY_GAIN_APE_H
 #define MPD_REPLAY_GAIN_APE_H
 
-#include "check.h"
-
 #include <stdbool.h>
 
 struct replay_gain_info;

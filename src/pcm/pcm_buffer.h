@@ -20,7 +20,6 @@
 #ifndef PCM_BUFFER_H
 #define PCM_BUFFER_H
 
-#include "check.h"
 #include "macros.h"
 
 #include <assert.h>

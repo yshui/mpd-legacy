@@ -20,8 +20,6 @@
 #ifndef MPD_TAG_ID3_H
 #define MPD_TAG_ID3_H
 
-#include "check.h"
-
 #include <glib.h>
 
 #include <stdbool.h>

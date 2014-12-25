@@ -20,8 +20,6 @@
 #ifndef MPD_UPDATE_IO_H
 #define MPD_UPDATE_IO_H
 
-#include "check.h"
-
 #include <stdbool.h>
 #include <sys/stat.h>
 

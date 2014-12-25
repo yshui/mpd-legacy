@@ -20,8 +20,6 @@
 #ifndef MPD_UPDATE_REMOVE_H
 #define MPD_UPDATE_REMOVE_H
 
-#include "check.h"
-
 struct song;
 
 void

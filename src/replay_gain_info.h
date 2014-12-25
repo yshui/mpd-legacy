@@ -20,8 +20,6 @@
 #ifndef MPD_REPLAY_GAIN_INFO_H
 #define MPD_REPLAY_GAIN_INFO_H
 
-#include "check.h"
-
 #include <stdbool.h>
 #include <math.h>
 

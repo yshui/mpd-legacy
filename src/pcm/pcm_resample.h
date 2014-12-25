@@ -20,7 +20,6 @@
 #ifndef MPD_PCM_RESAMPLE_H
 #define MPD_PCM_RESAMPLE_H
 
-#include "check.h"
 #include "pcm_buffer.h"
 #include "pcm_conf.h"
 

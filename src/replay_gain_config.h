@@ -20,7 +20,6 @@
 #ifndef MPD_REPLAY_GAIN_CONFIG_H
 #define MPD_REPLAY_GAIN_CONFIG_H
 
-#include "check.h"
 #include "replay_gain_info.h"
 
 #include <stdbool.h>

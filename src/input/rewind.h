@@ -27,7 +27,6 @@
 #ifndef MPD_INPUT_REWIND_H
 #define MPD_INPUT_REWIND_H
 
-#include "check.h"
 
 struct input_stream;
 

@@ -20,7 +20,6 @@
 #ifndef MPD_INPUT_REGISTRY_H
 #define MPD_INPUT_REGISTRY_H
 
-#include "check.h"
 #include "input/input_conf.h"
 
 #include <stdbool.h>

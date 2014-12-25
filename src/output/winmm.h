@@ -20,7 +20,6 @@
 #ifndef MPD_WINMM_OUTPUT_PLUGIN_H
 #define MPD_WINMM_OUTPUT_PLUGIN_H
 
-#include "check.h"
 
 #ifdef ENABLE_WINMM_OUTPUT
 

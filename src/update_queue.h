@@ -20,8 +20,6 @@
 #ifndef MPD_UPDATE_QUEUE_H
 #define MPD_UPDATE_QUEUE_H
 
-#include "check.h"
-
 #include <stdbool.h>
 
 unsigned
