@@ -84,6 +84,11 @@ if(HAVE_OSS OR HAVE_OSS_BSD)
 	list(APPEND OUTPUT_SRC oss.c)
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES SunOS)
+	set(ENABLE_SOLARIES true)
+	list(APPEND OUTPUT_SRC solaris.c)
+endif()
+
 configure_file(output_conf.h.in output_conf.h)
 add_library(output STATIC ${OUTPUT_SRC})
 
