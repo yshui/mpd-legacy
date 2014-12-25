@@ -21,16 +21,16 @@
 #define MPD_ZEROCONF_H
 
 #include "log.h"
-#ifdef HAVE_ZEROCONF
+#ifdef ENABLE_ZEROCONF
 
 void initZeroconf(void);
 void finishZeroconf(void);
 
-#else /* ! HAVE_ZEROCONF */
+#else /* ! ENABLE_ZEROCONF */
 
-static void initZeroconf(void) { }
-static void finishZeroconf(void) { }
+static inline void initZeroconf(void) { }
+static inline void finishZeroconf(void) { }
 
-#endif /* ! HAVE_ZEROCONF */
+#endif /* ! ENABLE_ZEROCONF */
 
 #endif

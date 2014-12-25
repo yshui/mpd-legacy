@@ -11,10 +11,10 @@
 #cmakedefine HAVE_ACCEPT4
 
 /* Define to enable Avahi Zeroconf support */
-#cmakedefine HAVE_AVAHI
+#cmakedefine ENABLE_AVAHI
 
 /* Define to enable Bonjour Zeroconf support */
-#cmakedefine HAVE_BONJOUR
+#cmakedefine ENABLE_BONJOUR
 
 /* Define to have bz2 archive support */
 #cmakedefine HAVE_BZ2
@@ -80,7 +80,7 @@
 #cmakedefine HAVE_VALGRIND_MEMCHECK_H
 
 /* Define to enable Zeroconf support */
-#cmakedefine HAVE_ZEROCONF
+#cmakedefine ENABLE_ZEROCONF
 
 /* have zlib on the system */
 #cmakedefine HAVE_ZLIB
