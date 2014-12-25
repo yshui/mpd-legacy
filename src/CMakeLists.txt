@@ -46,6 +46,7 @@ include(CheckLibraryExists)
 include(CheckFunctionExists)
 include(CheckStructHasMember)
 include(CheckIncludeFile)
+include(TestLargeFile)
 include(FindPkgConfig)
 
 pkg_check_modules(GLIB REQUIRED glib-2.0 gthread-2.0)
@@ -346,7 +347,6 @@ target_link_libraries(mpd
 	pcm
 	${MPD_LINK_LIBS}
 )
-message("${MPD_LINK_LIBS}")
 foreach(component OUTPUT INPUT ENCODER PLAYLIST DECODER)
 	string(REPLACE ";" ", " TMP "${${component}_LIST}")
 	message("Enabled ${component} plugins: ${TMP}")
