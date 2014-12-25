@@ -296,6 +296,24 @@ if(ENABLE_INOTIFY)
 	check_function_exists(inotify_init1 HAVE_INOTIFY_INIT1)
 endif()
 
+if(ENABLE_STICKER)
+	pkg_check_modules(SQLITE sqlite3)
+	if(NOT SQLITE_FOUND)
+		message(STATUS "sqlite support not found, not enabling sticker db")
+		set(ENABLE_STICKER false)
+	else()
+		set(STICKER_SRC
+			sticker.c
+			song_sticker.c
+			sticker_print.c
+		)
+		list(APPEND MPD_LINK_LIBS ${SQLITE_LIBRARIES})
+		list(APPEND MPD_SRC ${STICKER_SRC})
+		set_source_files_properties(${STICKER_SRC} PROPERTIES COMPILER_FLAGS
+			"${SQLITE_CFLAGS}")
+	endif()
+endif()
+
 if(ZEROCONF STREQUAL "avahi")
 	pkg_check_modules(AVAHI avahi-glib avahi-client)
 	if(NOT AVAHI_FOUND)

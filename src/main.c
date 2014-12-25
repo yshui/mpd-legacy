@@ -63,7 +63,7 @@
 #include "inotify_update.h"
 #endif
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 #include "sticker.h"
 #endif
 
@@ -178,7 +178,7 @@ glue_db_init_and_load(void)
 static void
 glue_sticker_init(void)
 {
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 	char *sticker_file = config_dup_path(CONF_STICKER_FILE);
 	if (sticker_file == NULL)
 		MPD_ERROR("Failed to init sticker\n");
@@ -486,7 +486,7 @@ int mpd_main(int argc, char *argv[])
 	log_debug("db_finish took %f seconds",
 		((float)(clock()-start))/CLOCKS_PER_SEC);
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 	sticker_global_finish();
 #endif
 

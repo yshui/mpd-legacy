@@ -63,7 +63,7 @@
 #include "song.h"
 #include "song_print.h"
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 #include "sticker.h"
 #include "sticker_print.h"
 #include "song_sticker.h"
@@ -1603,7 +1603,7 @@ handle_idle(struct client *client,
 	return 1;
 }
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 struct sticker_song_find_data {
 	struct client *client;
 	const char *name;
@@ -2013,7 +2013,7 @@ static const struct command commands[] = {
 	{ "single", PERMISSION_CONTROL, 1, 1, handle_single },
 	{ "stats", PERMISSION_READ, 0, 0, handle_stats },
 	{ "status", PERMISSION_READ, 0, 0, handle_status },
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 	{ "sticker", PERMISSION_ADMIN, 3, -1, handle_sticker },
 #endif
 	{ "stop", PERMISSION_CONTROL, 0, 0, handle_stop },
@@ -2031,7 +2031,7 @@ static const unsigned num_commands = sizeof(commands) / sizeof(commands[0]);
 static bool
 command_available(const struct command *cmd)
 {
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 	if (strcmp(cmd->cmd, "sticker") == 0)
 		return sticker_enabled();
 #endif

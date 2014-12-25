@@ -2,7 +2,7 @@
 #cmakedefine ENABLE_INOTIFY
 
 /* Define to enable sqlite database support */
-#cmakedefine ENABLE_SQLITE
+#cmakedefine ENABLE_STICKER
 
 /* Define to enable systemd activation */
 #cmakedefine ENABLE_SYSTEMD_ACTIVATION

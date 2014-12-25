@@ -27,7 +27,7 @@
 #include "playlist.h"
 #include "main.h"
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 #include "sticker.h"
 #include "song_sticker.h"
 #endif
@@ -58,7 +58,7 @@ song_remove_event(void)
 	log_info("removing %s", uri);
 	free(uri);
 
-#ifdef ENABLE_SQLITE
+#ifdef ENABLE_STICKER
 	/* if the song has a sticker, remove it */
 	if (sticker_enabled())
 		sticker_song_delete(removed_song);
