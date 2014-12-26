@@ -339,7 +339,7 @@ encoder_get_mime_type(struct encoder *encoder)
  * @return the encoder plugin with the specified name, or NULL if none
  * was found
  */
-static const struct encoder_plugin *
+static inline const struct encoder_plugin *
 encoder_plugin_get(const char *name)
 {
 	encoder_plugins_for_each(plugin)
