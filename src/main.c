@@ -59,9 +59,7 @@
 #include "tag_pool.h"
 #include "mpd_error.h"
 
-#ifdef ENABLE_INOTIFY
 #include "inotify_update.h"
-#endif
 
 #ifdef ENABLE_STICKER
 #include "sticker.h"
@@ -440,14 +438,9 @@ int mpd_main(int argc, char *argv[])
 		return EXIT_FAILURE;
 
 	bool auto_update = config_get_bool(CONF_AUTO_UPDATE, false);
-#ifdef ENABLE_INOTIFY
 	if (auto_update && mapper_has_music_directory())
 		mpd_inotify_init(config_get_unsigned(CONF_AUTO_UPDATE_DEPTH,
 						     G_MAXUINT));
-#else
-	if (auto_update)
-		log_warning("inotify: auto_update was disabled. enable during compilation phase");
-#endif
 
 	config_global_check();
 
@@ -470,9 +463,7 @@ int mpd_main(int argc, char *argv[])
 
 	g_main_loop_unref(main_loop);
 
-#ifdef ENABLE_INOTIFY
 	mpd_inotify_finish();
-#endif
 
 	state_file_finish(global_player_control);
 	pc_kill(global_player_control);

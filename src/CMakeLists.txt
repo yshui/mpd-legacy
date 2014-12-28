@@ -35,7 +35,6 @@ set(ENABLE_PLAYLIST "lastfm;despotify;soundcloud" CACHE STRING
 Available playlist plugins are lastfm, despotify, soundcloud"
 )
 
-option(ENABLE_INOTIFY "Enable inotify support." ON)
 option(ENABLE_STICKER "Enable sticker database support." ON)
 option(ENABLE_ID3TAG "Enable id3tag support." ON)
 option(ENABLE_SYSTEMD_ACTIVATION "Systemd activation support." ON)
@@ -201,6 +200,11 @@ set(MPD_SRC
 	util/byte_reverse.c
 	util/bit_reverse.c
 	util/file_utils.c
+	fd_util.c
+	fifo_buffer.c
+	inotify_source.c
+	inotify_queue.c
+	inotify_update.c
 
 	replay_gain_ape.c
 	tag_ape.c
@@ -285,16 +289,14 @@ endmacro()
 
 set(MPD_LINK_LIBS "${GLIB_LIBRARIES}")
 
-if(ENABLE_INOTIFY)
-	list(APPEND MPD_SRC fd_util.c
-			    fifo_buffer.c
-			    inotify_source.c
-			    inotify_queue.c
-			    inotify_update.c
-	)
-	check_function_exists(inotify_init HAVE_INOTIFY_INIT)
-	check_function_exists(inotify_init1 HAVE_INOTIFY_INIT1)
-endif()
+list(APPEND MPD_SRC fd_util.c
+		    fifo_buffer.c
+		    inotify_source.c
+		    inotify_queue.c
+		    inotify_update.c
+)
+check_function_exists(inotify_init HAVE_INOTIFY_INIT)
+check_function_exists(inotify_init1 HAVE_INOTIFY_INIT1)
 
 if(ENABLE_STICKER)
 	pkg_check_modules(SQLITE sqlite3)
