@@ -38,8 +38,6 @@ playlist_stop(struct playlist *playlist, struct player_control *pc)
 	if (!playlist->playing)
 		return;
 
-	assert(playlist->current >= 0);
-
 	log_debug("stop");
 	pc_stop(pc);
 	playlist->queued = -1;

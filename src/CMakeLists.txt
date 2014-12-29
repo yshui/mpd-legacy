@@ -48,6 +48,7 @@ option(USE_TREMOR "Use tremor fixed point vorbis decoder instead." OFF)
 
 include(CheckLibraryExists)
 include(CheckFunctionExists)
+include(CheckSymbolExists)
 include(CheckStructHasMember)
 include(CheckIncludeFile)
 include(CheckCCompilerFlag)
