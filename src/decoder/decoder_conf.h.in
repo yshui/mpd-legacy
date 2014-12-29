@@ -1,5 +1,6 @@
 #pragma once
 
+#cmakedefine ENABLE_ASAP
 #cmakedefine ENABLE_FFMPEG
 #cmakedefine ENABLE_VORBIS
 #cmakedefine ENABLE_FLAC
