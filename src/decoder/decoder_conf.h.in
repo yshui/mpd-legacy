@@ -12,6 +12,7 @@
 #cmakedefine ENABLE_SNDFILE
 #cmakedefine ENABLE_MPG123
 #cmakedefine ENABLE_FLUIDSYNTH
+#cmakedefine ENABLE_MPCDEC
 
 /* Define if FAAD2 uses buflen in function calls */
 #cmakedefine HAVE_FAAD_BUFLEN_FUNCS
@@ -29,5 +30,4 @@
 /* Defined if WildMidi_SampledSeek() is available (libwildmidi <= 0.2.2) */
 #cmakedefine HAVE_WILDMIDI_SAMPLED_SEEK
 
-#cmakedefine MPC_IS_OLD_API
-#cmakedefine MPC_FIXED_POINT
+#cmakedefine MPC_OLD_API

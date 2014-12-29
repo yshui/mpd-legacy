@@ -22,10 +22,11 @@
 #include "log.h"
 #include "config.h"
 #include "decoder_api.h"
+#include "decoder_conf.h"
 #include "audio_check.h"
 #include "tag_handler.h"
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 #include <mpcdec/mpcdec.h>
 #else
 #include <mpc/mpcdec.h>
@@ -42,7 +43,7 @@ struct mpc_decoder_data {
 	struct decoder *decoder;
 };
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 #define cb_first_arg void *vdata
 #define cb_data vdata
 #else
@@ -136,7 +137,7 @@ mpc_to_mpd_buffer(int32_t *dest, const MPC_SAMPLE_FORMAT *src,
 static void
 mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 {
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 	mpc_decoder decoder;
 #else
 	mpc_demux *demux;
@@ -167,7 +168,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 	reader.canseek = mpc_canseek_cb;
 	reader.data = &data;
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 	mpc_streaminfo_init(&info);
 
 	if ((ret = mpc_streaminfo_read(&info, &reader)) != ERROR_CODE_OK) {
@@ -197,7 +198,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 	if (audio_format_init_checked(&audio_format, info.sample_freq,
 				       SAMPLE_FORMAT_S24_P32,
 				       info.channels) != MPD_SUCCESS) {
-#ifndef MPC_IS_OLD_API
+#ifndef MPC_OLD_API
 		mpc_demux_exit(demux);
 #endif
 		return;
@@ -205,7 +206,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 	struct replay_gain_info replay_gain_info;
 	replay_gain_info_init(&replay_gain_info);
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 	replay_gain_info.tuples[REPLAY_GAIN_ALBUM].gain = info.gain_album * 0.01;
 	replay_gain_info.tuples[REPLAY_GAIN_ALBUM].peak = info.peak_album / 32767.0;
 	replay_gain_info.tuples[REPLAY_GAIN_TRACK].gain = info.gain_title * 0.01;
@@ -229,7 +230,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 				audio_format.sample_rate;
 			bool success;
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 			success = mpc_decoder_seek_sample(&decoder, where);
 #else
 			success = mpc_demux_seek_sample(demux, where)
@@ -243,7 +244,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 
 		vbr_update_bits = 0;
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 		mpc_uint32_t vbr_update_acc = 0;
 
 		ret = mpc_decoder_decode(&decoder, sample_buffer,
@@ -276,7 +277,7 @@ mpcdec_decode(struct decoder *mpd_decoder, struct input_stream *is)
 				   bit_rate);
 	} while (cmd != DECODE_COMMAND_STOP);
 
-#ifndef MPC_IS_OLD_API
+#ifndef MPC_OLD_API
 	mpc_demux_exit(demux);
 #endif
 }
@@ -287,7 +288,7 @@ mpcdec_get_file_duration(struct input_stream *is)
 	float total_time = -1;
 
 	mpc_reader reader;
-#ifndef MPC_IS_OLD_API
+#ifndef MPC_OLD_API
 	mpc_demux *demux;
 #endif
 	mpc_streaminfo info;
@@ -303,7 +304,7 @@ mpcdec_get_file_duration(struct input_stream *is)
 	reader.canseek = mpc_canseek_cb;
 	reader.data = &data;
 
-#ifdef MPC_IS_OLD_API
+#ifdef MPC_OLD_API
 	mpc_streaminfo_init(&info);
 
 	if (mpc_streaminfo_read(&info, &reader) != ERROR_CODE_OK)

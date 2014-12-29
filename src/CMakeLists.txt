@@ -10,6 +10,8 @@ set(ENABLE_DECODER ffmpeg
 	wavpack
 	fluidsynth
 	audiofile
+	mpcdec
+	asap
 	CACHE STRING
 "A semicolon seperated list of enabled decoders.
 For a whole list of available decoders, see the DECODER file."

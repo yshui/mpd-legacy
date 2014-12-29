@@ -85,9 +85,6 @@
 /* Define to have zip archive support */
 #cmakedefine HAVE_ZZIP
 
-/* Define if an old pre-SV8 libmpcdec is used */
-#cmakedefine MPC_IS_OLD_API
-
 /* Name of package */
 #define PACKAGE "mpd"
 
