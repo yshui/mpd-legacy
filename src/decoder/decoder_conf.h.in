@@ -13,6 +13,7 @@
 #cmakedefine ENABLE_MPG123
 #cmakedefine ENABLE_FLUIDSYNTH
 #cmakedefine ENABLE_MPCDEC
+#cmakedefine ENABLE_WILDMIDI
 
 /* Define if FAAD2 uses buflen in function calls */
 #cmakedefine HAVE_FAAD_BUFLEN_FUNCS

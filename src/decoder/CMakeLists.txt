@@ -71,7 +71,7 @@ if(_ENABLE_asap)
 		list(APPEND DECODER_SRC asap.c)
 		mpd_add_lib(${ASAP_LIB})
 	else()
-		message("ASAP library not found")
+		report_no_support(asap)
 	endif()
 endif()
 
@@ -94,6 +94,22 @@ if(_ENABLE_mpcdec)
 		set(ENABLE_MPCDEC true)
 		list(APPEND DECODER_SRC mpcdec.c)
 		mpd_add_lib(${MPC_LIB})
+	else()
+		report_no_support(mpcdec)
+	endif()
+endif()
+
+if(_ENABLE_wildmidi)
+	check_include_file(wildmidi_lib.h WILDMIDI_H)
+	find_library(WILDMIDI_LIB WildMidi)
+	if(WILDMIDI_H AND WILDMIDI_LIB)
+		set(CMAKE_REQUIRED_LIBRARIES WildMidi)
+		check_function_exists(WildMidi_SampledSeek HAVE_WILDMIDI_SAMPLED_SEEK)
+		set(ENABLE_WILDMIDI true)
+		mpd_add_lib(${WILDMIDI_LIB})
+		list(APPEND DECODER_SRC wildmidi.c)
+	else()
+		report_no_support(wildmidi)
 	endif()
 endif()
 
@@ -107,9 +123,9 @@ mpd_pc_single(sndfile sndfile sndfile.c)
 mpd_pc_single(wavpack wavpack wavpack.c)
 mpd_pc_single(fluidsynth fluidsynth>=1.1 fluidsynth.c)
 mpd_pc_single(audiofile audiofile>=0.1.7 audiofile.c)
+
 #sidplay
 #faad and mp4ff
-#mpc
 #wildmidi
 
 

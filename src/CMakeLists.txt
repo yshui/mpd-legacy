@@ -12,6 +12,7 @@ set(ENABLE_DECODER ffmpeg
 	audiofile
 	mpcdec
 	asap
+	wildmidi
 	CACHE STRING
 "A semicolon seperated list of enabled decoders.
 For a whole list of available decoders, see the DECODER file."
