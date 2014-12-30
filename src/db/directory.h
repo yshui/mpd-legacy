@@ -81,6 +81,8 @@ struct directory {
 	struct list_head playlists;
 
 	struct directory *parent;
+	int external_ref;
+	bool deleted;
 	time_t mtime;
 	ino_t inode;
 	dev_t device;

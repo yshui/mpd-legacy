@@ -25,10 +25,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/time.h>
-
-#define SONG_FILE	"file: "
-#define SONG_TIME	"Time: "
-
 struct song {
 	/**
 	 * Pointers to the siblings of this directory within the

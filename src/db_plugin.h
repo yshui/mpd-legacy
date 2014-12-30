@@ -28,6 +28,9 @@
 
 #include "log.h"
 #include "macros.h"
+#include "util/yref.h"
+#include "util/list.h"
+#include "dcache.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -37,32 +40,92 @@ struct config_param;
 struct db_selection;
 struct db_visitor;
 
-struct db {
-	const struct db_plugin *plugin;
+struct dir_child {
+	char *name;
+	enum child_type {
+		CHLD_FILE, /* Regular file */
+		CHLD_SYM, /* Symbolic link */
+		CHLD_DIR, /* Directory */
+	} type;
+	struct list_head siblings;
 };
 
 struct db_plugin {
 	const char *name;
 
-	/**
-         * Allocates and configures a database.
-	 */
-	struct db *(*init)(const struct config_param *param);
+	//Note: the void *data passed to all these function can be
+	//db specific data assigned to any directories.
+
+	void (*lock)(void *data);
+
+	void (*unlock)(void *data);
 
 	/**
-	 * Free instance data.
+	 * Close database.
          */
-	void (*finish)(struct db *db);
+	void (*close)(void *data);
 
-	/**
+	/*
          * Open the database.  Read it into memory if applicable.
 	 */
-	int (*open)(struct db *db);
+	void *(*open)(const struct config_param *param);
 
-	/**
-         * Close the database, free allocated memory.
+	/*
+	 * Create a new node on a given path.
+	 * If one of the path component is missing, this should fail
 	 */
-	void (*close)(struct db *db);
+	void (*mknod)(const char *path, enum dir_name_type type, void *entry);
+
+	/*
+	 * Create a new node under a given directory, with name #name,
+	 */
+	void (*mknodat)(void *data, const char *name,
+			enum dir_name_type type, void *entry);
+	/*
+	 * lookup a sub-directory.
+	 */
+	yref_ret_t (*lookup)(const struct d_entry *data, const char *name);
+
+	/*
+	 * Read directory contents
+	 *
+	 * #head should be filled with entries of struct dir_name
+	 */
+	void (*readdir)(void *data, struct list_head *head);
+
+	int (*stat)(void *data, const char *name, void *dst, size_t *len);
+
+	/*
+	 * Map internal path to an uri.
+	 */
+	char *(*realpath)(void *data);
+
+	/*
+	 * Map real path to internal path.
+	 */
+	char *(*vpath)(const char *path);
+
+	/*
+	 * Free plugin specific data
+	 */
+	void (*free)(void *data);
+
+	/*
+	 * Get child uris from a given uri (not from the db,
+	 * but *actual* child uris, used for updating.
+	 *
+	 * Should put a list of sturct dir_child into list #h.
+	 *
+	 * #uri is guarenteed to be from a previous realpath call,
+	 * #follow indicates if link should be dereferenced, if #follow is true,
+	 * dir_child->type can't be DIR_SYM.
+	 */
+	void (*get_child)(const char *uri, struct list_head *h, bool follow);
+
+	/*
+	 * Sync a database to disk
+	 */
+	void (*sync)(void *data);
 
 	/**
          * Look up a song (including tag data) in the database.
@@ -70,84 +133,13 @@ struct db_plugin {
 	 * @param the URI of the song within the music directory
 	 * (UTF-8)
 	 */
-	struct song *(*get_song)(struct db *db, const char *uri);
+	struct song *(*get_song)(void *data, const char *uri);
 
 	/**
 	 * Visit the selected entities.
 	 */
-	int (*visit)(struct db *db, const struct db_selection *selection,
+	int (*visit)(void *data, const struct db_selection *selection,
 		      const struct db_visitor *visitor, void *ctx);
 };
-
-MPD_MALLOC
-static inline struct db *
-db_plugin_new(const struct db_plugin *plugin, const struct config_param *param)
-{
-	assert(plugin != NULL);
-	assert(plugin->init != NULL);
-	assert(plugin->finish != NULL);
-	assert(plugin->get_song != NULL);
-	assert(plugin->visit != NULL);
-
-	struct db *db = plugin->init(param);
-	assert(!IS_ERR(db));
-	assert(db != NULL && db->plugin == plugin);
-
-	return db;
-}
-
-static inline void
-db_plugin_free(struct db *db)
-{
-	assert(db != NULL);
-	assert(db->plugin != NULL);
-	assert(db->plugin->finish != NULL);
-
-	db->plugin->finish(db);
-}
-
-static inline int
-db_plugin_open(struct db *db)
-{
-	assert(db != NULL);
-	assert(db->plugin != NULL);
-
-	return db->plugin->open != NULL
-		? db->plugin->open(db)
-		: MPD_SUCCESS;
-}
-
-static inline void
-db_plugin_close(struct db *db)
-{
-	assert(db != NULL);
-	assert(db->plugin != NULL);
-
-	if (db->plugin->close != NULL)
-		db->plugin->close(db);
-}
-
-static inline struct song *
-db_plugin_get_song(struct db *db, const char *uri)
-{
-	assert(db != NULL);
-	assert(db->plugin != NULL);
-	assert(db->plugin->get_song != NULL);
-	assert(uri != NULL);
-
-	return db->plugin->get_song(db, uri);
-}
-
-static inline int
-db_plugin_visit(struct db *db, const struct db_selection *selection,
-		const struct db_visitor *visitor, void *ctx)
-{
-	assert(db != NULL);
-	assert(db->plugin != NULL);
-	assert(selection != NULL);
-	assert(visitor != NULL);
-
-	return db->plugin->visit(db, selection, visitor, ctx);
-}
 
 #endif

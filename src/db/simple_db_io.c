@@ -1,83 +1,18 @@
-/*
- * Copyright (C) 2003-2011 The Music Player Daemon Project
- * http://www.musicpd.org
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+#include <assert.h>
+#include <sys/stat.h>
+#include "simple_db_load.h"
+#include "simple_db_io.h"
 
-#define LOG_DOMAIN "database: simple_db"
-
-#include "config.h"
-#include "simple_db_plugin.h"
 #include "song.h"
-#include "db_internal.h"
-#include "db_error.h"
-#include "db_selection.h"
-#include "db_visitor.h"
-#include "db_lock.h"
-#include "conf.h"
 #include "tag.h"
 #include "tag_internal.h"
-#include "text_file.h"
-#include "directory.h"
 #include "string_util.h"
 #include "playlist_vector.h"
+#include "directory.h"
 #include "path.h"
-
-#include <sys/types.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
-
+#include "text_file.h"
 #ifdef COMPRESS_DB
 #include <zlib.h>
-#endif
-
-#define DIRECTORY_INFO_BEGIN "info_begin"
-#define DIRECTORY_INFO_END "info_end"
-#define DB_FORMAT_PREFIX "format: "
-#define DIRECTORY_MPD_VERSION "mpd_version: "
-#define DIRECTORY_FS_CHARSET "fs_charset: "
-#define DB_TAG_PREFIX "tag: "
-#define DIRECTORY_DIR "directory: "
-#define DIRECTORY_MTIME "mtime: "
-#define DIRECTORY_BEGIN "begin: "
-#define DIRECTORY_END "end: "
-#define SONG_BEGIN "song_begin: "
-#define SONG_MTIME "mtime"
-#define SONG_END "song_end"
-#define PLAYLIST_META_BEGIN "playlist_begin: "
-
-struct simple_db {
-	struct db base;
-
-	char *path;
-
-	struct directory *root;
-
-	time_t mtime;
-};
-
-enum {
-	DB_FORMAT = 1,
-};
-
-#ifdef COMPRESS_DB
 typedef gzFile db_file;
 
 static inline db_file db_open(const char *path_fs, const char *flags){
@@ -140,39 +75,9 @@ static inline int db_error(db_file file){
 	return ferror(file);
 }
 #endif
-
-static inline void
-simple_db_tag_save(db_file file, const struct tag *tag)
-{
-	if (tag->time >= 0)
-		db_printf(file, SONG_TIME "%i\n", tag->time);
-
-	if (tag->has_playlist)
-		db_printf(file, "Playlist: yes\n");
-
-	for (unsigned i = 0; i < tag->num_items; i++)
-		db_printf(file, "%s: %s\n",
-			tag_item_names[tag->items[i]->type],
-			tag->items[i]->value);
-}
-
-static inline void
-simple_db_song_save(db_file fp, const struct song *song)
-{
-	db_printf(fp, SONG_BEGIN "%s\n", song->uri);
-
-	if (song->end_ms > 0)
-		db_printf(fp, "Range: %u-%u\n", song->start_ms, song->end_ms);
-	else if (song->start_ms > 0)
-		db_printf(fp, "Range: %u-\n", song->start_ms);
-
-	if (song->tag != NULL)
-		simple_db_tag_save(fp, song->tag);
-
-	db_printf(fp, SONG_MTIME ": %li\n", (long)song->mtime);
-	db_printf(fp, SONG_END "\n");
-}
-
+/* ======================================================= *
+ * 			Database Load
+ * ======================================================= */
 static inline struct song *
 simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
 	  GString *buffer)
@@ -243,18 +148,6 @@ simple_db_song_load(db_file fp, struct directory *parent, const char *uri,
 
 	return song;
 }
-
-static inline void
-simple_db_playlist_vector_save(db_file fp, const struct list_head *pv)
-{
-	struct playlist_metadata *pm;
-	playlist_vector_for_each(pm, pv)
-		db_printf(fp, PLAYLIST_META_BEGIN "%s\n"
-			"mtime: %li\n"
-			"playlist_end\n",
-			pm->name, (long)pm->mtime);
-}
-
 static inline int
 playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
 		       GString *buffer)
@@ -287,42 +180,6 @@ playlist_metadata_load(db_file fp, struct list_head *pv, const char *name,
 	playlist_vector_update_or_add(pv, name, pm.mtime);
 	return MPD_SUCCESS;
 }
-
-static void
-simple_db_directory_save(db_file fp, const struct directory *directory)
-{
-	if (!directory_is_root(directory)) {
-		db_printf(fp, DIRECTORY_MTIME "%lu\n",
-			(unsigned long)directory->mtime);
-
-		db_printf(fp, "%s%s\n", DIRECTORY_BEGIN,
-			directory_get_path(directory));
-	}
-
-	struct directory *cur;
-	directory_for_each_child(cur, directory) {
-		char *base = g_path_get_basename(cur->path);
-
-		db_printf(fp, DIRECTORY_DIR "%s\n", base);
-		g_free(base);
-
-		simple_db_directory_save(fp, cur);
-
-		if (db_error(fp))
-			return;
-	}
-
-	struct song *song;
-	directory_for_each_song(song, directory)
-		simple_db_song_save(fp, song);
-
-	simple_db_playlist_vector_save(fp, &directory->playlists);
-
-	if (!directory_is_root(directory))
-		db_printf(fp, DIRECTORY_END "%s\n",
-			directory_get_path(directory));
-}
-
 static struct directory *
 simple_db_directory_load_subdir(db_file , struct directory *, const char *, GString *);
 
@@ -423,29 +280,10 @@ simple_db_directory_load_subdir(db_file fp, struct directory *parent, const char
 
 	return directory;
 }
-
-static inline void
-simple_db_save_internal(db_file fp, const struct directory *music_root)
-{
-	assert(music_root != NULL);
-
-	db_printf(fp, "%s\n", DIRECTORY_INFO_BEGIN);
-	db_printf(fp, DB_FORMAT_PREFIX "%u\n", DB_FORMAT);
-	db_printf(fp, "%s%s\n", DIRECTORY_MPD_VERSION, VERSION);
-	db_printf(fp, "%s%s\n", DIRECTORY_FS_CHARSET, path_get_fs_charset());
-
-	for (unsigned i = 0; i < TAG_NUM_OF_ITEM_TYPES; ++i)
-		if (!ignore_tag_items[i])
-			db_printf(fp, DB_TAG_PREFIX "%s\n", tag_item_names[i]);
-
-	db_printf(fp, "%s\n", DIRECTORY_INFO_END);
-
-	simple_db_directory_save(fp, music_root);
-}
-
 static inline int
-simple_db_load_internal(db_file fp, struct directory *music_root)
+simple_db_load_internal(db_file fp, struct simple_db *db)
 {
+	struct directory *music_root = db->root;
 	GString *buffer = g_string_sized_new(1024);
 	char *line;
 	int format = 0;
@@ -531,123 +369,15 @@ simple_db_load_internal(db_file fp, struct directory *music_root)
 
 	log_debug("reading DB");
 
-	db_lock();
+	_simple_db_lock(db);
 	int ret = simple_db_directory_load(fp, music_root, buffer);
-	db_unlock();
+	_simple_db_unlock(db);
 	g_string_free(buffer, true);
 
 	return ret;
 }
 
-MPD_PURE
-static const struct directory *
-simple_db_lookup_directory(const struct simple_db *db, const char *uri)
-{
-	assert(db != NULL);
-	assert(db->root != NULL);
-	assert(uri != NULL);
-
-	db_lock();
-	struct directory *directory =
-		directory_lookup_directory(db->root, uri);
-	db_unlock();
-	return directory;
-}
-
-static struct db *
-simple_db_init(const struct config_param *param)
-{
-	struct simple_db *db = malloc(sizeof(*db));
-	db_base_init(&db->base, &simple_db_plugin);
-
-	db->path = config_dup_block_path(param, "path");
-	if (db->path == NULL) {
-		free(db);
-			log_err("No \"path\" parameter specified");
-		return NULL;
-	}
-
-	return &db->base;
-}
-
-static void
-simple_db_finish(struct db *_db)
-{
-	struct simple_db *db = (struct simple_db *)_db;
-
-	free(db->path);
-	g_free(db);
-}
-
-static int
-simple_db_check(struct simple_db *db)
-{
-	assert(db != NULL);
-	assert(db->path != NULL);
-
-	/* Check if the file exists */
-	if (access(db->path, F_OK)) {
-		/* If the file doesn't exist, we can't check if we can write
-		 * it, so we are going to try to get the directory path, and
-		 * see if we can write a file in that */
-		char *dirPath = g_path_get_dirname(db->path);
-
-		/* Check that the parent part of the path is a directory */
-		struct stat st;
-		if (stat(dirPath, &st) < 0) {
-			free(dirPath);
-			log_err("Couldn't stat parent directory of db file "
-				    "\"%s\": %s",
-				    db->path, strerror(errno));
-			return -DB_ACCESS;
-		}
-
-		if (!S_ISDIR(st.st_mode)) {
-			free(dirPath);
-			log_err("Couldn't create db file \"%s\" because the "
-				    "parent path is not a directory",
-				    db->path);
-			return -DB_ACCESS;
-		}
-
-		/* Check if we can write to the directory */
-		if (access(dirPath, X_OK | W_OK)) {
-			log_err("Can't create db file in \"%s\": %s",
-				    dirPath, strerror(errno));
-			free(dirPath);
-			return -DB_ACCESS;
-		}
-
-		free(dirPath);
-
-		return MPD_SUCCESS;
-	}
-
-	/* Path exists, now check if it's a regular file */
-	struct stat st;
-	if (stat(db->path, &st) < 0) {
-		log_err("Couldn't stat db file \"%s\": %s",
-			    db->path, strerror(errno));
-		return -DB_ACCESS;
-	}
-
-	if (!S_ISREG(st.st_mode)) {
-		log_err("db file \"%s\" is not a regular file",
-			    db->path);
-		return -DB_ACCESS;
-	}
-
-	/* And check that we can write to it */
-	if (access(db->path, R_OK | W_OK)) {
-		log_err("Can't open db file \"%s\" for reading/writing: %s",
-			    db->path, strerror(errno));
-		return -DB_ACCESS;
-	}
-
-	return MPD_SUCCESS;
-}
-
-static int
+int
 simple_db_load(struct simple_db *db)
 {
 	assert(db != NULL);
@@ -661,7 +391,7 @@ simple_db_load(struct simple_db *db)
 		return -DB_ERRNO;
 	}
 
-	int ret = simple_db_load_internal(fp, db->root);
+	int ret = simple_db_load_internal(fp, db);
 	if (ret != MPD_SUCCESS) {
 		db_close(fp);
 		return ret;
@@ -676,115 +406,115 @@ simple_db_load(struct simple_db *db)
 	return MPD_SUCCESS;
 }
 
-static int
-simple_db_open(struct db *_db)
+/* ======================================================= *
+ * 			Database Save
+ * ======================================================= */
+static inline void
+simple_db_tag_save(db_file file, const struct tag *tag)
 {
-	struct simple_db *db = (struct simple_db *)_db;
+	if (tag->time >= 0)
+		db_printf(file, SONG_TIME "%i\n", tag->time);
 
-	db->root = directory_new_root();
-	db->mtime = 0;
+	if (tag->has_playlist)
+		db_printf(file, "Playlist: yes\n");
 
-	int ret = simple_db_load(db);
-	if (ret != MPD_SUCCESS) {
-		directory_free(db->root);
-
-		log_warning("Failed to load database.");
-
-		ret = simple_db_check(db);
-		if (ret != MPD_SUCCESS)
-			return ret;
-
-		db->root = directory_new_root();
-	}
-
-	return MPD_SUCCESS;
+	for (unsigned i = 0; i < tag->num_items; i++)
+		db_printf(file, "%s: %s\n",
+			tag_item_names[tag->items[i]->type],
+			tag->items[i]->value);
 }
+
+static inline void
+simple_db_song_save(db_file fp, const struct song *song)
+{
+	db_printf(fp, SONG_BEGIN "%s\n", song->uri);
+
+	if (song->end_ms > 0)
+		db_printf(fp, "Range: %u-%u\n", song->start_ms, song->end_ms);
+	else if (song->start_ms > 0)
+		db_printf(fp, "Range: %u-\n", song->start_ms);
+
+	if (song->tag != NULL)
+		simple_db_tag_save(fp, song->tag);
+
+	db_printf(fp, SONG_MTIME ": %li\n", (long)song->mtime);
+	db_printf(fp, SONG_END "\n");
+}
+
+
+static inline void
+simple_db_playlist_vector_save(db_file fp, const struct list_head *pv)
+{
+	struct playlist_metadata *pm;
+	playlist_vector_for_each(pm, pv)
+		db_printf(fp, PLAYLIST_META_BEGIN "%s\n"
+			"mtime: %li\n"
+			"playlist_end\n",
+			pm->name, (long)pm->mtime);
+}
+
 
 static void
-simple_db_close(struct db *_db)
+simple_db_directory_save(db_file fp, const struct directory *directory)
 {
-	struct simple_db *db = (struct simple_db *)_db;
+	if (!directory_is_root(directory)) {
+		db_printf(fp, DIRECTORY_MTIME "%lu\n",
+			(unsigned long)directory->mtime);
 
-	assert(db->root != NULL);
-
-	directory_free(db->root);
-}
-
-static struct song *
-simple_db_get_song(struct db *_db, const char *uri)
-{
-	struct simple_db *db = (struct simple_db *)_db;
-
-	assert(db->root != NULL);
-
-	db_lock();
-	struct song *song = directory_lookup_song(db->root, uri);
-	db_unlock();
-	if (song == NULL)
-		log_err("No such song: %s", uri);
-
-	return song;
-}
-
-static int
-simple_db_visit(struct db *_db, const struct db_selection *selection,
-		const struct db_visitor *visitor, void *ctx)
-{
-	const struct simple_db *db = (const struct simple_db *)_db;
-	const struct directory *directory =
-		simple_db_lookup_directory(db, selection->uri);
-	if (directory == NULL) {
-		struct song *song;
-		if (visitor->song != NULL &&
-		    (song = simple_db_get_song(_db, selection->uri)) != NULL)
-			return visitor->song(song, ctx);
-
-		log_err("No such directory");
-		return -DB_NOENT;
+		db_printf(fp, "%s%s\n", DIRECTORY_BEGIN,
+			directory_get_path(directory));
 	}
 
-	int ret;
-	if (selection->recursive && visitor->directory != NULL) {
-		ret = visitor->directory(directory, ctx);
-		if (ret != MPD_SUCCESS)
-			return ret;
+	struct directory *cur;
+	directory_for_each_child(cur, directory) {
+		char *base = g_path_get_basename(cur->path);
+
+		db_printf(fp, DIRECTORY_DIR "%s\n", base);
+		g_free(base);
+
+		simple_db_directory_save(fp, cur);
+
+		if (db_error(fp))
+			return;
 	}
 
-	db_lock();
-	ret = directory_walk(directory, selection->recursive,
-				  visitor, ctx);
-	db_unlock();
-	return ret;
+	struct song *song;
+	directory_for_each_song(song, directory)
+		simple_db_song_save(fp, song);
+
+	simple_db_playlist_vector_save(fp, &directory->playlists);
+
+	if (!directory_is_root(directory))
+		db_printf(fp, DIRECTORY_END "%s\n",
+			directory_get_path(directory));
 }
 
-const struct db_plugin simple_db_plugin = {
-	.name = "simple",
-	.init = simple_db_init,
-	.finish = simple_db_finish,
-	.open = simple_db_open,
-	.close = simple_db_close,
-	.get_song = simple_db_get_song,
-	.visit = simple_db_visit,
-};
 
-struct directory *
-simple_db_get_root(struct db *_db)
+static inline void
+simple_db_save_internal(db_file fp, const struct directory *music_root)
 {
-	struct simple_db *db = (struct simple_db *)_db;
+	assert(music_root != NULL);
 
-	assert(db != NULL);
-	assert(db->root != NULL);
+	db_printf(fp, "%s\n", DIRECTORY_INFO_BEGIN);
+	db_printf(fp, DB_FORMAT_PREFIX "%u\n", DB_FORMAT);
+	db_printf(fp, "%s%s\n", DIRECTORY_MPD_VERSION, VERSION);
+	db_printf(fp, "%s%s\n", DIRECTORY_FS_CHARSET, path_get_fs_charset());
 
-	return db->root;
+	for (unsigned i = 0; i < TAG_NUM_OF_ITEM_TYPES; ++i)
+		if (!ignore_tag_items[i])
+			db_printf(fp, DB_TAG_PREFIX "%s\n", tag_item_names[i]);
+
+	db_printf(fp, "%s\n", DIRECTORY_INFO_END);
+
+	simple_db_directory_save(fp, music_root);
 }
 
 int
-simple_db_save(struct db *_db)
+simple_db_save(struct simple_db *db)
 {
-	struct simple_db *db = (struct simple_db *)_db;
 	struct directory *music_root = db->root;
 
-	db_lock();
+	_simple_db_lock(db);
 
 	log_debug("removing empty directories from DB");
 	directory_prune_empty(music_root);
@@ -792,7 +522,7 @@ simple_db_save(struct db *_db)
 	log_debug("sorting DB");
 	directory_sort(music_root);
 
-	db_unlock();
+	_simple_db_unlock(db);
 
 	log_debug("writing DB");
 
@@ -821,13 +551,4 @@ simple_db_save(struct db *_db)
 	return MPD_SUCCESS;
 }
 
-time_t
-simple_db_get_mtime(const struct db *_db)
-{
-	const struct simple_db *db = (const struct simple_db *)_db;
 
-	assert(db != NULL);
-	assert(db->root != NULL);
-
-	return db->mtime;
-}
