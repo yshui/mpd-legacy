@@ -319,7 +319,7 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 		int audio_size = buffer_size;
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(53,25,0)
 
-		AVFrame *frame = avcodec_alloc_frame();
+		AVFrame *frame = av_frame_alloc();
 		if (frame == NULL) {
 			log_warning("Could not allocate frame");
 			break;
@@ -340,7 +340,7 @@ ffmpeg_send_packet(struct decoder *decoder, struct input_stream *is,
 			len = -1;
 
 #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(54, 28, 0)
-		avcodec_free_frame(&frame);
+		av_frame_free(&frame);
 #else
 		av_freep(&frame);
 #endif
