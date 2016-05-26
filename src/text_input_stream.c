@@ -76,13 +76,12 @@ text_input_stream_read(struct text_input_stream *tis)
 			--length;
 
 			ssize_t ret = input_stream_lock_read(tis->is, dest, length);
-			if (ret > 0) {
-				nbytes = ret;
-				fifo_buffer_append(tis->buffer, nbytes);
-			} else if (ret < 0) {
+			if (ret < 0) {
 				log_warning("%s", strerror(-nbytes));
 				return NULL;
 			}
+			nbytes = ret;
+			fifo_buffer_append(tis->buffer, nbytes);
 		} else
 			nbytes = 0;
 
