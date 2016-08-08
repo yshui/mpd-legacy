@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_OUTPUT_PLUGIN_H
-#define MPD_OUTPUT_PLUGIN_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 #include "log.h"
 
 #include <glib.h>
@@ -201,5 +200,3 @@ ao_plugin_cancel(struct audio_output *ao);
 
 bool
 ao_plugin_pause(struct audio_output *ao);
-
-#endif

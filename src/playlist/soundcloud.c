@@ -250,18 +250,18 @@ static yajl_callbacks parse_callbacks = {
  * @return -1 on error, 0 on success.
  */
 static int
-soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* cond)
+soundcloud_parse_json(const char *url, yajl_handle hand)
 {
 	struct input_stream *input_stream;
 	char buffer[4096];
 	unsigned char *ubuffer = (unsigned char *)buffer;
 	ssize_t nbytes;
 
-	input_stream = input_stream_open(url, mutex, cond);
+	input_stream = input_stream_open(url);
 	if (IS_ERR(input_stream))
 		return PTR_ERR(input_stream);
 
-	g_mutex_lock(mutex);
+	mtx_lock(&input_stream->mutex);
 	input_stream_wait_ready(input_stream);
 
 	yajl_status stat;
@@ -273,7 +273,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 			if (input_stream_eof(input_stream)) {
 				done = true;
 			} else {
-				g_mutex_unlock(mutex);
+				mtx_unlock(&input_stream->mutex);
 				input_stream_close(input_stream);
 				return nbytes ? nbytes : -MPD_ACCESS;
 			}
@@ -301,7 +301,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
 		}
 	}
 
-	g_mutex_unlock(mutex);
+	mtx_unlock(&input_stream->mutex);
 	input_stream_close(input_stream);
 
 	return 0;
@@ -316,7 +316,7 @@ soundcloud_parse_json(const char *url, yajl_handle hand, GMutex* mutex, GCond* c
  */
 
 static struct playlist_provider *
-soundcloud_open_uri(const char *uri, GMutex *mutex, GCond *cond)
+soundcloud_open_uri(const char *uri)
 {
 	struct soundcloud_playlist *playlist = NULL;
 
@@ -379,7 +379,7 @@ soundcloud_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	hand = yajl_alloc(&parse_callbacks, NULL, (void *) &data);
 #endif
 
-	int ret = soundcloud_parse_json(u, hand, mutex, cond);
+	int ret = soundcloud_parse_json(u, hand);
 
 	g_free(u);
 	yajl_free(hand);

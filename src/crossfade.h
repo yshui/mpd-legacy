@@ -21,7 +21,7 @@
 #define MPD_CROSSFADE_H
 
 struct audio_format;
-struct music_chunk;
+struct audio_chunk;
 
 /**
  * Calculate how many music pipe chunks should be used for crossfading.

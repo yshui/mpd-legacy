@@ -24,7 +24,6 @@
 #include "chunk.h"
 #include "conf.h"
 #include "pipe.h"
-#include "buffer.h"
 #include "player_control.h"
 #include "mpd_error.h"
 #include "notify.h"
@@ -45,15 +44,9 @@ static struct audio_output **audio_outputs;
 static unsigned int num_audio_outputs;
 
 /**
- * The #music_buffer object where consumed chunks are returned.
+ * The #audio_pipe object which feeds all audio outputs.
  */
-static struct music_buffer *g_music_buffer;
-
-/**
- * The #music_pipe object which feeds all audio outputs.  It is filled
- * by audio_output_all_play().
- */
-static struct music_pipe *g_mp;
+static struct audio_pipe *g_p;
 
 /**
  * The "elapsed_time" stamp of the most recently finished chunk.
@@ -262,60 +255,23 @@ audio_output_all_update(void)
 
 	for (i = 0; i < num_audio_outputs; ++i)
 		ret = audio_output_update(audio_outputs[i],
-					  &input_audio_format, g_mp) || ret;
+					  &input_audio_format, g_p) || ret;
 
 	return ret;
 }
 
 bool
-audio_output_all_play(struct music_chunk *chunk)
-{
-	bool ret;
-	unsigned int i;
-
-	assert(g_music_buffer != NULL);
-	assert(g_mp != NULL);
-	assert(chunk != NULL);
-	assert(music_chunk_check_format(chunk, &input_audio_format));
-
-	ret = audio_output_all_update();
-	if (!ret)
-		return false;
-
-	music_pipe_push(g_mp, chunk);
-
-	for (i = 0; i < num_audio_outputs; ++i)
-		audio_output_play(audio_outputs[i]);
-
-	return true;
-}
-
-bool
 audio_output_all_open(const struct audio_format *audio_format,
-		      struct music_buffer *buffer)
+		      struct audio_pipe *p)
 {
 	bool ret = false, enabled = false;
 	unsigned int i;
 
 	assert(audio_format != NULL);
-	assert(buffer != NULL);
-	assert(g_music_buffer == NULL || g_music_buffer == buffer);
-	assert((g_mp == NULL) == (g_music_buffer == NULL));
+	assert((g_p == NULL) || (g_p == p));
 
-	g_music_buffer = buffer;
-
-	/* the audio format must be the same as existing chunks in the
-	   pipe */
-	assert(g_mp == NULL || music_pipe_check_format(g_mp, audio_format));
-
-	if (g_mp == NULL)
-		g_mp = music_pipe_new();
-	else
-		/* if the pipe hasn't been cleared, the the audio
-		   format must not have changed */
-		assert(music_pipe_empty(g_mp) ||
-		       audio_format_equals(audio_format,
-					   &input_audio_format));
+	if (g_p == NULL)
+		g_p = p;
 
 	input_audio_format = *audio_format;
 
@@ -341,59 +297,15 @@ audio_output_all_open(const struct audio_format *audio_format,
 	return ret;
 }
 
+#if 0
 /**
- * Has the specified audio output already consumed this chunk?
- */
-static bool
-chunk_is_consumed_in(const struct audio_output *ao,
-		     const struct music_chunk *chunk)
-{
-	if (!ao->open)
-		return true;
-
-	if (ao->chunk == NULL)
-		return false;
-
-	assert(chunk == ao->chunk || music_pipe_contains(g_mp, ao->chunk));
-
-	if (chunk != ao->chunk) {
-		assert(chunk->next != NULL);
-		return true;
-	}
-
-	return ao->chunk_finished && chunk->next == NULL;
-}
-
-/**
- * Has this chunk been consumed by all audio outputs?
- */
-static bool
-chunk_is_consumed(const struct music_chunk *chunk)
-{
-	for (unsigned i = 0; i < num_audio_outputs; ++i) {
-		const struct audio_output *ao = audio_outputs[i];
-		bool consumed;
-
-		g_mutex_lock(ao->mutex);
-		consumed = chunk_is_consumed_in(ao, chunk);
-		g_mutex_unlock(ao->mutex);
-
-		if (!consumed)
-			return false;
-	}
-
-	return true;
-}
-
-/**
- * There's only one chunk left in the pipe (#g_mp), and all audio
+ * There's only one chunk left in the pipe (#g_p), and all audio
  * outputs have consumed it already.  Clear the reference.
  */
 static void
-clear_tail_chunk(const struct music_chunk *chunk, bool *locked)
+clear_tail_chunk(const struct audio_chunk *chunk, bool *locked)
 {
 	assert(chunk->next == NULL);
-	assert(music_pipe_contains(g_mp, chunk));
 
 	for (unsigned i = 0; i < num_audio_outputs; ++i) {
 		struct audio_output *ao = audio_outputs[i];
@@ -414,24 +326,27 @@ clear_tail_chunk(const struct music_chunk *chunk, bool *locked)
 	}
 }
 
+ * all_check() no longer needed because now chunks are returned to pipe->availabe
+ * as soon as they are consumed
+
 unsigned
 audio_output_all_check(void)
 {
-	const struct music_chunk *chunk;
+	const struct audio_chunk *chunk;
 	bool is_tail;
-	struct music_chunk *shifted;
+	struct audio_chunk *shifted;
 	bool locked[num_audio_outputs];
 
 	assert(g_music_buffer != NULL);
 	assert(g_mp != NULL);
 
-	while ((chunk = music_pipe_peek(g_mp)) != NULL) {
-		assert(!music_pipe_empty(g_mp));
+	while ((chunk = audio_pipe_peek(g_mp)) != NULL) {
+		assert(!audio_pipe_empty(g_mp));
 
 		if (!chunk_is_consumed(chunk))
 			/* at least one output is not finished playing
 			   this chunk */
-			return music_pipe_size(g_mp);
+			return audio_pipe_size(g_mp);
 
 		if (chunk->length > 0 && chunk->times >= 0.0)
 			/* only update elapsed_time if the chunk
@@ -445,7 +360,7 @@ audio_output_all_check(void)
 			clear_tail_chunk(chunk, locked);
 
 		/* remove the chunk from the pipe */
-		shifted = music_pipe_shift(g_mp);
+		shifted = audio_pipe_shift(g_mp);
 		assert(shifted == chunk);
 
 		if (is_tail)
@@ -461,6 +376,7 @@ audio_output_all_check(void)
 
 	return 0;
 }
+#endif
 
 bool
 audio_output_all_wait(struct player_control *pc, unsigned threshold)
@@ -514,8 +430,8 @@ audio_output_all_cancel(void)
 
 	/* clear the music pipe and return all chunks to the buffer */
 
-	if (g_mp != NULL)
-		music_pipe_clear(g_mp, g_music_buffer);
+	if (g_p != NULL)
+		audio_pipe_clear(g_p);
 
 	/* the audio outputs are now waiting for a signal, to
 	   synchronize the cleared music pipe */
@@ -535,15 +451,10 @@ audio_output_all_close(void)
 	for (i = 0; i < num_audio_outputs; ++i)
 		audio_output_close(audio_outputs[i]);
 
-	if (g_mp != NULL) {
-		assert(g_music_buffer != NULL);
-
-		music_pipe_clear(g_mp, g_music_buffer);
-		music_pipe_free(g_mp);
-		g_mp = NULL;
+	if (g_p != NULL) {
+		audio_pipe_free(g_p);
+		g_p = NULL;
 	}
-
-	g_music_buffer = NULL;
 
 	audio_format_clear(&input_audio_format);
 
@@ -558,15 +469,10 @@ audio_output_all_release(void)
 	for (i = 0; i < num_audio_outputs; ++i)
 		audio_output_release(audio_outputs[i]);
 
-	if (g_mp != NULL) {
-		assert(g_music_buffer != NULL);
-
-		music_pipe_clear(g_mp, g_music_buffer);
-		music_pipe_free(g_mp);
-		g_mp = NULL;
+	if (g_p != NULL) {
+		audio_pipe_free(g_p);
+		g_p = NULL;
 	}
-
-	g_music_buffer = NULL;
 
 	audio_format_clear(&input_audio_format);
 

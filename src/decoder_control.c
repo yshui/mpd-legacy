@@ -17,6 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "dc"
+
+#include "log.h"
+
 #include "config.h"
 #include "decoder_control.h"
 #include "pipe.h"
@@ -28,15 +32,16 @@
 #define G_LOG_DOMAIN "decoder_control"
 
 struct decoder_control *
-dc_new(GCond *client_cond)
+dc_new(struct player_control *pc)
 {
 	struct decoder_control *dc = tmalloc(struct decoder_control, 1);
 
-	dc->thread = NULL;
+	dc->pc = pc;
 
-	dc->mutex = g_mutex_new();
-	dc->cond = g_cond_new();
-	dc->client_cond = client_cond;
+	cnd_init(&dc->cond);
+	mtx_init(&dc->mutex, mtx_plain);
+	cnd_init(&dc->client_cond);
+	mtx_init(&dc->client_mutex, mtx_plain);
 
 	dc->state = DECODE_STATE_STOP;
 	dc->command = DECODE_COMMAND_NONE;
@@ -53,8 +58,11 @@ dc_new(GCond *client_cond)
 void
 dc_free(struct decoder_control *dc)
 {
-	g_cond_free(dc->cond);
-	g_mutex_free(dc->mutex);
+	mtx_destroy(&dc->mutex);
+	cnd_destroy(&dc->cond);
+	mtx_destroy(&dc->client_mutex);
+	cnd_destroy(&dc->client_cond);
+
 	free(dc->mixramp_start);
 	free(dc->mixramp_end);
 	free(dc->mixramp_prev_end);
@@ -62,37 +70,36 @@ dc_free(struct decoder_control *dc)
 }
 
 static void
-dc_command_wait_locked(struct decoder_control *dc)
-{
-	while (dc->command != DECODE_COMMAND_NONE)
-		g_cond_wait(dc->client_cond, dc->mutex);
-}
-
-static void
-dc_command_locked(struct decoder_control *dc, enum decoder_command cmd)
-{
-	dc->command = cmd;
-	decoder_signal(dc);
-	dc_command_wait_locked(dc);
-}
-
-static void
 dc_command(struct decoder_control *dc, enum decoder_command cmd)
 {
-	decoder_lock(dc);
-	dc_command_locked(dc, cmd);
-	decoder_unlock(dc);
+	log_err("Before dc->mutex x %lu", thrd_current());
+	mtx_lock(&dc->mutex);
+	log_err("After dc->mutex x %lu", thrd_current());
+	dc->command = cmd;
+	mtx_lock(&dc->client_mutex);
+	dc->state = DECODE_STATE_PENDING;
+	log_err("After dc->client_mutex x %lu", thrd_current());
+	mtx_unlock(&dc->mutex);
+	log_err("After unlock dc->mutex x %lu", thrd_current());
+
+	cnd_signal(&dc->cond);
+
+	while (dc->state == DECODE_STATE_PENDING) {
+		log_err("Start to wait x %lu", thrd_current());
+		cnd_wait(&dc->client_cond, &dc->client_mutex);
+	}
+	mtx_unlock(&dc->client_mutex);
 }
 
 static void
 dc_command_async(struct decoder_control *dc, enum decoder_command cmd)
 {
-	decoder_lock(dc);
+	mtx_lock(&dc->mutex);
 
 	dc->command = cmd;
-	decoder_signal(dc);
+	cnd_signal(&dc->cond);
 
-	decoder_unlock(dc);
+	mtx_unlock(&dc->mutex);
 }
 
 void
@@ -116,19 +123,15 @@ dc_start(struct decoder_control *dc, struct song *song,
 void
 dc_stop(struct decoder_control *dc)
 {
-	decoder_lock(dc);
-
 	if (dc->command != DECODE_COMMAND_NONE)
 		/* Attempt to cancel the current command.  If it's too
 		   late and the decoder thread is already executing
 		   the old command, we'll call STOP again in this
 		   function (see below). */
-		dc_command_locked(dc, DECODE_COMMAND_STOP);
+		dc_command(dc, DECODE_COMMAND_STOP);
 
 	if (dc->state != DECODE_STATE_STOP && dc->state != DECODE_STATE_ERROR)
-		dc_command_locked(dc, DECODE_COMMAND_STOP);
-
-	decoder_unlock(dc);
+		dc_command(dc, DECODE_COMMAND_STOP);
 }
 
 bool
@@ -154,13 +157,10 @@ dc_seek(struct decoder_control *dc, double where)
 void
 dc_quit(struct decoder_control *dc)
 {
-	assert(dc->thread != NULL);
-
 	dc->quit = true;
 	dc_command_async(dc, DECODE_COMMAND_STOP);
 
-	g_thread_join(dc->thread);
-	dc->thread = NULL;
+	thrd_join(dc->thread, NULL);
 }
 
 void

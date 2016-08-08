@@ -136,7 +136,13 @@ player_command_finished_locked(struct player_control *pc)
 	assert(pc->command != PLAYER_COMMAND_NONE);
 
 	pc->command = PLAYER_COMMAND_NONE;
-	g_cond_signal(main_cond);
+
+	mtx_lock(&pc->client_mutex);
+	if (pc->error == PLAYER_ERROR_PENDING)
+		pc->error = PLAYER_ERROR_NOERROR;
+	mtx_unlock(&pc->client_mutex);
+
+	cnd_signal(&pc->client_cond);
 }
 
 static void
@@ -238,7 +244,7 @@ player_wait_for_decoder(struct player *player)
 
 	player->queued = false;
 
-	if (decoder_lock_has_failed(dc)) {
+	if (decoder_has_failed(dc)) {
 		player_lock(pc);
 		pc->errored_song = dc->song;
 		pc->error = PLAYER_ERROR_FILE;
@@ -352,11 +358,8 @@ player_check_decoder_startup(struct player *player)
 
 	assert(player->decoder_starting);
 
-	decoder_lock(dc);
-
 	if (decoder_has_failed(dc)) {
 		/* the decoder failed */
-		decoder_unlock(dc);
 
 		player_lock(pc);
 		pc->errored_song = dc->song;
@@ -366,8 +369,6 @@ player_check_decoder_startup(struct player *player)
 		return false;
 	} else if (!decoder_is_starting(dc)) {
 		/* the decoder is ready and ok */
-
-		decoder_unlock(dc);
 
 		if (player->output_open &&
 		    !audio_output_all_wait(pc, 1))
@@ -398,8 +399,8 @@ player_check_decoder_startup(struct player *player)
 	} else {
 		/* the decoder is not yet ready; wait
 		   some more */
-		player_wait_decoder(pc, dc);
-		decoder_unlock(dc);
+		cnd_wait(&dc->client_cond, &dc->client_mutex);
+		mtx_unlock(&dc->client_mutex);
 
 		return true;
 	}
@@ -418,30 +419,9 @@ player_send_silence(struct player *player)
 	assert(player->output_open);
 	assert(audio_format_defined(&player->play_audio_format));
 
-	struct music_chunk *chunk = music_buffer_allocate(player_buffer);
-	if (chunk == NULL) {
-		log_warning("Failed to allocate silence buffer");
-		return false;
-	}
+	audio_pipe_flush(player->pipe);
 
-#ifndef NDEBUG
-	chunk->audio_format = player->play_audio_format;
-#endif
-
-	size_t frame_size =
-		audio_format_frame_size(&player->play_audio_format);
-	/* this formula ensures that we don't send
-	   partial frames */
-	unsigned num_frames = sizeof(chunk->data) / frame_size;
-
-	chunk->times = -1.0; /* undefined time stamp */
-	chunk->length = num_frames * frame_size;
-	memset(chunk->data, 0, chunk->length);
-
-	if (!audio_output_all_play(chunk)) {
-		music_buffer_return(player_buffer, chunk);
-		return false;
-	}
+	audio_pipe_write_sync(player->pipe, -1, &player->play_audio_format, 0, CHUNK_SIZE);
 
 	return true;
 }
@@ -535,7 +515,6 @@ static bool player_seek_decoder(struct player *player)
 static void player_process_command(struct player *player)
 {
 	struct player_control *pc = player->pc;
-	struct decoder_control *dc = player->dc;
 
 	switch (pc->command) {
 	case PLAYER_COMMAND_NONE:
@@ -760,19 +739,18 @@ play_next_chunk(struct player *player)
 		} else {
 			/* there are not enough decoded chunks yet */
 
-			decoder_lock(dc);
-
 			if (decoder_is_idle(dc)) {
 				/* the decoder isn't running, abort
 				   cross fading */
-				decoder_unlock(dc);
 
 				player->xfade = XFADE_DISABLED;
 			} else {
-				/* wait for the decoder */
+				/* signal the decoder that chunks might be free */
 				decoder_signal(dc);
-				player_wait_decoder(pc, dc);
-				decoder_unlock(dc);
+				decoder_lock_is(dc);
+				/* wait for the decoder */
+				decoder_wait_is(dc);
+				decoder_unlock_is(dc);
 
 				return true;
 			}
@@ -817,12 +795,10 @@ play_next_chunk(struct player *player)
 	/* this formula should prevent that the decoder gets woken up
 	   with each chunk; it is more efficient to make it decode a
 	   larger block at a time */
-	decoder_lock(dc);
 	if (!decoder_is_idle(dc) &&
 	    music_pipe_size(dc->pipe) <= (pc->buffered_before_play +
 					 music_buffer_size(player_buffer) * 3) / 4)
 		decoder_signal(dc);
-	decoder_unlock(dc);
 
 	return true;
 }
@@ -933,7 +909,7 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 			   prevent stuttering on slow machines */
 
 			if (music_pipe_size(player.pipe) < pc->buffered_before_play &&
-			    !decoder_lock_is_idle(dc)) {
+			    !decoder_is_idle(dc)) {
 				/* not enough decoded buffer space yet */
 
 				if (!player.paused &&
@@ -942,10 +918,10 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 				    !player_send_silence(&player))
 					break;
 
-				decoder_lock(dc);
 				/* XXX race condition: check decoder again */
-				player_wait_decoder(pc, dc);
-				decoder_unlock(dc);
+				mtx_lock(&dc->client_mutex);
+				cnd_wait(&dc->client_cond, &dc->client_mutex);
+				mtx_unlock(&dc->client_mutex);
 				player_lock(pc);
 				continue;
 			} else {
@@ -972,7 +948,7 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 		*/
 #endif
 
-		if (decoder_lock_is_idle(dc) && player.queued &&
+		if (decoder_is_idle(dc) && player.queued &&
 		    dc->pipe == player.pipe) {
 			/* the decoder has finished the current song;
 			   make it decode the next song */
@@ -987,7 +963,7 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 		    !pc->border_pause &&
 		    player_dc_at_next_song(&player) &&
 		    player.xfade == XFADE_UNKNOWN &&
-		    !decoder_lock_is_starting(dc)) {
+		    !decoder_is_starting(dc)) {
 			/* enable cross fading in this song?  if yes,
 			   calculate how many chunks will be required
 			   for it */
@@ -1035,7 +1011,7 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 
 			if (!player_song_border(&player))
 				break;
-		} else if (decoder_lock_is_idle(dc)) {
+		} else if (decoder_is_idle(dc)) {
 			/* check the size of the pipe again, because
 			   the decoder thread may have added something
 			   since we last checked */
@@ -1080,17 +1056,25 @@ static void do_play(struct player_control *pc, struct decoder_control *dc)
 	player_lock(pc);
 }
 
-static gpointer
-player_task(gpointer arg)
+static int
+player_task(void *arg)
 {
 	struct player_control *pc = arg;
 
-	struct decoder_control *dc = dc_new(pc->cond);
+	struct decoder_control *dc = dc_new(pc);
 	decoder_thread_start(dc);
 
 	player_buffer = music_buffer_new(pc->buffer_chunks);
 
 	player_lock(pc);
+
+	// Make sure parent thread is waiting
+	mtx_lock(&pc->client_mutex);
+	mtx_unlock(&pc->client_mutex);
+
+	// Wait for first synchronization
+	cnd_signal(&pc->client_cond);
+	player_wait(pc);
 
 	while (1) {
 		switch (pc->command) {
@@ -1139,7 +1123,7 @@ player_task(gpointer arg)
 			break;
 
 		case PLAYER_COMMAND_EXIT:
-			player_unlock(pc);
+			mtx_unlock(&pc->mutex);
 
 			dc_quit(dc);
 			dc_free(dc);
@@ -1147,7 +1131,7 @@ player_task(gpointer arg)
 			music_buffer_free(player_buffer);
 
 			player_command_finished(pc);
-			return NULL;
+			return 0;
 
 		case PLAYER_COMMAND_CANCEL:
 			pc->next_song = NULL;
@@ -1160,19 +1144,28 @@ player_task(gpointer arg)
 			break;
 
 		case PLAYER_COMMAND_NONE:
-			player_wait(pc);
 			break;
 		}
+		pc->command = PLAYER_COMMAND_NONE;
+		player_wait(pc);
 	}
 }
 
 void
 player_create(struct player_control *pc)
 {
-	assert(pc->thread == NULL);
+	mtx_lock(&pc->client_mutex);
+	int ret = thrd_create(&pc->thread, player_task, pc);
+	if (ret != thrd_success)
+		MPD_ERROR("Failed to spawn player task: %d", ret);
 
-	GError *e = NULL;
-	pc->thread = g_thread_create(player_task, pc, true, &e);
-	if (pc->thread == NULL)
-		MPD_ERROR("Failed to spawn player task: %s", e->message);
+	// Wait for player thread to be ready
+	cnd_wait(&pc->client_cond, &pc->client_mutex);
+	mtx_unlock(&pc->client_mutex);
+
+	// Kick off the player thread
+	mtx_lock(&pc->mutex);
+	pc->command = PLAYER_COMMAND_NONE;
+	mtx_unlock(&pc->mutex);
+	cnd_signal(&pc->cond);
 }

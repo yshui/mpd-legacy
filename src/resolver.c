@@ -77,10 +77,16 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length)
 		return strdup(host);
 #endif
 
+	char *buf = NULL;
 	if (strchr(host, ':') != NULL)
-		return g_strconcat("[", host, "]:", serv, NULL);
+		ret = asprintf(&buf, "[%s]:%s", host, serv);
+	else
+		ret = asprintf(&buf, "%s:%s", host, serv);
 
-	return g_strconcat(host, ":", serv, NULL);
+	if (ret < 0)
+		buf = NULL;
+
+	return buf;
 }
 
 struct addrinfo *
@@ -116,7 +122,7 @@ resolve_host_port(const char *host_port, unsigned default_port,
 
 	char buffer[32];
 	if (port == NULL && default_port != 0) {
-		g_snprintf(buffer, sizeof(buffer), "%u", default_port);
+		snprintf(buffer, sizeof(buffer), "%u", default_port);
 		port = buffer;
 	}
 

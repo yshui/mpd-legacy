@@ -130,6 +130,7 @@ mpd_pc_single(audiofile audiofile>=0.1.7 audiofile.c)
 
 
 add_library(decoder STATIC ${DECODER_SRC})
+target_link_libraries(decoder util arch)
 configure_file(decoder_conf.h.in decoder_conf.h)
 set(DECODER_LIST ${DECODER_LIST} PARENT_SCOPE)
 unset(list_var)

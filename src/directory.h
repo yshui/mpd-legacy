@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2003-2011 The Music Player Daemon Project
+ * Copyright (C) 2016      Yuxuan Shui <yshuiv7@gmail.com>
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,11 +18,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_DIRECTORY_H
-#define MPD_DIRECTORY_H
+#pragma once
 
 #include "util/list.h"
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -257,5 +257,3 @@ directory_sort(struct directory *directory);
 int
 directory_walk(const struct directory *directory, bool recursive,
 	       const struct db_visitor *visitor, void *ctx);
-
-#endif

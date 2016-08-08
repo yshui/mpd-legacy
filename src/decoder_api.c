@@ -63,10 +63,8 @@ decoder_initialized(struct decoder *decoder,
 	dc->seekable = seekable;
 	dc->total_time = total_time;
 
-	decoder_lock(dc);
 	dc->state = DECODE_STATE_DECODE;
-	g_cond_signal(dc->client_cond);
-	decoder_unlock(dc);
+	cnd_signal(&dc->client_cond);
 
 	log_debug("audio_format=%s, seekable=%s",
 		audio_format_to_string(&dc->in_audio_format, &af_string),
@@ -154,8 +152,6 @@ decoder_command_finished(struct decoder *decoder)
 {
 	struct decoder_control *dc = decoder->dc;
 
-	decoder_lock(dc);
-
 	assert(dc->command != DECODE_COMMAND_NONE ||
 	       decoder->initial_seek_running);
 	assert(dc->command != DECODE_COMMAND_SEEK ||
@@ -170,7 +166,6 @@ decoder_command_finished(struct decoder *decoder)
 
 		decoder->initial_seek_running = false;
 		decoder->timestamp = dc->start_ms / 1000.;
-		decoder_unlock(dc);
 		return;
 	}
 
@@ -190,8 +185,7 @@ decoder_command_finished(struct decoder *decoder)
 	}
 
 	dc->command = DECODE_COMMAND_NONE;
-	g_cond_signal(dc->client_cond);
-	decoder_unlock(dc);
+	cnd_signal(&dc->client_cond);
 }
 
 double decoder_seek_where(struct decoder * decoder)
@@ -282,7 +276,7 @@ size_t decoder_read(struct decoder *decoder,
 		if (input_stream_available(is))
 			break;
 
-		g_cond_wait(is->cond, is->mutex);
+		cnd_wait(&is->cond, &is->mutex);
 	}
 
 	nbytes = input_stream_read(is, buffer, length);
@@ -318,7 +312,7 @@ do_send_tag(struct decoder *decoder, const struct tag *tag)
 		/* there is a partial chunk - flush it, we want the
 		   tag in a new chunk */
 		decoder_flush_chunk(decoder);
-		g_cond_signal(decoder->dc->client_cond);
+		cnd_signal(&decoder->dc->client_cond);
 	}
 
 	assert(decoder->chunk == NULL);
@@ -364,6 +358,8 @@ decoder_data(struct decoder *decoder,
 	     const void *_data, size_t length,
 	     uint16_t kbit_rate)
 {
+
+	log_info("decoder_data %lu", thrd_current());
 	struct decoder_control *dc = decoder->dc;
 	const char *data = _data;
 	enum decoder_command cmd;
@@ -372,9 +368,7 @@ decoder_data(struct decoder *decoder,
 	assert(dc->pipe != NULL);
 	assert(length % audio_format_frame_size(&dc->in_audio_format) == 0);
 
-	decoder_lock(dc);
 	cmd = decoder_get_virtual_command(decoder);
-	decoder_unlock(dc);
 
 	if (cmd == DECODE_COMMAND_STOP || cmd == DECODE_COMMAND_SEEK ||
 	    length == 0)
@@ -431,7 +425,7 @@ decoder_data(struct decoder *decoder,
 		if (dest == NULL) {
 			/* the chunk is full, flush it */
 			decoder_flush_chunk(decoder);
-			g_cond_signal(dc->client_cond);
+			cnd_signal(&dc->client_cond);
 			continue;
 		}
 
@@ -450,7 +444,7 @@ decoder_data(struct decoder *decoder,
 		if (full) {
 			/* the chunk is full, flush it */
 			decoder_flush_chunk(decoder);
-			g_cond_signal(dc->client_cond);
+			cnd_signal(&dc->client_cond);
 		}
 
 		data += nbytes;
@@ -539,7 +533,7 @@ decoder_replay_gain(struct decoder *decoder,
 			   replay gain values affect the following
 			   samples */
 			decoder_flush_chunk(decoder);
-			g_cond_signal(decoder->dc->client_cond);
+			cnd_signal(&decoder->dc->client_cond);
 		}
 	} else
 		decoder->replay_gain_serial = 0;

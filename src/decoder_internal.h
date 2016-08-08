@@ -17,8 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_DECODER_INTERNAL_H
-#define MPD_DECODER_INTERNAL_H
+#pragma once
 
 #include "decoder_command.h"
 #include "pcm/pcm_convert.h"
@@ -71,7 +70,7 @@ struct decoder {
 	struct tag *decoder_tag;
 
 	/** the chunk currently being written to */
-	struct music_chunk *chunk;
+	struct audio_chunk *chunk;
 
 	struct replay_gain_info replay_gain_info;
 
@@ -81,20 +80,3 @@ struct decoder {
 	 */
 	unsigned replay_gain_serial;
 };
-
-/**
- * Returns the current chunk the decoder writes to, or allocates a new
- * chunk if there is none.
- *
- * @return the chunk, or NULL if we have received a decoder command
- */
-struct music_chunk *
-decoder_get_chunk(struct decoder *decoder);
-
-/**
- * Flushes the current chunk.
- */
-void
-decoder_flush_chunk(struct decoder *decoder);
-
-#endif

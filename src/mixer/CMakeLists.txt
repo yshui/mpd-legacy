@@ -30,3 +30,5 @@ endif()
 add_library(mixer
 	${MIXER_SRC}
 )
+
+target_link_libraries(mixer util)

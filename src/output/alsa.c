@@ -112,7 +112,7 @@ alsa_device(const struct alsa_data *ad)
 static struct alsa_data *
 alsa_data_new(void)
 {
-	struct alsa_data *ret = g_new(struct alsa_data, 1);
+	struct alsa_data *ret = tmalloc(struct alsa_data, 1);
 
 	ret->mode = 0;
 	ret->writei = snd_pcm_writei;
@@ -173,7 +173,7 @@ alsa_finish(struct audio_output *ao)
 	ao_base_finish(&ad->base);
 
 	free(ad->device);
-	g_free(ad);
+	free(ad);
 
 	/* free libasound's config cache */
 	snd_config_update_free_global();
@@ -713,7 +713,7 @@ alsa_drain(struct audio_output *ao)
 		snd_pcm_uframes_t nframes =
 			ad->period_frames - ad->period_position;
 		size_t nbytes = nframes * ad->out_frame_size;
-		void *buffer = g_malloc(nbytes);
+		void *buffer = malloc(nbytes);
 		snd_pcm_hw_params_t *params;
 		snd_pcm_format_t format;
 		unsigned channels;
@@ -725,7 +725,7 @@ alsa_drain(struct audio_output *ao)
 
 		snd_pcm_format_set_silence(format, buffer, nframes * channels);
 		ad->writei(ad->pcm, buffer, nframes);
-		g_free(buffer);
+		free(buffer);
 	}
 
 	snd_pcm_drain(ad->pcm);

@@ -28,7 +28,6 @@
 #include "tag.h"
 #include "icy_metadata.h"
 #include "io_thread.h"
-#include "glib_compat.h"
 
 #include <assert.h>
 
@@ -42,7 +41,6 @@
 #include <errno.h>
 
 #include <curl/curl.h>
-#include <glib.h>
 
 /**
  * Do not buffer more than this number of bytes.  It should be a
@@ -279,14 +277,14 @@ curl_update_fds(void)
 
 			curl.fds = g_slist_prepend(curl.fds, poll_fd);
 		} else {
-			g_free(poll_fd);
+			free(poll_fd);
 		}
 	}
 
 	for (int fd = 0; fd <= max_fd; ++fd) {
 		gushort events = input_curl_fd_events(fd, &rfds, &wfds, &efds);
 		if (events != 0) {
-			GPollFD *poll_fd = g_new(GPollFD, 1);
+			GPollFD *poll_fd = tmalloc(GPollFD, 1);
 			poll_fd->fd = fd;
 			poll_fd->events = events;
 			g_source_add_poll(curl.source, poll_fd);
@@ -417,11 +415,9 @@ input_curl_abort_all_requests(int error)
 
 		input_curl_easy_free(c);
 
-		g_mutex_lock(c->base.mutex);
 		c->postponed_error = error;
 		c->base.ready = true;
-		g_cond_broadcast(c->base.cond);
-		g_mutex_unlock(c->base.mutex);
+		cnd_broadcast(&c->base.cond);
 	}
 }
 
@@ -438,8 +434,6 @@ input_curl_request_done(struct input_curl *c, CURLcode result, long status)
 	assert(c->easy == NULL);
 	assert(c->postponed_error == 0);
 
-	g_mutex_lock(c->base.mutex);
-
 	if (result != CURLE_OK) {
 		c->postponed_error = -MPD_3RD;
 		log_err("curl failed: %s", c->error);
@@ -449,8 +443,7 @@ input_curl_request_done(struct input_curl *c, CURLcode result, long status)
 	}
 
 	c->base.ready = true;
-	g_cond_broadcast(c->base.cond);
-	g_mutex_unlock(c->base.mutex);
+	cnd_broadcast(&c->base.cond);
 }
 
 static void
@@ -761,7 +754,7 @@ static int
 fill_buffer(struct input_curl *c)
 {
 	while (c->easy != NULL && g_queue_is_empty(c->buffers))
-		g_cond_wait(c->base.cond, c->base.mutex);
+		cnd_wait(&c->base.cond, &c->base.mutex);
 
 	if (c->postponed_error != MPD_SUCCESS) {
 		int ret = c->postponed_error;
@@ -903,9 +896,9 @@ input_curl_read(struct input_stream *is, void *ptr, size_t size)
 
 #if LIBCURL_VERSION_NUM >= 0x071200
 	if (c->paused && curl_total_buffer_size(c) < CURL_RESUME_AT) {
-		g_mutex_unlock(c->base.mutex);
+		mtx_unlock(&c->base.mutex);
 		io_thread_call(input_curl_resume, c);
-		g_mutex_lock(c->base.mutex);
+		mtx_lock(&c->base.mutex);
 	}
 #endif
 
@@ -1023,17 +1016,14 @@ input_curl_writefunction(void *ptr, size_t size, size_t nmemb, void *stream)
 	if (size == 0)
 		return 0;
 
-	g_mutex_lock(c->base.mutex);
-
 #if LIBCURL_VERSION_NUM >= 0x071200
 	if (curl_total_buffer_size(c) + size >= CURL_MAX_BUFFERED) {
 		c->paused = true;
-		g_mutex_unlock(c->base.mutex);
 		return CURL_WRITEFUNC_PAUSE;
 	}
 #endif
 
-	buffer = g_malloc(sizeof(*buffer) - sizeof(buffer->data) + size);
+	buffer = malloc(sizeof(*buffer) - sizeof(buffer->data) + size);
 	buffer->size = size;
 	buffer->consumed = 0;
 	memcpy(buffer->data, ptr, size);
@@ -1041,8 +1031,7 @@ input_curl_writefunction(void *ptr, size_t size, size_t nmemb, void *stream)
 	g_queue_push_tail(c->buffers, buffer);
 	c->base.ready = true;
 
-	g_cond_broadcast(c->base.cond);
-	g_mutex_unlock(c->base.mutex);
+	cnd_broadcast(&c->base.cond);
 
 	return size;
 }
@@ -1168,7 +1157,7 @@ input_curl_seek(struct input_stream *is, off64_t offset, int whence)
 
 	/* close the old connection and open a new one */
 
-	g_mutex_unlock(c->base.mutex);
+	mtx_unlock(&c->base.mutex);
 
 	input_curl_easy_free_indirect(c);
 	input_curl_flush_buffers(c);
@@ -1198,10 +1187,10 @@ input_curl_seek(struct input_stream *is, off64_t offset, int whence)
 	if (ret != MPD_SUCCESS)
 		return ret;
 
-	g_mutex_lock(c->base.mutex);
+	mtx_lock(&c->base.mutex);
 
 	while (!c->base.ready)
-		g_cond_wait(c->base.cond, c->base.mutex);
+		cnd_wait(&c->base.cond, &c->base.mutex);
 
 	if (c->postponed_error != MPD_SUCCESS) {
 		ret = c->postponed_error;
@@ -1212,19 +1201,15 @@ input_curl_seek(struct input_stream *is, off64_t offset, int whence)
 }
 
 static struct input_stream *
-input_curl_open(const char *url, GMutex *mutex, GCond *cond)
+input_curl_open(const char *url)
 {
-	assert(mutex != NULL);
-	assert(cond != NULL);
-
 	struct input_curl *c;
 
 	if (strncmp(url, "http://", 7) != 0)
 		return ERR_PTR(-MPD_INVAL);
 
-	c = g_new0(struct input_curl, 1);
-	input_stream_init(&c->base, &input_plugin_curl, url,
-			  mutex, cond);
+	c = tmalloc(struct input_curl, 1);
+	input_stream_init(&c->base, &input_plugin_curl, url);
 
 	c->url = g_strdup(url);
 	c->buffers = g_queue_new();

@@ -22,8 +22,8 @@
 
 #include "decoder_command.h"
 #include "audio_format.h"
-
-#include <glib.h>
+#include "input_stream.h"
+#include "c11thread.h"
 
 #include <assert.h>
 
@@ -39,30 +39,33 @@ enum decoder_state {
 	 * turned to DECODE, by definition no such error can occur.
 	 */
 	DECODE_STATE_ERROR,
+
+	/**
+	 * command is progress
+	 */
+	DECODE_STATE_PENDING,
 };
 
 struct decoder_control {
 	/** the handle of the decoder thread, or NULL if the decoder
 	    thread isn't running */
-	GThread *thread;
+	thrd_t thread;
 
 	/**
-	 * This lock protects #state and #command.
+	 * The input stream that's feeding the decoder
 	 */
-	GMutex *mutex;
+	struct input_stream *is;
 
 	/**
-	 * Trigger this object after you have modified #command.  This
-	 * is also used by the decoder thread to notify the caller
-	 * when it has finished a command.
+	 * cv used for signaling new commands/free chunks available
 	 */
-	GCond *cond;
+	mtx_t mutex;
+	cnd_t cond;
 
 	/**
-	 * The trigger of this object's client.  It is signalled
-	 * whenever an event occurs.
+	 * player control
 	 */
-	GCond *client_cond;
+	struct player_control *pc;
 
 	enum decoder_state state;
 	enum decoder_command command;
@@ -122,7 +125,7 @@ struct decoder_control {
 
 MPD_MALLOC
 struct decoder_control *
-dc_new(GCond *client_cond);
+dc_new(struct player_control *);
 
 void
 dc_free(struct decoder_control *dc);
@@ -131,29 +134,39 @@ dc_free(struct decoder_control *dc);
  * Locks the #decoder_control object.
  */
 static inline void
-decoder_lock(struct decoder_control *dc)
+decoder_lock_is(struct decoder_control *dc)
 {
-	g_mutex_lock(dc->mutex);
+	mtx_lock(&dc->is->mutex);
 }
 
 /**
  * Unlocks the #decoder_control object.
  */
 static inline void
-decoder_unlock(struct decoder_control *dc)
+decoder_unlock_is(struct decoder_control *dc)
 {
-	g_mutex_unlock(dc->mutex);
+	mtx_unlock(&dc->is->mutex);
 }
 
 /**
- * Waits for a signal on the #decoder_control object.  This function
+ * Waits for input become available on the #decoder_control object.
+ * This function is only valid in the decoder thread.  The object
+ * must be locked prior to calling this function.
+ */
+static inline void
+decoder_wait_is(struct decoder_control *dc)
+{
+	input_stream_lock_wait_ready(dc->is);
+}
+
+/**
+ * Waits for new command on the #decoder_control object.  This function
  * is only valid in the decoder thread.  The object must be locked
  * prior to calling this function.
  */
 static inline void
-decoder_wait(struct decoder_control *dc)
-{
-	g_cond_wait(dc->cond, dc->mutex);
+decoder_wait_cmd(struct decoder_control *dc) {
+	cnd_wait(&dc->cond, &dc->mutex);
 }
 
 /**
@@ -164,14 +177,15 @@ decoder_wait(struct decoder_control *dc)
 static inline void
 decoder_signal(struct decoder_control *dc)
 {
-	g_cond_signal(dc->cond);
+	cnd_signal(&dc->cond);
 }
 
 static inline bool
 decoder_is_idle(const struct decoder_control *dc)
 {
-	return dc->state == DECODE_STATE_STOP ||
-		dc->state == DECODE_STATE_ERROR;
+	auto tmp = dc->state;
+	return tmp == DECODE_STATE_STOP ||
+		tmp == DECODE_STATE_ERROR;
 }
 
 static inline bool
@@ -188,42 +202,6 @@ decoder_has_failed(const struct decoder_control *dc)
 	return dc->state == DECODE_STATE_ERROR;
 }
 
-static inline bool
-decoder_lock_is_idle(struct decoder_control *dc)
-{
-	bool ret;
-
-	decoder_lock(dc);
-	ret = decoder_is_idle(dc);
-	decoder_unlock(dc);
-
-	return ret;
-}
-
-static inline bool
-decoder_lock_is_starting(struct decoder_control *dc)
-{
-	bool ret;
-
-	decoder_lock(dc);
-	ret = decoder_is_starting(dc);
-	decoder_unlock(dc);
-
-	return ret;
-}
-
-static inline bool
-decoder_lock_has_failed(struct decoder_control *dc)
-{
-	bool ret;
-
-	decoder_lock(dc);
-	ret = decoder_has_failed(dc);
-	decoder_unlock(dc);
-
-	return ret;
-}
-
 static inline const struct song *
 decoder_current_song(const struct decoder_control *dc)
 {
@@ -235,6 +213,8 @@ decoder_current_song(const struct decoder_control *dc)
 	case DECODE_STATE_START:
 	case DECODE_STATE_DECODE:
 		return dc->song;
+	case DECODE_STATE_PENDING:
+		assert(false);
 	}
 
 	assert(false);

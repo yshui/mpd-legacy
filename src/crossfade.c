@@ -20,7 +20,7 @@
 #include "log.h"
 #include "config.h"
 #include "crossfade.h"
-#include "chunk.h"
+#include "pipe.h"
 #include "audio_format.h"
 #include "tag.h"
 

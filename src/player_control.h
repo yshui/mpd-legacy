@@ -21,8 +21,7 @@
 #define MPD_PLAYER_H
 
 #include "audio_format.h"
-
-#include <glib.h>
+#include "c11thread.h"
 
 #include <stdint.h>
 
@@ -72,6 +71,7 @@ enum player_error {
 	PLAYER_ERROR_SYSTEM,
 	PLAYER_ERROR_UNKTYPE,
 	PLAYER_ERROR_FILENOTFOUND,
+	PLAYER_ERROR_PENDING,
 };
 
 struct player_status {
@@ -89,17 +89,24 @@ struct player_control {
 
 	/** the handle of the player thread, or NULL if the player
 	    thread isn't running */
-	GThread *thread;
+	thrd_t thread;
 
 	/**
-	 * This lock protects #command, #state, #error.
+	 * This lock protects #command.
 	 */
-	GMutex *mutex;
+	mtx_t mutex;
 
 	/**
-	 * Trigger this object after you have modified #command.
+	 * cv for signalling new commands or audio status change (XXX messy, but...)
 	 */
-	GCond *cond;
+	cnd_t cond;
+
+	/**
+	 * cv used for signalling results
+	 * protecting #state and #error
+	 */
+	mtx_t client_mutex;
+	cnd_t client_cond;
 
 	enum player_command command;
 	enum player_state state;
@@ -138,7 +145,7 @@ pc_free(struct player_control *pc);
 static inline void
 player_lock(struct player_control *pc)
 {
-	g_mutex_lock(pc->mutex);
+	mtx_lock(&pc->mutex);
 }
 
 /**
@@ -147,7 +154,7 @@ player_lock(struct player_control *pc)
 static inline void
 player_unlock(struct player_control *pc)
 {
-	g_mutex_unlock(pc->mutex);
+	mtx_unlock(&pc->mutex);
 }
 
 /**
@@ -158,18 +165,8 @@ player_unlock(struct player_control *pc)
 static inline void
 player_wait(struct player_control *pc)
 {
-	g_cond_wait(pc->cond, pc->mutex);
+	cnd_wait(&pc->cond, &pc->mutex);
 }
-
-/**
- * Waits for a signal on the #player_control object.  This function is
- * only valid in the player thread.  The #decoder_control object must
- * be locked prior to calling this function.
- *
- * Note the small difference to the player_wait() function!
- */
-void
-player_wait_decoder(struct player_control *pc, struct decoder_control *dc);
 
 /**
  * Signals the #player_control object.  The object should be locked
@@ -178,19 +175,7 @@ player_wait_decoder(struct player_control *pc, struct decoder_control *dc);
 static inline void
 player_signal(struct player_control *pc)
 {
-	g_cond_signal(pc->cond);
-}
-
-/**
- * Signals the #player_control object.  The object is temporarily
- * locked by this function.
- */
-static inline void
-player_lock_signal(struct player_control *pc)
-{
-	player_lock(pc);
-	player_signal(pc);
-	player_unlock(pc);
+	cnd_signal(&pc->cond);
 }
 
 /**

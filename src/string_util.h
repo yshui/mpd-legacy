@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_STRING_UTIL_H
-#define MPD_STRING_UTIL_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 
@@ -75,5 +74,3 @@ strchug_fast(char *p)
  */
 bool
 string_array_contains(const char *const* haystack, const char *needle);
-
-#endif

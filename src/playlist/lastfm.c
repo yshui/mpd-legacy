@@ -80,18 +80,18 @@ lastfm_finish(void)
  * @return data fetched, or NULL on error. Must be freed with g_free.
  */
 static char *
-lastfm_get(const char *url, GMutex *mutex, GCond *cond)
+lastfm_get(const char *url)
 {
 	struct input_stream *input_stream;
 	char buffer[4096];
 	size_t length = 0;
 	ssize_t nbytes;
 
-	input_stream = input_stream_open(url, mutex, cond);
+	input_stream = input_stream_open(url);
 	if (IS_ERR(input_stream))
 		return (char *)input_stream;
 
-	g_mutex_lock(mutex);
+	mtx_lock(&input_stream->mutex);
 
 	input_stream_wait_ready(input_stream);
 
@@ -103,7 +103,7 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 				break;
 
 			/* I/O error */
-			g_mutex_unlock(mutex);
+			mtx_unlock(&input_stream->mutex);
 			input_stream_close(input_stream);
 			return ERR_PTR(-MPD_ACCESS);
 		}
@@ -111,7 +111,7 @@ lastfm_get(const char *url, GMutex *mutex, GCond *cond)
 		length += nbytes;
 	} while (length < sizeof(buffer));
 
-	g_mutex_unlock(mutex);
+	mtx_unlock(&input_stream->mutex);
 
 	input_stream_close(input_stream);
 	return g_strndup(buffer, length);
@@ -144,7 +144,7 @@ lastfm_find(const char *response, const char *name)
 }
 
 static struct playlist_provider *
-lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
+lastfm_open_uri(const char *uri)
 {
 	struct lastfm_playlist *playlist;
 	char *p, *q, *response, *session;
@@ -156,7 +156,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 			"username=", lastfm_config.user, "&"
 			"passwordmd5=", lastfm_config.md5, "&"
 			"debug=0&partner=", NULL);
-	response = lastfm_get(p, mutex, cond);
+	response = lastfm_get(p);
 	g_free(p);
 	if (response == NULL)
 		return NULL;
@@ -188,7 +188,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 				NULL);
 		g_free(escaped_uri);
 
-		response = lastfm_get(p, mutex, cond);
+		response = lastfm_get(p);
 		g_free(response);
 		g_free(p);
 
@@ -210,7 +210,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 			NULL);
 	g_free(session);
 
-	playlist->is = input_stream_open(p, mutex, cond);
+	playlist->is = input_stream_open(p);
 	g_free(p);
 
 	if (IS_ERR(playlist->is)) {
@@ -219,7 +219,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 		return (void *)playlist->is;
 	}
 
-	g_mutex_lock(mutex);
+	mtx_lock(&playlist->is->mutex);
 
 	input_stream_wait_ready(playlist->is);
 
@@ -228,7 +228,7 @@ lastfm_open_uri(const char *uri, GMutex *mutex, GCond *cond)
 	free(playlist->is->mime);
 	playlist->is->mime = g_strdup("application/xspf+xml");
 
-	g_mutex_unlock(mutex);
+	mtx_unlock(&playlist->is->mutex);
 
 	/* parse the XSPF playlist */
 

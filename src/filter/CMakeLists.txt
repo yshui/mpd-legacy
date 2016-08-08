@@ -9,4 +9,4 @@ add_library(filter
 	    replay_gain.c
 	    volume.c
 )
-
+target_link_libraries(filter util)

@@ -17,11 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_DATABASE_H
-#define MPD_DATABASE_H
+#pragma once
 
-
-#include "macros.h"
+#include "compiler.h"
 #include "db_error.h"
 
 #include <glib.h>
@@ -93,5 +91,3 @@ db_exists(void)
 	   successfully */
 	return db_get_mtime() > 0;
 }
-
-#endif

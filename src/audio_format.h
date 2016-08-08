@@ -20,7 +20,7 @@
 #ifndef MPD_AUDIO_FORMAT_H
 #define MPD_AUDIO_FORMAT_H
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdint.h>

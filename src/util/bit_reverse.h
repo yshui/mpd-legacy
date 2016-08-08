@@ -20,7 +20,7 @@
 #ifndef MPD_BIT_REVERSE_H
 #define MPD_BIT_REVERSE_H
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdint.h>

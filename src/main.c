@@ -58,6 +58,7 @@
 #include "event_pipe.h"
 #include "tag_pool.h"
 #include "mpd_error.h"
+#include "c11thread.h"
 
 #include "inotify_update.h"
 
@@ -92,8 +93,6 @@ enum {
 
 GThread *main_task;
 GMainLoop *main_loop;
-
-GCond *main_cond;
 
 struct player_control *global_player_control;
 
@@ -298,6 +297,7 @@ shutdown_event_emitted(void)
 
 int main(int argc, char *argv[])
 {
+	malloc(32);
 #ifdef WIN32
 	return win32_main(argc, argv);
 #else
@@ -361,7 +361,6 @@ int mpd_main(int argc, char *argv[])
 
 	main_task = g_thread_self();
 	main_loop = g_main_loop_new(NULL, FALSE);
-	main_cond = g_cond_new();
 
 	event_pipe_init();
 	event_pipe_register(PIPE_EVENT_IDLE, idle_event_emitted);
@@ -481,7 +480,6 @@ int mpd_main(int argc, char *argv[])
 	sticker_global_finish();
 #endif
 
-	g_cond_free(main_cond);
 	event_pipe_deinit();
 
 	playlist_list_global_finish();

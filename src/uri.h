@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_URI_H
-#define MPD_URI_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 
@@ -58,5 +57,3 @@ uri_safe_local(const char *uri);
 MPD_MALLOC
 char *
 uri_remove_auth(const char *uri);
-
-#endif

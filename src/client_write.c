@@ -241,6 +241,7 @@ void client_puts(struct client *client, const char *s)
 	client_write(client, s, strlen(s));
 }
 
+MPD_PRINTF(2, 0)
 void client_vprintf(struct client *client, const char *fmt, va_list args)
 {
 #ifndef G_OS_WIN32
@@ -274,8 +275,8 @@ void client_vprintf(struct client *client, const char *fmt, va_list args)
 #endif
 }
 
-G_GNUC_PRINTF(2, 3) void client_printf(struct client *client, const char *fmt, ...)
-{
+MPD_PRINTF(2, 3)
+void client_printf(struct client *client, const char *fmt, ...) {
 	va_list args;
 
 	va_start(args, fmt);

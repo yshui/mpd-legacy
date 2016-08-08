@@ -17,21 +17,32 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_STORED_PLAYLIST_H
-#define MPD_STORED_PLAYLIST_H
+#pragma once
 
 #include "playlist_error.h"
+
+#undef LIST_HEAD
+
+#include "queue.h"
+#include "queue_common.h"
 
 #include <stdbool.h>
 #include <time.h>
 
 struct song;
 
-struct stored_playlist_info {
+struct spl_info {
 	char *name;
 
 	time_t mtime;
 };
+
+struct spl_list_entry {
+	struct spl_info *info;
+	SLIST_ENTRY(spl_list_entry) next;
+};
+
+SLIST_HEAD(spl_list_head, spl_list_entry);
 
 extern bool playlist_saveAbsolutePaths;
 
@@ -52,17 +63,14 @@ spl_valid_name(const char *name_utf8);
  * Returns a list of stored_playlist_info struct pointers.  Returns
  * NULL if an error occurred.
  */
-GPtrArray *
+struct spl_list_head *
 spl_list(void);
 
 void
-spl_list_free(GPtrArray *list);
+spl_list_free(struct spl_list_head *);
 
-GPtrArray *
+struct str_list_head *
 spl_load(const char *utf8path);
-
-void
-spl_free(GPtrArray *list);
 
 int
 spl_move_index(const char *utf8path, unsigned src, unsigned dest);
@@ -84,5 +92,3 @@ spl_append_uri(const char *file, const char *utf8file);
 
 int
 spl_rename(const char *utf8from, const char *utf8to);
-
-#endif

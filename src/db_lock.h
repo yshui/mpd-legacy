@@ -23,10 +23,9 @@
  * multi-threading.
  */
 
-#ifndef MPD_DB_LOCK_H
-#define MPD_DB_LOCK_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -80,5 +79,3 @@ db_unlock(void)
 
 	g_static_mutex_unlock(&db_mutex);
 }
-
-#endif

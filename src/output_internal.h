@@ -199,7 +199,7 @@ struct audio_output {
 	/**
 	 * The music pipe which provides music chunks to be played.
 	 */
-	const struct music_pipe *pipe;
+	struct audio_pipe *pipe;
 
 	/**
 	 * This mutex protects #open, #fail_timer, #chunk and
@@ -220,12 +220,12 @@ struct audio_output {
 	struct player_control *player_control;
 
 	/**
-	 * The #music_chunk which is currently being played.  All
+	 * The #audio_chunk which is currently being played.  All
 	 * chunks before this one may be returned to the
 	 * #music_buffer, because they are not going to be used by
 	 * this output anymore.
 	 */
-	const struct music_chunk *chunk;
+	const struct audio_chunk *chunk;
 
 	/**
 	 * Has the output finished playing #chunk?

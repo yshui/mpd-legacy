@@ -73,7 +73,7 @@ static struct slot *slot_alloc(struct slot *next,
 {
 	struct slot *slot;
 
-	slot = malloc(sizeof(*slot) - sizeof(slot->item.value) + length + 1);
+	slot = malloc(sizeof(*slot) + length + 1);
 	slot->next = next;
 	slot->ref = 1;
 	slot->item.type = type;

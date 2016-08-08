@@ -112,9 +112,6 @@ song_file_update(struct song *song)
 
 	song->mtime = st.st_mtime;
 
-	GMutex *mutex = NULL;
-	GCond *cond = NULL;
-
 	do {
 		/* load file tag */
 		song->tag = tag_new();
@@ -130,9 +127,7 @@ song_file_update(struct song *song)
 			/* open the input_stream (if not already
 			   open) */
 			if (is == NULL) {
-				mutex = g_mutex_new();
-				cond = g_cond_new();
-				is = input_stream_open(path_fs, mutex, cond);
+				is = input_stream_open(path_fs);
 			}
 
 			/* now try the stream_tag() method */
@@ -155,11 +150,6 @@ song_file_update(struct song *song)
 
 	if (!IS_ERR_OR_NULL(is))
 		input_stream_close(is);
-
-	if (mutex != NULL) {
-		g_cond_free(cond);
-		g_mutex_free(mutex);
-	}
 
 	if (song->tag != NULL && tag_is_empty(song->tag))
 		tag_scan_fallback(path_fs, &full_tag_handler, song->tag);

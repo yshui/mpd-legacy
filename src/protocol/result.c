@@ -47,6 +47,7 @@ command_error_v(struct client *client, enum ack error,
 	current_command = NULL;
 }
 
+
 void
 command_error(struct client *client, enum ack error, const char *fmt, ...)
 {

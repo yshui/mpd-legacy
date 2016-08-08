@@ -35,9 +35,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-static void
-pc_enqueue_song_locked(struct player_control *pc, struct song *song);
-
 struct player_control *
 pc_new(unsigned buffer_chunks, unsigned int buffered_before_play)
 {
@@ -46,8 +43,10 @@ pc_new(unsigned buffer_chunks, unsigned int buffered_before_play)
 	pc->buffer_chunks = buffer_chunks;
 	pc->buffered_before_play = buffered_before_play;
 
-	pc->mutex = g_mutex_new();
-	pc->cond = g_cond_new();
+	mtx_init(&pc->mutex, mtx_plain);
+	cnd_init(&pc->cond);
+	mtx_init(&pc->client_mutex, mtx_plain);
+	cnd_init(&pc->client_cond);
 
 	pc->command = PLAYER_COMMAND_NONE;
 	pc->error = PLAYER_ERROR_NOERROR;
@@ -62,21 +61,9 @@ pc_new(unsigned buffer_chunks, unsigned int buffered_before_play)
 void
 pc_free(struct player_control *pc)
 {
-	g_cond_free(pc->cond);
-	g_mutex_free(pc->mutex);
+	cnd_destroy(&pc->cond);
+	mtx_destroy(&pc->mutex);
 	free(pc);
-}
-
-void
-player_wait_decoder(struct player_control *pc, struct decoder_control *dc)
-{
-	assert(pc != NULL);
-	assert(dc != NULL);
-	assert(dc->client_cond == pc->cond);
-
-	/* during this function, the decoder lock is held, because
-	   we're waiting for the decoder thread */
-	g_cond_wait(pc->cond, dc->mutex);
 }
 
 void
@@ -89,27 +76,22 @@ pc_song_deleted(struct player_control *pc, const struct song *song)
 }
 
 static void
-player_command_wait_locked(struct player_control *pc)
-{
-	while (pc->command != PLAYER_COMMAND_NONE)
-		g_cond_wait(main_cond, pc->mutex);
-}
-
-static void
-player_command_locked(struct player_control *pc, enum player_command cmd)
-{
-	assert(pc->command == PLAYER_COMMAND_NONE);
-
-	pc->command = cmd;
-	player_signal(pc);
-	player_command_wait_locked(pc);
-}
-
-static void
-player_command(struct player_control *pc, enum player_command cmd)
-{
+player_command(struct player_control *pc, enum player_command cmd) {
 	player_lock(pc);
-	player_command_locked(pc, cmd);
+	assert(pc->command == PLAYER_COMMAND_NONE);
+	pc->command = cmd;
+	player_unlock(pc);
+
+	mtx_lock(&pc->client_mutex);
+	pc->error = PLAYER_ERROR_PENDING;
+	player_signal(pc);
+	while (pc->error == PLAYER_ERROR_PENDING)
+		cnd_wait(&pc->client_cond, &pc->client_mutex);
+
+	mtx_unlock(&pc->client_mutex);
+
+	player_lock(pc);
+	pc->command = PLAYER_COMMAND_NONE;
 	player_unlock(pc);
 }
 
@@ -118,18 +100,14 @@ pc_play(struct player_control *pc, struct song *song)
 {
 	assert(song != NULL);
 
-	player_lock(pc);
-
 	if (pc->state != PLAYER_STATE_STOP)
-		player_command_locked(pc, PLAYER_COMMAND_STOP);
+		player_command(pc, PLAYER_COMMAND_STOP);
 
 	assert(pc->next_song == NULL);
 
-	pc_enqueue_song_locked(pc, song);
+	pc_enqueue_song(pc, song);
 
 	assert(pc->next_song == NULL);
-
-	player_unlock(pc);
 }
 
 void
@@ -157,11 +135,9 @@ pc_update_audio(struct player_control *pc)
 void
 pc_kill(struct player_control *pc)
 {
-	assert(pc->thread != NULL);
-
 	player_command(pc, PLAYER_COMMAND_EXIT);
-	g_thread_join(pc->thread);
-	pc->thread = NULL;
+
+	thrd_join(pc->thread, NULL);
 
 	idle_add(IDLE_PLAYER);
 }
@@ -169,21 +145,8 @@ pc_kill(struct player_control *pc)
 void
 pc_pause(struct player_control *pc)
 {
-	player_lock(pc);
-
 	if (pc->state != PLAYER_STATE_STOP) {
-		player_command_locked(pc, PLAYER_COMMAND_PAUSE);
-		idle_add(IDLE_PLAYER);
-	}
-
-	player_unlock(pc);
-}
-
-static void
-pc_pause_locked(struct player_control *pc)
-{
-	if (pc->state != PLAYER_STATE_STOP) {
-		player_command_locked(pc, PLAYER_COMMAND_PAUSE);
+		player_command(pc, PLAYER_COMMAND_PAUSE);
 		idle_add(IDLE_PLAYER);
 	}
 }
@@ -191,39 +154,32 @@ pc_pause_locked(struct player_control *pc)
 void
 pc_set_pause(struct player_control *pc, bool pause_flag)
 {
-	player_lock(pc);
-
 	switch (pc->state) {
 	case PLAYER_STATE_STOP:
 		break;
 
 	case PLAYER_STATE_PLAY:
 		if (pause_flag)
-			pc_pause_locked(pc);
+			pc_pause(pc);
 		break;
 
 	case PLAYER_STATE_PAUSE:
 		if (!pause_flag)
-			pc_pause_locked(pc);
+			pc_pause(pc);
 		break;
 	}
-
-	player_unlock(pc);
 }
 
 void
 pc_set_border_pause(struct player_control *pc, bool border_pause)
 {
-	player_lock(pc);
 	pc->border_pause = border_pause;
-	player_unlock(pc);
 }
 
 void
 pc_get_status(struct player_control *pc, struct player_status *status)
 {
-	player_lock(pc);
-	player_command_locked(pc, PLAYER_COMMAND_REFRESH);
+	player_command(pc, PLAYER_COMMAND_REFRESH);
 
 	status->state = pc->state;
 
@@ -233,8 +189,6 @@ pc_get_status(struct player_control *pc, struct player_status *status)
 		status->total_time = pc->total_time;
 		status->elapsed_time = pc->elapsed_time;
 	}
-
-	player_unlock(pc);
 }
 
 enum player_state
@@ -246,10 +200,10 @@ pc_get_state(struct player_control *pc)
 void
 pc_clear_error(struct player_control *pc)
 {
-	player_lock(pc);
+	mtx_lock(&pc->client_mutex);
 	pc->error = PLAYER_ERROR_NOERROR;
 	pc->errored_song = NULL;
-	player_unlock(pc);
+	mtx_unlock(&pc->client_mutex);
 }
 
 enum player_error
@@ -297,30 +251,22 @@ pc_get_error_message(struct player_control *pc)
 		error = strdup_printf("file type of \"%s\" is unknown", uri);
 		free(uri);
 		return error;
+	case PLAYER_ERROR_PENDING:
+		assert(false);
 	}
 
 	assert(false);
 	return NULL;
 }
 
-static void
-pc_enqueue_song_locked(struct player_control *pc, struct song *song)
+void
+pc_enqueue_song(struct player_control *pc, struct song *song)
 {
 	assert(song != NULL);
 	assert(pc->next_song == NULL);
 
 	pc->next_song = song;
-	player_command_locked(pc, PLAYER_COMMAND_QUEUE);
-}
-
-void
-pc_enqueue_song(struct player_control *pc, struct song *song)
-{
-	assert(song != NULL);
-
-	player_lock(pc);
-	pc_enqueue_song_locked(pc, song);
-	player_unlock(pc);
+	player_command(pc, PLAYER_COMMAND_QUEUE);
 }
 
 bool
@@ -328,11 +274,9 @@ pc_seek(struct player_control *pc, struct song *song, float seek_time)
 {
 	assert(song != NULL);
 
-	player_lock(pc);
 	pc->next_song = song;
 	pc->seek_where = seek_time;
-	player_command_locked(pc, PLAYER_COMMAND_SEEK);
-	player_unlock(pc);
+	player_command(pc, PLAYER_COMMAND_SEEK);
 
 	assert(pc->next_song == NULL);
 

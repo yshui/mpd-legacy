@@ -27,7 +27,7 @@
 #include "directory.h"
 #include "song.h"
 #include "path.h"
-#include "utils.h"
+#include "file_utils.h"
 
 #include <glib.h>
 

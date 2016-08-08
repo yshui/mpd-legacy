@@ -36,6 +36,7 @@
 #include "ls.h"
 #include "mpd_error.h"
 #include "glib_compat.h"
+#include "file_utils.h"
 
 #ifdef ENABLE_ENCODER
 #include "encoder_list.h"

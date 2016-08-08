@@ -20,33 +20,18 @@
 #ifndef MPD_UTILS_H
 #define MPD_UTILS_H
 
-#include "util/bit_reverse.h"
-#include "util/byte_reverse.h"
-#include "util/list.h"
-#include "util/list_sort.h"
-#include "util/file_utils.h"
+#include "bit_reverse.h"
+#include "byte_reverse.h"
+#include "list_sort.h"
 
 #include <glib.h>
 #include <stdbool.h>
 #include <string.h>
 
-#ifndef assert_static
-/* Compile time assertion developed by Ralf Holly */
-/* http://pera-software.com/articles/compile-time-assertions.pdf */
-#define assert_static(e) \
-	do { \
-		enum { assert_static__ = 1/(e) }; \
-	} while (0)
-#endif /* !assert_static */
-
-
 char *
 parsePath(const char *path);
 
-char *build_db_filename(const char *, ...);
-
-char *strdup_basename(const char *);
-
+MPD_PRINTF(1, 2)
 char *strdup_printf(const char *, ...);
 
 static inline bool is_alpha(char c){

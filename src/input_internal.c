@@ -27,7 +27,7 @@
 
 void
 input_stream_init(struct input_stream *is, const struct input_plugin *plugin,
-		  const char *uri, GMutex *mutex, GCond *cond)
+		  const char *uri)
 {
 	assert(is != NULL);
 	assert(plugin != NULL);
@@ -35,8 +35,8 @@ input_stream_init(struct input_stream *is, const struct input_plugin *plugin,
 
 	is->plugin = plugin;
 	is->uri = strdup(uri);
-	is->mutex = mutex;
-	is->cond = cond;
+	mtx_init(&is->mutex, mtx_plain);
+	cnd_init(&is->cond);
 	is->ready = false;
 	is->seekable = false;
 	is->size = -1;
@@ -52,24 +52,26 @@ input_stream_deinit(struct input_stream *is)
 
 	free(is->uri);
 	free(is->mime);
+
+	mtx_destroy(&is->mutex);
+	cnd_destroy(&is->cond);
 }
 
 void
 input_stream_signal_client(struct input_stream *is)
 {
-	if (is->cond != NULL)
-		g_cond_broadcast(is->cond);
+	cnd_broadcast(&is->cond);
 }
 
 void
 input_stream_set_ready(struct input_stream *is)
 {
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 
 	if (!is->ready) {
 		is->ready = true;
 		input_stream_signal_client(is);
 	}
 
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 }

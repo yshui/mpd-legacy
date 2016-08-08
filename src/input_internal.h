@@ -27,7 +27,7 @@ struct input_plugin;
 
 void
 input_stream_init(struct input_stream *is, const struct input_plugin *plugin,
-		  const char *uri, GMutex *mutex, GCond *cond);
+		  const char *uri);
 
 void
 input_stream_deinit(struct input_stream *is);

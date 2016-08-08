@@ -18,8 +18,8 @@
  */
 
 #include "config.h"
-#include "queue_print.h"
-#include "queue.h"
+#include "playqueue_print.h"
+#include "playqueue.h"
 #include "song.h"
 #include "song_print.h"
 #include "locate.h"

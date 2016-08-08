@@ -37,8 +37,6 @@
 #include "uri.h"
 #include "mpd_error.h"
 
-#include <glib.h>
-
 #include <unistd.h>
 #include <stdio.h> /* for SEEK_SET */
 
@@ -53,9 +51,11 @@ decoder_command_finished_locked(struct decoder_control *dc)
 {
 	assert(dc->command != DECODE_COMMAND_NONE);
 
+	mtx_lock(&dc->mutex);
 	dc->command = DECODE_COMMAND_NONE;
 
-	g_cond_signal(dc->client_cond);
+	cnd_signal(&dc->cond);
+	mtx_unlock(&dc->mutex);
 }
 
 /**
@@ -66,46 +66,45 @@ decoder_command_finished_locked(struct decoder_control *dc)
  *
  * Unlock the decoder before calling this function.
  *
- * @return an input_stream on success or if #DECODE_COMMAND_STOP is
- * received, NULL on error
+ * dc->is is set to the input_stream on success or if
+ * #DECODE_COMMAND_STOP is received, NULL on error
  */
-static struct input_stream *
+static void
 decoder_input_stream_open(struct decoder_control *dc, const char *uri)
 {
-	struct input_stream *is;
-
-	is = input_stream_open(uri, dc->mutex, dc->cond);
-	if (IS_ERR(is)) {
+	dc->is = input_stream_open(uri);
+	if (IS_ERR(dc->is)) {
 		log_warning("Can't open stream");
 
-		return (void *)is;
+		return;
 	}
 
 	/* wait for the input stream to become ready; its metadata
 	   will be available then */
 
-	decoder_lock(dc);
+	decoder_lock_is(dc);
 
-	input_stream_update(is);
-	while (!is->ready &&
+	input_stream_update(dc->is);
+	while (!dc->is->ready &&
 	       dc->command != DECODE_COMMAND_STOP) {
-		decoder_wait(dc);
+		input_stream_wait_ready(dc->is);
 
-		input_stream_update(is);
+		input_stream_update(dc->is);
 	}
 
-	int ret = input_stream_check(is);
+	int ret = input_stream_check(dc->is);
 	if (ret != MPD_SUCCESS) {
-		decoder_unlock(dc);
+		decoder_unlock_is(dc);
 
 		log_warning("Input stream check failed");
 
-		return ERR_PTR(ret);
+		dc->is = ERR_PTR(ret);
+		return;
 	}
 
-	decoder_unlock(dc);
+	decoder_unlock_is(dc);
 
-	return is;
+	return;
 }
 
 static bool
@@ -130,11 +129,11 @@ decoder_stream_decode(const struct decoder_plugin *plugin,
 	/* rewind the stream, so each plugin gets a fresh start */
 	input_stream_seek(input_stream, 0, SEEK_SET);
 
-	decoder_unlock(decoder->dc);
+	decoder_unlock_is(decoder->dc);
 
 	decoder_plugin_stream_decode(plugin, decoder, input_stream);
 
-	decoder_lock(decoder->dc);
+	decoder_lock_is(decoder->dc);
 
 	assert(decoder->dc->state == DECODE_STATE_START ||
 	       decoder->dc->state == DECODE_STATE_DECODE);
@@ -160,11 +159,11 @@ decoder_file_decode(const struct decoder_plugin *plugin,
 	if (decoder->dc->command == DECODE_COMMAND_STOP)
 		return true;
 
-	decoder_unlock(decoder->dc);
+	decoder_unlock_is(decoder->dc);
 
 	decoder_plugin_file_decode(plugin, decoder, path);
 
-	decoder_lock(decoder->dc);
+	decoder_lock_is(decoder->dc);
 
 	assert(decoder->dc->state == DECODE_STATE_START ||
 	       decoder->dc->state == DECODE_STATE_DECODE);
@@ -275,37 +274,35 @@ static bool
 decoder_run_stream(struct decoder *decoder, const char *uri)
 {
 	struct decoder_control *dc = decoder->dc;
-	struct input_stream *input_stream;
 	bool success;
 
-	decoder_unlock(dc);
-
-	input_stream = decoder_input_stream_open(dc, uri);
-	if (input_stream == NULL) {
-		decoder_lock(dc);
+	decoder_input_stream_open(dc, uri);
+	if (IS_ERR_OR_NULL(dc->is)) {
+		decoder_lock_is(dc);
 		return false;
 	}
 
-	decoder_lock(dc);
+	decoder_lock_is(dc);
 
 	GSList *tried = NULL;
 
 	success = dc->command == DECODE_COMMAND_STOP ||
 		/* first we try mime types: */
-		decoder_run_stream_mime_type(decoder, input_stream, &tried) ||
+		decoder_run_stream_mime_type(decoder, dc->is, &tried) ||
 		/* if that fails, try suffix matching the URL: */
-		decoder_run_stream_suffix(decoder, input_stream, uri,
+		decoder_run_stream_suffix(decoder, dc->is, uri,
 					  &tried) ||
 		/* fallback to mp3: this is needed for bastard streams
 		   that don't have a suffix or set the mimeType */
 		(tried == NULL &&
-		 decoder_run_stream_fallback(decoder, input_stream));
+		 decoder_run_stream_fallback(decoder, dc->is));
 
 	g_slist_free(tried);
 
-	decoder_unlock(dc);
-	input_stream_close(input_stream);
-	decoder_lock(dc);
+	decoder_unlock_is(dc);
+	input_stream_close(dc->is);
+
+	dc->is = NULL;
 
 	return success;
 }
@@ -335,43 +332,40 @@ decoder_run_file(struct decoder *decoder, const char *path_fs)
 	if (suffix == NULL)
 		return false;
 
-	decoder_unlock(dc);
+	assert(dc->is == NULL);
 
 	decoder_load_replay_gain(decoder, path_fs);
 
 	while ((plugin = decoder_plugin_from_suffix(suffix, plugin)) != NULL) {
 		if (plugin->file_decode != NULL) {
-			decoder_lock(dc);
-
 			if (decoder_file_decode(plugin, decoder, path_fs))
 				return true;
 
-			decoder_unlock(dc);
 		} else if (plugin->stream_decode != NULL) {
-			struct input_stream *input_stream;
 			bool success;
 
-			input_stream = decoder_input_stream_open(dc, path_fs);
-			if (IS_ERR_OR_NULL(input_stream))
+			decoder_input_stream_open(dc, path_fs);
+			if (IS_ERR_OR_NULL(dc->is))
 				continue;
 
-			decoder_lock(dc);
+			decoder_lock_is(dc);
 
 			success = decoder_stream_decode(plugin, decoder,
-							input_stream);
+							dc->is);
 
-			decoder_unlock(dc);
+			decoder_unlock_is(dc);
 
-			input_stream_close(input_stream);
+			input_stream_close(dc->is);
+			dc->is = NULL;
 
 			if (success) {
-				decoder_lock(dc);
+				decoder_lock_is(dc);
 				return true;
 			}
 		}
 	}
 
-	decoder_lock(dc);
+	decoder_lock_is(dc);
 	return false;
 }
 
@@ -394,7 +388,9 @@ decoder_run_song(struct decoder_control *dc,
 	decoder.decoder_tag = NULL;
 	decoder.chunk = NULL;
 
+	mtx_lock(&dc->mutex);
 	dc->state = DECODE_STATE_START;
+	mtx_unlock(&dc->mutex);
 
 	decoder_command_finished_locked(dc);
 
@@ -404,7 +400,7 @@ decoder_run_song(struct decoder_control *dc,
 		? decoder_run_file(&decoder, uri)
 		: decoder_run_stream(&decoder, uri);
 
-	decoder_unlock(dc);
+	decoder_unlock_is(dc);
 
 	pcm_convert_deinit(&decoder.conv_state);
 
@@ -422,7 +418,7 @@ decoder_run_song(struct decoder_control *dc,
 	if (decoder.decoder_tag != NULL)
 		tag_free(decoder.decoder_tag);
 
-	decoder_lock(dc);
+	decoder_lock_is(dc);
 
 	dc->state = ret ? DECODE_STATE_STOP : DECODE_STATE_ERROR;
 }
@@ -451,16 +447,17 @@ decoder_run(struct decoder_control *dc)
 
 }
 
-static gpointer
-decoder_task(gpointer arg)
+static int
+decoder_task(void *arg)
 {
 	struct decoder_control *dc = arg;
 
-	decoder_lock(dc);
+	log_err("Before getting dc->mutex %lu\n", thrd_current());
+	mtx_lock(&dc->mutex);
 
+	log_err("After getting dc->mutex %lu\n", thrd_current());
 	do {
-		assert(dc->state == DECODE_STATE_STOP ||
-		       dc->state == DECODE_STATE_ERROR);
+		assert(dc->state == DECODE_STATE_PENDING);
 
 		switch (dc->command) {
 		case DECODE_COMMAND_START:
@@ -477,30 +474,30 @@ decoder_task(gpointer arg)
 			break;
 
 		case DECODE_COMMAND_STOP:
+			dc->state = DECODE_STATE_STOP;
 			decoder_command_finished_locked(dc);
 			break;
 
 		case DECODE_COMMAND_NONE:
-			decoder_wait(dc);
 			break;
 		}
+		log_err("Starting to wait %lu\n", thrd_current());
+		decoder_wait_cmd(dc);
+		log_err("New cmd %d %lu\n", dc->command, thrd_current());
 	} while (dc->command != DECODE_COMMAND_NONE || !dc->quit);
 
-	decoder_unlock(dc);
+	mtx_unlock(&dc->mutex);
 
-	return NULL;
+	return 0;
 }
 
 void
 decoder_thread_start(struct decoder_control *dc)
 {
-	GError *e = NULL;
-
-	assert(dc->thread == NULL);
-
 	dc->quit = false;
+	dc->state = DECODE_STATE_PENDING;
 
-	dc->thread = g_thread_create(decoder_task, dc, true, &e);
-	if (dc->thread == NULL)
-		MPD_ERROR("Failed to spawn decoder task: %s", e->message);
+	int ret = thrd_create(&dc->thread, decoder_task, dc);
+	if (ret != thrd_success)
+		MPD_ERROR("Failed to spawn decoder task %d", ret);
 }

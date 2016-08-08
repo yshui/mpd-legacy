@@ -23,11 +23,10 @@
  * plugin API for databases of song metadata.
  */
 
-#ifndef MPD_DB_PLUGIN_H
-#define MPD_DB_PLUGIN_H
+#pragma once
 
 #include "log.h"
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <assert.h>
@@ -149,5 +148,3 @@ db_plugin_visit(struct db *db, const struct db_selection *selection,
 
 	return db->plugin->visit(db, selection, visitor, ctx);
 }
-
-#endif

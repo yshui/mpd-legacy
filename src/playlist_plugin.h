@@ -68,8 +68,7 @@ struct playlist_plugin {
 	 * Opens the playlist on the specified URI.  This URI has
 	 * either matched one of the schemes or one of the suffixes.
 	 */
-	struct playlist_provider *(*open_uri)(const char *uri,
-					      GMutex *mutex, GCond *cond);
+	struct playlist_provider *(*open_uri)(const char *uri);
 
 	/**
 	 * Opens the playlist in the specified input stream.  It has
@@ -115,10 +114,9 @@ playlist_plugin_finish(const struct playlist_plugin *plugin)
 }
 
 static inline struct playlist_provider *
-playlist_plugin_open_uri(const struct playlist_plugin *plugin, const char *uri,
-			 GMutex *mutex, GCond *cond)
+playlist_plugin_open_uri(const struct playlist_plugin *plugin, const char *uri)
 {
-	return plugin->open_uri(uri, mutex, cond);
+	return plugin->open_uri(uri);
 }
 
 static inline struct playlist_provider *

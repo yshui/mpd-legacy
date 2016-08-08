@@ -28,8 +28,6 @@
 #include "stored_playlist.h"
 #include "idle.h"
 
-#include <glib.h>
-
 #include <assert.h>
 #include <stdlib.h>
 

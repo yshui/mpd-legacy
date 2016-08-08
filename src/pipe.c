@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2003-2011 The Music Player Daemon Project
+ * Copyright (C) 2016 Yuxuan Shui <yshuiv7@gmail.com>
  * http://www.musicpd.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,107 +18,200 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "config.h"
 #include "pipe.h"
 #include "buffer.h"
+#include "c11thread.h"
 #include "chunk.h"
+#include "compiler.h"
+#include "config.h"
 #include "macros.h"
-
-#include <glib.h>
+#include "poison.h"
+#include "sem.h"
 
 #include <assert.h>
 
-struct music_pipe {
+struct audio_pipe {
 	/** the first chunk */
-	struct music_chunk *head;
+	struct audio_chunk *head;
 
 	/** a pointer to the tail of the chunk */
-	struct music_chunk **tail_r;
+	struct audio_chunk **tail_r;
 
-	/** the current number of chunks */
-	unsigned size;
+	size_t size, capacity;
 
-	/** a mutex which protects #head and #tail_r */
-	GMutex *mutex;
+	mtx_t mutex;
 
-#ifndef NDEBUG
-	struct audio_format audio_format;
-#endif
+	xsem_t sem;
+
+	struct audio_chunk *available, *chunk_pool;
+
+	struct audio_chunk *current;
+
+	struct audio_format *format;
 };
 
-struct music_pipe *
-music_pipe_new(void)
+static inline void
+audio_chunk_init(struct audio_chunk *chunk)
 {
-	struct music_pipe *mp = tmalloc(struct music_pipe, 1);
+	chunk->other = NULL;
+	chunk->length = 0;
+	chunk->tag = NULL;
+	chunk->replay_gain_serial = 0;
+}
+
+static inline void
+audio_chunk_free(struct audio_chunk *chunk)
+{
+	if (chunk->tag != NULL)
+		tag_free(chunk->tag);
+}
+
+void
+audio_pipe_flush(struct audio_pipe *p) {
+	if (audio_chunk_is_empty(p->current))
+		// Current chunk is empty
+		// Nothing needed to be done
+		return;
+
+	mtx_lock(&p->mutex);
+
+	p->current->next = NULL;
+	*p->tail_r = p->current;
+	p->tail_r = &p->current->next;
+
+	p->size++;
+
+	p->current = NULL;
+	mtx_unlock(&p->mutex);
+}
+
+/*
+ * Write data to the end of the pipe
+ * If there's no free chunk available, block until there is
+ *
+ * Written might not be immediately available to outputs, call
+ * audio_pipe_flush if needed.
+ */
+void
+audio_pipe_write_sync(struct audio_pipe *p, float time, strcut audio_format *fmt,
+                      uint16_t bit_rate, size_t length, void *data) {
+	const size_t frame_size = audio_format_frame_size(audio_format);
+	size_t num_frames;
+
+	assert(audio_format_equals(fmt, p->format));
+
+	bool retry = false;
+	do {
+		if (!p->current) {
+			if (!p->available)
+				xsem_wait(&p->sem);
+			mtx_lock(&p->mutex);
+			assert(p->available);
+			p->current = p->available;
+			audio_chunk_init(p->current);
+			p->available = p->available->next;
+			mtx_unlock(&p->mutex);
+		}
+
+		struct audio_chunk *chunk = p->current;
+
+		if (chunk->length == 0) {
+			/* if the chunk is empty, nobody has set bitRate and
+			   times yet */
+
+			chunk->bit_rate = bit_rate;
+			chunk->times = time;
+		}
+
+		assert(frame_size <= sizeof(chunk->data));
+		assert(length > frame_size);
+		num_frames = (sizeof(chunk->data) - chunk->length) / frame_size;
+
+		if (num_frames == 0) {
+			// Current chunk if full, flush it and try again
+			audio_pipe_flush(p);
+			retry = true;
+		}
+	} while(retry);
+
+	if (num_frames > length / frame_size)
+		num_frames = length / frame_size;
+
+	size_t ret = num_frames * frame_size;
+
+	if (data)
+		memcpy(chunk->data+chunk->length, data, ret);
+	else
+		memset(chunk->data+chunk->length, 0, ret);
+
+	chunk->length += ret;
+
+	return ret;
+}
+
+struct audio_pipe *audio_pipe_new(size_t nchunks) {
+	struct audio_pipe *mp = tmalloc(struct audio_pipe, 1);
 
 	mp->head = NULL;
 	mp->tail_r = &mp->head;
 	mp->size = 0;
-	mp->mutex = g_mutex_new();
+	mtx_init(&mp->mutex, mtx_plain);
 
-#ifndef NDEBUG
-	audio_format_clear(&mp->audio_format);
-#endif
+	mp->chunk_pool = tmalloc(struct music_chunk, nchunks);
+	mp->capacity = nchunks;
+
+	// Chain the chunks
+	for (size_t i = 0; i < nchunks - 1; i++)
+		mp->chunk_pool[i].next = &mp->chunk_pool[i + 1];
+
+	mp->chunk_pool[nchunks - 1].next = NULL;
+	mp->available = &mp->chunk_pool[0];
 
 	return mp;
 }
 
-void
-music_pipe_free(struct music_pipe *mp)
-{
-	assert(mp->head == NULL);
-	assert(mp->tail_r == &mp->head);
+void audio_pipe_free(struct audio_pipe *p) {
+	if (p->head)
+		audio_pipe_clear(p);
 
-	g_mutex_free(mp->mutex);
-	free(mp);
+	mtx_destroy(&p->mutex);
+	free(p->chunk_pool);
+	free(p);
 }
 
 #ifndef NDEBUG
 
-bool
-music_pipe_check_format(const struct music_pipe *pipe,
-			const struct audio_format *audio_format)
-{
+bool audio_pipe_check_format(const struct audio_pipe *pipe,
+                             const struct audio_format *audio_format) {
 	assert(pipe != NULL);
 	assert(audio_format != NULL);
 
 	return !audio_format_defined(&pipe->audio_format) ||
-		audio_format_equals(&pipe->audio_format, audio_format);
+	       audio_format_equals(&pipe->audio_format, audio_format);
 }
 
-bool
-music_pipe_contains(const struct music_pipe *mp,
-		    const struct music_chunk *chunk)
-{
-	g_mutex_lock(mp->mutex);
+bool audio_pipe_contains(struct audio_pipe *mp, const struct music_chunk *chunk) {
+	mtx_lock(&mp->mutex);
 
-	for (const struct music_chunk *i = mp->head;
-	     i != NULL; i = i->next) {
+	for (const struct music_chunk *i = mp->head; i != NULL; i = i->next) {
 		if (i == chunk) {
-			g_mutex_unlock(mp->mutex);
+			mtx_unlock(&mp->mutex);
 			return true;
 		}
 	}
 
-	g_mutex_unlock(mp->mutex);
+	mtx_unlock(&mp->mutex);
 
 	return false;
 }
 
 #endif
 
-const struct music_chunk *
-music_pipe_peek(const struct music_pipe *mp)
-{
-	return mp->head;
-}
-
-struct music_chunk *
-music_pipe_shift(struct music_pipe *mp)
-{
+/** Remove one chunk from head and free it
+ *  p->mutex should be held
+ */
+static void audio_pipe_shift(struct audio_pipe *p) {
 	struct music_chunk *chunk;
-
-	g_mutex_lock(mp->mutex);
 
 	chunk = mp->head;
 	if (chunk != NULL) {
@@ -136,60 +230,84 @@ music_pipe_shift(struct music_pipe *mp)
 			assert(mp->tail_r != &chunk->next);
 		}
 
-#ifndef NDEBUG
-		/* poison the "next" reference */
-		chunk->next = (void*)0x01010101;
+		if (chunk->other != NULL) {
+			audio_chunk_free(chunk->other);
+			poison_undefined(chunk->other, sizeof(*chunk->other));
+			chunk->other->next = p->available;
+			p->available = chunk->other;
+		}
 
-		if (mp->size == 0)
-			audio_format_clear(&mp->audio_format);
-#endif
+		audio_chunk_free(chunk);
+		poison_undefined(chunk, sizeof(*chunk));
+		chunk->next = mp->available;
+		mp->available = chunk;
+
+		xsem_post(p->sem);
+	}
+}
+
+void audio_pipe_clear(struct audio_pipe *p) {
+	mtx_lock(&p->mutex);
+	p->size = 0;
+
+	int freed = 0;
+	struct audio_chunk *chunk = p->head;
+	while (chunk != NULL) {
+		if (chunk->other) {
+			audio_chunk_free(chunk->other);
+			chunk->other->next = p->available;
+			p->available = chunk->other;
+			chunk->other = NULL;
+			freed++;
+		}
+		audio_chunk_free(chunk);
+		chunk = chunk->next;
+		freed++;
 	}
 
-	g_mutex_unlock(mp->mutex);
+	// Attach the whole pipe onto the available list
+	*p->tail_r = p->available;
+	p->available = p->head;
 
-	return chunk;
+	p->head = NULL;
+	p->tail_r = &p->head;
+
+	xsem_post_n(&p->sem, freed);
+	mtx_unlock(&p->mutex);
 }
 
-void
-music_pipe_clear(struct music_pipe *mp, struct music_buffer *buffer)
-{
-	struct music_chunk *chunk;
+size_t audio_pipe_capacity(const struct audio_pipe *mp) { return mp->capacity; }
 
-	while ((chunk = music_pipe_shift(mp)) != NULL)
-		music_buffer_return(buffer, chunk);
-}
-
-void
-music_pipe_push(struct music_pipe *mp, struct music_chunk *chunk)
-{
-	assert(!music_chunk_is_empty(chunk));
-	assert(chunk->length == 0 || audio_format_valid(&chunk->audio_format));
-
-	g_mutex_lock(mp->mutex);
-
-	assert(mp->size > 0 || !audio_format_defined(&mp->audio_format));
-	assert(!audio_format_defined(&mp->audio_format) ||
-	       music_chunk_check_format(chunk, &mp->audio_format));
-
-#ifndef NDEBUG
-	if (!audio_format_defined(&mp->audio_format) && chunk->length > 0)
-		mp->audio_format = chunk->audio_format;
-#endif
-
-	chunk->next = NULL;
-	*mp->tail_r = chunk;
-	mp->tail_r = &chunk->next;
-
-	++mp->size;
-
-	g_mutex_unlock(mp->mutex);
-}
-
-unsigned
-music_pipe_size(const struct music_pipe *mp)
-{
-	g_mutex_lock(mp->mutex);
+unsigned audio_pipe_size(struct audio_pipe *mp) {
+	mtx_lock(&mp->mutex);
 	unsigned size = mp->size;
-	g_mutex_unlock(mp->mutex);
+	mtx_unlock(&mp->mutex);
 	return size;
+}
+
+struct audio_chunk *audio_pipe_next(struct audio_pipe *p, struct audio_chunk *c) {
+	if (!c)
+		return audio_pipe_get_head(p);
+
+	mtx_lock(&p->mutex);
+
+	c->ref_count--;
+	if (c->next)
+		c->next->ref_count++;
+
+	if (p->head->ref_count == 0)
+		audio_pipe_shift(p);
+
+	mtx_unlock(&p->mutex);
+	return c->next;
+}
+
+// Return the current head of the pipe
+struct audio_chunk *audio_pipe_get_head(struct audio_pipe *p) {
+	mtx_lock(&p->mutex);
+	if (p->head)
+		p->head->ref_count++;
+	mtx_unlock(&p->mutex);
+
+	return p->head;
 }

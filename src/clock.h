@@ -17,12 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_CLOCK_H
-#define MPD_CLOCK_H
+#pragma once
 
-#include "macros.h"
-
-#include <glib.h>
+#include "compiler.h"
 
 #include <stdint.h>
 
@@ -39,5 +36,3 @@ monotonic_clock_ms(void);
 MPD_PURE
 uint64_t
 monotonic_clock_us(void);
-
-#endif

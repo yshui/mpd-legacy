@@ -21,8 +21,7 @@
 #define MPD_PROTOCOL_RESULT_H
 
 #include "ack.h"
-
-#include <glib.h>
+#include "compiler.h"
 
 struct client;
 
@@ -36,7 +35,7 @@ void
 command_error_v(struct client *client, enum ack error,
 		const char *fmt, va_list args);
 
-G_GNUC_PRINTF(3, 4)
+MPD_PRINTF(3, 4)
 void
 command_error(struct client *client, enum ack error, const char *fmt, ...);
 

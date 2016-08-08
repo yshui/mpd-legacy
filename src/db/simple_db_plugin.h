@@ -17,10 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_SIMPLE_DB_PLUGIN_H
-#define MPD_SIMPLE_DB_PLUGIN_H
+#pragma once
 
 #include "db_plugin.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -40,5 +40,3 @@ simple_db_save(struct db *db);
 MPD_PURE
 time_t
 simple_db_get_mtime(const struct db *db);
-
-#endif

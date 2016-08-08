@@ -18,7 +18,7 @@
  */
 
 #include "config.h"
-#include "queue.h"
+#include "playqueue.h"
 #include "song.h"
 
 #include <stdlib.h>

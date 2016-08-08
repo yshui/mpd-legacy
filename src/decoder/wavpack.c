@@ -64,7 +64,7 @@ format_samples_int(int bytes_per_sample, void *buffer, uint32_t count)
 		 * of the output samples never can be greater than the size
 		 * of the input ones. Otherwise we would have an overflow.
 		 */
-		assert_static(sizeof(*dst) <= sizeof(*src));
+		static_assert(sizeof(*dst) <= sizeof(*src), "");
 
 		/* pass through and align 8-bit samples */
 		while (count--) {
@@ -74,7 +74,7 @@ format_samples_int(int bytes_per_sample, void *buffer, uint32_t count)
 	}
 	case 2: {
 		uint16_t *dst = buffer;
-		assert_static(sizeof(*dst) <= sizeof(*src));
+		static_assert(sizeof(*dst) <= sizeof(*src), "");
 
 		/* pass through and align 16-bit samples */
 		while (count--) {
@@ -352,7 +352,7 @@ struct wavpack_input {
 /**
  * Little wrapper for struct wavpack_input to cast from void *.
  */
-static struct wavpack_input *
+static inline struct wavpack_input *
 wpin(void *id)
 {
 	assert(id);
@@ -461,7 +461,6 @@ wavpack_input_init(struct wavpack_input *isp, struct decoder *decoder,
 
 static struct input_stream *
 wavpack_open_wvc(struct decoder *decoder, const char *uri,
-		 GMutex *mutex, GCond *cond,
 		 struct wavpack_input *wpi)
 {
 	struct input_stream *is_wvc;
@@ -477,7 +476,7 @@ wavpack_open_wvc(struct decoder *decoder, const char *uri,
 		return false;
 
 	wvc_url = g_strconcat(uri, "c", NULL);
-	is_wvc = input_stream_open(wvc_url, mutex, cond);
+	is_wvc = input_stream_open(wvc_url);
 	free(wvc_url);
 
 	if (IS_ERR(is_wvc))
@@ -514,8 +513,7 @@ wavpack_streamdecode(struct decoder * decoder, struct input_stream *is)
 	struct wavpack_input isp, isp_wvc;
 	bool can_seek = is->seekable;
 
-	is_wvc = wavpack_open_wvc(decoder, is->uri, is->mutex, is->cond,
-				  &isp_wvc);
+	is_wvc = wavpack_open_wvc(decoder, is->uri, &isp_wvc);
 	if (is_wvc != NULL) {
 		open_flags |= OPEN_WVC;
 		can_seek &= is_wvc->seekable;

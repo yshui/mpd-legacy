@@ -20,8 +20,6 @@
 #ifndef MPD_PLAYLIST_ANY_H
 #define MPD_PLAYLIST_ANY_H
 
-#include <glib.h>
-
 struct playlist_provider;
 struct input_stream;
 
@@ -35,7 +33,6 @@ struct input_stream;
  * freed
  */
 struct playlist_provider *
-playlist_open_any(const char *uri, GMutex *mutex, GCond *cond,
-		  struct input_stream **is_r);
+playlist_open_any(const char *uri, struct input_stream **is_r);
 
 #endif

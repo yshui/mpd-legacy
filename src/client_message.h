@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_CLIENT_MESSAGE_H
-#define MPD_CLIENT_MESSAGE_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <assert.h>
 #include <stdbool.h>
@@ -70,5 +69,3 @@ client_message_deinit(struct client_message *msg);
 
 void
 client_message_free(struct client_message *msg);
-
-#endif

@@ -27,7 +27,7 @@
 #include "util/list_sort.h"
 #include "db_visitor.h"
 #include "db_lock.h"
-#include "utils.h"
+#include "file_utils.h"
 
 #include <glib.h>
 

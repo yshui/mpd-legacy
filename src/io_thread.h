@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_IO_THREAD_H
-#define MPD_IO_THREAD_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -78,5 +77,3 @@ io_thread_timeout_add_seconds(guint interval,
  */
 gpointer
 io_thread_call(GThreadFunc function, gpointer data);
-
-#endif

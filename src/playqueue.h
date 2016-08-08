@@ -17,11 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef QUEUE_H
-#define QUEUE_H
+#pragma once
 
 #include "log.h"
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 
@@ -378,5 +377,3 @@ bool
 queue_set_priority_range(struct queue *queue,
 			 unsigned start_position, unsigned end_position,
 			 uint8_t priority, int after_order);
-
-#endif

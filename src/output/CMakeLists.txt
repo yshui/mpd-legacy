@@ -93,6 +93,7 @@ endif()
 
 configure_file(output_conf.h.in output_conf.h)
 add_library(output STATIC ${OUTPUT_SRC})
+target_link_libraries(output util)
 
 set(OUTPUT_LIST ${OUTPUT_LIST} PARENT_SCOPE)
 unset(list_var)

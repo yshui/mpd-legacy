@@ -30,26 +30,21 @@
 #include <assert.h>
 
 struct input_stream *
-input_stream_open(const char *url,
-		  GMutex *mutex, GCond *cond)
+input_stream_open(const char *url)
 {
-	assert(mutex != NULL);
-
 	int i;
 	for(i = 0; input_plugins[i]; i++) {
 		if (!input_plugins_enabled[i])
 			continue;
 		struct input_stream *is;
 
-		is = input_plugins[i]->open(url, mutex, cond);
+		is = input_plugins[i]->open(url);
 		if (!IS_ERR_OR_NULL(is)) {
 			assert(is->plugin != NULL);
 			assert(is->plugin->close != NULL);
 			assert(is->plugin->read != NULL);
 			assert(is->plugin->eof != NULL);
 			assert(!is->seekable || is->plugin->seek != NULL);
-
-			is = input_rewind_open(is);
 		}
 		return is;
 	}
@@ -83,15 +78,13 @@ void
 input_stream_wait_ready(struct input_stream *is)
 {
 	assert(is != NULL);
-	assert(is->mutex != NULL);
-	assert(is->cond != NULL);
 
 	while (true) {
 		input_stream_update(is);
 		if (is->ready)
 			break;
 
-		g_cond_wait(is->cond, is->mutex);
+		cnd_wait(&is->cond, &is->mutex);
 	}
 }
 
@@ -99,12 +92,10 @@ void
 input_stream_lock_wait_ready(struct input_stream *is)
 {
 	assert(is != NULL);
-	assert(is->mutex != NULL);
-	assert(is->cond != NULL);
 
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 	input_stream_wait_ready(is);
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 }
 
 int
@@ -130,13 +121,9 @@ input_stream_lock_seek(struct input_stream *is, off64_t offset, int whence)
 	if (is->plugin->seek == NULL)
 		return false;
 
-	if (is->mutex == NULL)
-		/* no locking */
-		return input_stream_seek(is, offset, whence);
-
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 	int ret = input_stream_seek(is, offset, whence);
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 	return ret;
 }
 
@@ -160,13 +147,9 @@ input_stream_lock_tag(struct input_stream *is)
 	if (is->plugin->tag == NULL)
 		return false;
 
-	if (is->mutex == NULL)
-		/* no locking */
-		return input_stream_tag(is);
-
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 	struct tag *tag = input_stream_tag(is);
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 	return tag;
 }
 
@@ -196,13 +179,9 @@ input_stream_lock_read(struct input_stream *is, void *ptr, ssize_t size)
 	assert(ptr != NULL);
 	assert(size > 0);
 
-	if (is->mutex == NULL)
-		/* no locking */
-		return input_stream_read(is, ptr, size);
-
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 	ssize_t nbytes = input_stream_read(is, ptr, size);
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 	return nbytes;
 }
 
@@ -222,13 +201,9 @@ input_stream_lock_eof(struct input_stream *is)
 	assert(is != NULL);
 	assert(is->plugin != NULL);
 
-	if (is->mutex == NULL)
-		/* no locking */
-		return input_stream_eof(is);
-
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 	bool eof = input_stream_eof(is);
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 	return eof;
 }
 

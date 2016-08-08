@@ -1,6 +1,6 @@
 set(INPUT_SRC
 	file.c
-	rewind.c
+	#rewind.c
 	archive.c
 )
 
@@ -78,6 +78,7 @@ endif()
 
 configure_file(input_conf.h.in input_conf.h)
 add_library(input STATIC ${INPUT_SRC})
+target_link_libraries(input util arch)
 
 set(INPUT_LIST ${INPUT_LIST} PARENT_SCOPE)
 unset(list_var)

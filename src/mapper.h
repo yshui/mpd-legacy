@@ -21,10 +21,9 @@
  * Maps directory and song objects to file system paths.
  */
 
-#ifndef MPD_MAPPER_H
-#define MPD_MAPPER_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -142,5 +141,3 @@ map_spl_path(void);
 MPD_PURE
 char *
 map_spl_utf8_to_fs(const char *name);
-
-#endif

@@ -33,7 +33,6 @@ struct input_stream;
  * freed
  */
 struct playlist_provider *
-playlist_mapper_open(const char *uri, GMutex *mutex, GCond *cond,
-		     struct input_stream **is_r);
+playlist_mapper_open(const char *uri, struct input_stream **is_r);
 
 #endif

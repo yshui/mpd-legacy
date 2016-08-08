@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_CLIENT_SUBSCRIBE_H
-#define MPD_CLIENT_SUBSCRIBE_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <stdbool.h>
 #include <glib.h>
@@ -57,5 +56,3 @@ client_push_message(struct client *client, const struct client_message *msg);
 MPD_MALLOC
 GSList *
 client_read_messages(struct client *client);
-
-#endif

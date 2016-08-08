@@ -53,7 +53,7 @@ playlist_list_global_finish(void);
  * Opens a playlist by its URI.
  */
 struct playlist_provider *
-playlist_list_open_uri(const char *uri, GMutex *mutex, GCond *cond);
+playlist_list_open_uri(const char *uri);
 
 /**
  * Opens a playlist from an input stream.
@@ -81,7 +81,6 @@ playlist_suffix_supported(const char *suffix);
  * @return a playlist, or NULL on error
  */
 struct playlist_provider *
-playlist_list_open_path(const char *path_fs, GMutex *mutex, GCond *cond,
-			struct input_stream **is_r);
+playlist_list_open_path(const char *path_fs, struct input_stream **is_r);
 
 #endif

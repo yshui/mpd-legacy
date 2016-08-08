@@ -28,7 +28,7 @@
 struct audio_output;
 struct audio_format;
 struct config_param;
-struct music_pipe;
+struct audio_pipe;
 struct player_control;
 
 static inline GQuark
@@ -57,7 +57,7 @@ audio_output_disable(struct audio_output *ao);
 bool
 audio_output_update(struct audio_output *ao,
 		    const struct audio_format *audio_format,
-		    const struct music_pipe *mp);
+		    const struct audio_pipe *mp);
 
 void
 audio_output_play(struct audio_output *ao);

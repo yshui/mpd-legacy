@@ -17,10 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef PCM_BUFFER_H
-#define PCM_BUFFER_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -71,5 +70,3 @@ pcm_buffer_deinit(struct pcm_buffer *buffer)
  */
 MPD_MALLOC void *
 pcm_buffer_get(struct pcm_buffer *buffer, size_t size);
-
-#endif

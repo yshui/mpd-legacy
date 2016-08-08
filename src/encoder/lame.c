@@ -223,8 +223,8 @@ lame_encoder_write(struct encoder *_encoder,
 
 	num_frames =
 		length / audio_format_frame_size(&encoder->audio_format);
-	left = g_malloc(sizeof(left[0]) * num_frames);
-	right = g_malloc(sizeof(right[0]) * num_frames);
+	left = malloc(sizeof(left[0]) * num_frames);
+	right = malloc(sizeof(right[0]) * num_frames);
 
 	/* this is for only 16-bit audio */
 

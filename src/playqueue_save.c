@@ -18,8 +18,8 @@
  */
 
 #include "config.h"
-#include "queue_save.h"
-#include "queue.h"
+#include "playqueue_save.h"
+#include "playqueue.h"
 #include "song.h"
 #include "uri.h"
 #include "database.h"

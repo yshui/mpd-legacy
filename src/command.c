@@ -19,6 +19,7 @@
 
 #define LOG_DOMAIN "command"
 
+#include "compiler.h"
 #include "config.h"
 #include "log.h"
 #include "command.h"
@@ -29,7 +30,7 @@
 #include "playlist_print.h"
 #include "playlist_save.h"
 #include "playlist_queue.h"
-#include "queue_print.h"
+#include "playqueue_print.h"
 #include "ls.h"
 #include "uri.h"
 #include "decoder_print.h"
@@ -203,11 +204,11 @@ print_error2(struct client *client, int  r)
 }
 
 static void
-print_spl_list(struct client *client, GPtrArray *list)
+print_spl_list(struct client *client, struct spl_list_head *list)
 {
-	for (unsigned i = 0; i < list->len; ++i) {
-		struct stored_playlist_info *playlist =
-			g_ptr_array_index(list, i);
+	struct spl_list_entry *e;
+	SLIST_FOREACH(e, list, next) {
+		struct spl_info *playlist = e->info;
 		time_t t;
 #ifndef WIN32
 		struct tm tm;
@@ -672,7 +673,7 @@ handle_lsinfo(struct client *client, int argc, char *argv[])
 		return print_error2(client, ret);
 
 	if (isRootDirectory(uri)) {
-		GPtrArray *list = spl_list();
+		auto list = spl_list();
 		if (!IS_ERR_OR_NULL(list)) {
 			print_spl_list(client, list);
 			spl_list_free(list);
@@ -1541,7 +1542,7 @@ static enum command_return
 handle_listplaylists(struct client *client,
 		     int argc, char *argv[])
 {
-	GPtrArray *list = spl_list();
+	auto list = spl_list();
 	if (IS_ERR(list))
 		return print_error2(client, PTR_ERR(list));
 
@@ -2211,6 +2212,7 @@ command_process(struct client *client, unsigned num, char *line)
 	   command_error() expects it to be set */
 
 	current_command = argv[0];
+	log_info("handle command: %s", current_command);
 
 	if (argc >= (int)G_N_ELEMENTS(argv)) {
 		command_error(client, ACK_ERROR_ARG, "Too many arguments");

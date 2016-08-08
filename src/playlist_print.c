@@ -24,14 +24,15 @@
 #include "playlist_any.h"
 #include "playlist_song.h"
 #include "playlist.h"
-#include "queue_print.h"
+#include "playqueue_print.h"
 #include "stored_playlist.h"
 #include "song_print.h"
 #include "song.h"
 #include "database.h"
 #include "client.h"
 #include "input_stream.h"
-#include "utils.h"
+#include "file_utils.h"
+#include "compiler.h"
 
 void
 playlist_print_uris(struct client *client, const struct playlist *playlist)
@@ -120,14 +121,13 @@ playlist_print_changes_position(struct client *client,
 int
 spl_print(struct client *client, const char *name_utf8, bool detail)
 {
-	GPtrArray *list;
-
-	list = spl_load(name_utf8);
+	auto list = spl_load(name_utf8);
 	if (IS_ERR(list))
 		return PTR_ERR(list);
 
-	for (unsigned i = 0; i < list->len; ++i) {
-		const char *temp = g_ptr_array_index(list, i);
+	struct str_list_entry *e;
+	SIMPLEQ_FOREACH(e, list, next) {
+		const char *temp = e->str;
 		bool wrote = false;
 
 		if (detail) {
@@ -143,7 +143,7 @@ spl_print(struct client *client, const char *name_utf8, bool detail)
 		}
 	}
 
-	spl_free(list);
+	str_list_free(list, true);
 	return MPD_SUCCESS;
 }
 
@@ -174,26 +174,17 @@ playlist_provider_print(struct client *client, const char *uri,
 bool
 playlist_file_print(struct client *client, const char *uri, bool detail)
 {
-	GMutex *mutex = g_mutex_new();
-	GCond *cond = g_cond_new();
-
 	struct input_stream *is;
 	struct playlist_provider *playlist =
-		playlist_open_any(uri, mutex, cond, &is);
-	if (playlist == NULL) {
-		g_cond_free(cond);
-		g_mutex_free(mutex);
+		playlist_open_any(uri, &is);
+	if (playlist == NULL)
 		return false;
-	}
 
 	playlist_provider_print(client, uri, playlist, detail);
 	playlist_plugin_close(playlist);
 
 	if (is != NULL)
 		input_stream_close(is);
-
-	g_cond_free(cond);
-	g_mutex_free(mutex);
 
 	return true;
 }

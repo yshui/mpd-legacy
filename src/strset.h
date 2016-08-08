@@ -26,12 +26,9 @@
  * values - it stores the exact pointers it was given in strset_add().
  */
 
-#ifndef MPD_STRSET_H
-#define MPD_STRSET_H
+#pragma once
 
-#include "macros.h"
-
-#include <glib.h>
+#include "compiler.h"
 
 struct strset;
 
@@ -48,5 +45,3 @@ unsigned strset_size(const struct strset *set);
 void strset_rewind(struct strset *set);
 
 const char *strset_next(struct strset *set);
-
-#endif

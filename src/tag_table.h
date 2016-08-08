@@ -17,11 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_TAG_TABLE_H
-#define MPD_TAG_TABLE_H
+#pragma once
 
 #include "tag.h"
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 
@@ -62,5 +61,3 @@ tag_table_lookup_i(const struct tag_table *table, const char *name)
 
 	return TAG_NUM_OF_ITEM_TYPES;
 }
-
-#endif

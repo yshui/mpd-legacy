@@ -119,17 +119,19 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 		  const char *name_utf8,
 		  unsigned start_index, unsigned end_index)
 {
-	GPtrArray *list;
+	struct str_list_head *list;
 
 	list = spl_load(name_utf8);
 	if (IS_ERR(list))
 		return PTR_ERR(list);
 
-	if (list->len < end_index)
-		end_index = list->len;
+	size_t i = 0;
+	struct str_list_entry *e;
+	SIMPLEQ_FOREACH(e, list, next) {
+		if (i++ >= end_index)
+			break;
 
-	for (unsigned i = start_index; i < end_index; ++i) {
-		const char *temp = g_ptr_array_index(list, i);
+		const char *temp = e->str;
 		if ((playlist_append_uri(playlist, pc, temp, NULL)) != MPD_SUCCESS) {
 			/* for windows compatibility, convert slashes */
 			char *temp2 = strdup(temp);
@@ -147,6 +149,6 @@ playlist_load_spl(struct playlist *playlist, struct player_control *pc,
 		}
 	}
 
-	spl_free(list);
+	str_list_free(list, true);
 	return MPD_SUCCESS;
 }

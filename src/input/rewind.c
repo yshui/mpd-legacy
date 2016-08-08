@@ -22,6 +22,7 @@
 #include "input_internal.h"
 #include "input_plugin.h"
 #include "tag.h"
+#include "c11thread.h"
 
 #include <glib.h>
 
@@ -35,6 +36,8 @@ struct input_rewind {
 	struct input_stream base;
 
 	struct input_stream *input;
+
+	GThread *signal_thread;
 
 	/**
 	 * The read position within the buffer.  Undefined as long as
@@ -234,6 +237,14 @@ static const struct input_plugin rewind_input_plugin = {
 	.seek = input_rewind_seek,
 };
 
+void *rewind_wait_input(void *data) {
+	struct input_rewind *c = data;
+
+	while(1) {
+		
+	}
+}
+
 struct input_stream *
 input_rewind_open(struct input_stream *is)
 {
@@ -247,10 +258,19 @@ input_rewind_open(struct input_stream *is)
 		return is;
 
 	c = g_new(struct input_rewind, 1);
-	input_stream_init(&c->base, &rewind_input_plugin, is->uri,
-			  is->mutex, is->cond);
+	input_stream_init(&c->base, &rewind_input_plugin, is->uri);
 	c->tail = 0;
 	c->input = is;
+
+	// Create a thread to signal stream readiness (a workaround for now)
+	GError *error = NULL;
+	c->signal_thread = g_thread_create(rewind_wait_input, c, true, &error);
+
+	if (!c->signal_thread) {
+		input_stream_deinit(&c->base);
+		log_err("Failed to create thread for rewind: %s", error);
+		return NULL;
+	}
 
 	return &c->base;
 }

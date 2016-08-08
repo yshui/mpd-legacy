@@ -27,7 +27,7 @@
 #include "database.h"
 #include "mapper.h"
 #include "path.h"
-#include "utils.h"
+#include "file_utils.h"
 #include "macros.h"
 
 #include <assert.h>

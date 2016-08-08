@@ -70,7 +70,7 @@ ao_output_error(void)
 	default:
 		error = strerror(errno);
 	}
-	log_err(error);
+	log_err("%s", error);
 }
 
 static struct audio_output *

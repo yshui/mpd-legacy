@@ -39,7 +39,7 @@
 
 struct fifo_buffer {
 	size_t size, start, end;
-	unsigned char buffer[sizeof(size_t)];
+	unsigned char buffer[];
 };
 
 struct fifo_buffer *
@@ -49,8 +49,7 @@ fifo_buffer_new(size_t size)
 
 	assert(size > 0);
 
-	buffer = (struct fifo_buffer *)malloc(sizeof(*buffer) -
-						sizeof(buffer->buffer) + size);
+	buffer = (struct fifo_buffer *)malloc(sizeof(*buffer) + size);
 
 	buffer->size = size;
 	buffer->start = 0;
@@ -86,8 +85,7 @@ fifo_buffer_realloc(struct fifo_buffer *buffer, size_t new_size)
 	/* existing data must fit in new size: second check */
 	assert(buffer->end <= new_size);
 
-	buffer = realloc(buffer, sizeof(*buffer) - sizeof(buffer->buffer) +
-			   new_size);
+	buffer = realloc(buffer, sizeof(*buffer) + new_size);
 	buffer->size = new_size;
 	return buffer;
 }

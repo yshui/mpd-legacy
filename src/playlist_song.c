@@ -26,7 +26,7 @@
 #include "path.h"
 #include "ls.h"
 #include "tag.h"
-#include "utils.h"
+#include "file_utils.h"
 
 #include <assert.h>
 #include <string.h>

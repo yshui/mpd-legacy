@@ -52,7 +52,6 @@ include(CheckSymbolExists)
 include(CheckStructHasMember)
 include(CheckIncludeFile)
 include(CheckCCompilerFlag)
-include(TestLargeFile)
 include(FindPkgConfig)
 
 pkg_check_modules(GLIB REQUIRED glib-2.0 gthread-2.0)
@@ -148,9 +147,7 @@ set(MPD_SRC
 	main_win32.c
 	event_pipe.c
 	daemon.c
-	buffer.c
 	pipe.c
-	chunk.c
 	path.c
 	mapper.c
 	page.c
@@ -170,9 +167,9 @@ set(MPD_SRC
 	playlist_state.c
 	playlist_queue.c
 	playlist_vector.c
-	queue.c
-	queue_print.c
-	queue_save.c
+	playqueue.c
+	playqueue_print.c
+	playqueue_save.c
 	replay_gain_config.c
 	replay_gain_info.c
 	sig_handlers.c
@@ -200,10 +197,6 @@ set(MPD_SRC
 	locate.c
 	stored_playlist.c
 	timer.c
-	util/list_sort.c
-	util/byte_reverse.c
-	util/bit_reverse.c
-	util/file_utils.c
 	fd_util.c
 	fifo_buffer.c
 	inotify_source.c
@@ -241,7 +234,8 @@ cflag_check_and_apply(-Wwrite-strings)
 cflag_check_and_apply(-Wno-unused-parameter)
 cflag_check_and_apply(-Werror=incompatible-pointer-types)
 cflag_check_and_apply(-Werror=implicit-function-declaration)
-cflag_check_and_apply(-pedantic)
+cflag_check_and_apply(-Wno-keyword-macro)
+cflag_check_and_apply(-Wno-gnu-auto-type)
 
 macro(report_no_support var1)
 	set(var2 ${ARGN})
@@ -428,6 +422,8 @@ add_subdirectory(output)
 add_subdirectory(mixer)
 add_subdirectory(filter)
 add_subdirectory(pcm)
+add_subdirectory(arch)
+add_subdirectory(util)
 
 list(REMOVE_DUPLICATES MPD_LINK_LIBS)
 
@@ -442,6 +438,8 @@ target_link_libraries(mpd
 	mixer
 	filter
 	pcm
+	arch
+	util
 	${MPD_LINK_LIBS}
 )
 foreach(component OUTPUT INPUT ENCODER PLAYLIST DECODER)

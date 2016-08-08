@@ -259,9 +259,9 @@ ao_reopen(struct audio_output *ao)
 {
 	if (!audio_format_fully_defined(&ao->config_audio_format)) {
 		if (ao->open) {
-			const struct music_pipe *mp = ao->pipe;
+			struct audio_pipe *p = ao->pipe;
 			ao_close(ao, true);
-			ao->pipe = mp;
+			ao->pipe = p;
 		}
 
 		/* no audio format is configured: copy in->out, let
@@ -305,14 +305,13 @@ ao_wait(struct audio_output *ao)
 }
 
 static const char *
-ao_chunk_data(struct audio_output *ao, const struct music_chunk *chunk,
+ao_chunk_data(struct audio_output *ao, const struct audio_chunk *chunk,
 	      struct filter *replay_gain_filter,
 	      unsigned *replay_gain_serial_p,
 	      size_t *length_r)
 {
 	assert(chunk != NULL);
-	assert(!music_chunk_is_empty(chunk));
-	assert(music_chunk_check_format(chunk, &ao->in_audio_format));
+	assert(!audio_chunk_is_empty(chunk));
 
 	const char *data = chunk->data;
 	size_t length = chunk->length;
@@ -344,7 +343,7 @@ ao_chunk_data(struct audio_output *ao, const struct music_chunk *chunk,
 }
 
 static const char *
-ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
+ao_filter_chunk(struct audio_output *ao, const struct audio_chunk *chunk,
 		size_t *length_r)
 {
 	size_t length;
@@ -412,7 +411,7 @@ ao_filter_chunk(struct audio_output *ao, const struct music_chunk *chunk,
 }
 
 static bool
-ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
+ao_play_chunk(struct audio_output *ao, const struct audio_chunk *chunk)
 {
 	assert(ao != NULL);
 	assert(ao->filter != NULL);
@@ -468,16 +467,6 @@ ao_play_chunk(struct audio_output *ao, const struct music_chunk *chunk)
 	return true;
 }
 
-static const struct music_chunk *
-ao_next_chunk(struct audio_output *ao)
-{
-	return ao->chunk != NULL
-		/* continue the previous play() call */
-		? ao->chunk->next
-		/* get the first chunk from the pipe */
-		: music_pipe_peek(ao->pipe);
-}
-
 /**
  * Plays all remaining chunks, until the tail of the pipe has been
  * reached (and no more chunks are queued), or until a command is
@@ -490,11 +479,11 @@ static bool
 ao_play(struct audio_output *ao)
 {
 	bool success;
-	const struct music_chunk *chunk;
+	const struct audio_chunk *chunk;
 
 	assert(ao->pipe != NULL);
 
-	chunk = ao_next_chunk(ao);
+	chunk = audio_pipe_next(ao->pipe, ao->chunk);
 	if (chunk == NULL)
 		/* no chunk available */
 		return false;
@@ -519,7 +508,9 @@ ao_play(struct audio_output *ao)
 	ao->chunk_finished = true;
 
 	g_mutex_unlock(ao->mutex);
-	player_lock_signal(ao->player_control);
+
+	// Signaling output status change
+	player_signal(ao->player_control);
 	g_mutex_lock(ao->mutex);
 
 	return true;
@@ -612,7 +603,7 @@ static gpointer audio_output_task(gpointer arg)
 		case AO_COMMAND_DRAIN:
 			if (ao->open) {
 				assert(ao->chunk == NULL);
-				assert(music_pipe_peek(ao->pipe) == NULL);
+				assert(audio_pipe_get_head(ao->pipe) == NULL);
 
 				g_mutex_unlock(ao->mutex);
 				ao_plugin_drain(ao);

@@ -73,7 +73,9 @@ void setup_log_output(bool use_stdout);
 
 int cycle_log_files(void);
 
-static inline void log_metav(int log_level, const char *fmt, va_list args){
+static inline void log_metav(int log_level, const char *fmt, va_list args) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	char *buf;
 	vasprintf(&buf, fmt, args);
 
@@ -84,13 +86,22 @@ static inline void log_metav(int log_level, const char *fmt, va_list args){
 	log_handler(log_level, buf2);
 	free(buf);
 	free(buf2);
+#pragma GCC diagnostic pop
 }
-
 static inline void __attribute__ ((format(printf, 2, 3)))
 log_meta(int log_level, const char *fmt, ...){
+	char *buf;
 	va_list args;
 	va_start(args, fmt);
-	log_metav(log_level, fmt, args);
+
+	vasprintf(&buf, fmt, args);
+	char *buf2 = (char *)malloc(strlen(buf)+strlen(LOG_PREFIX)+1);
+	strcpy(buf2, LOG_PREFIX);
+	strcpy(buf2+strlen(LOG_PREFIX), buf);
+
+	log_handler(log_level, buf2);
+	free(buf);
+	free(buf2);
 }
 
 #define log_debug(...) log_meta(LOG_DEBUG, __VA_ARGS__)

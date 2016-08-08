@@ -17,12 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_INPUT_STREAM_H
-#define MPD_INPUT_STREAM_H
+#pragma once
 
-#include "macros.h"
-
-#include <glib.h>
+#include "compiler.h"
+#include "c11thread.h"
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -48,7 +46,7 @@ struct input_stream {
 	 * This object is allocated by the client, and the client is
 	 * responsible for freeing it.
 	 */
-	GMutex *mutex;
+	mtx_t mutex;
 
 	/**
 	 * A cond that gets signalled when the state of this object
@@ -58,7 +56,7 @@ struct input_stream {
 	 * This object is allocated by the client, and the client is
 	 * responsible for freeing it.
 	 */
-	GCond *cond;
+	cnd_t cond;
 
 	/**
 	 * indicates whether the stream is ready for reading and
@@ -74,12 +72,12 @@ struct input_stream {
 	/**
 	 * the size of the resource, or -1 if unknown
 	 */
-	goffset size;
+	off_t size;
 
 	/**
 	 * the current offset within the stream
 	 */
-	goffset offset;
+	off_t offset;
 
 	/**
 	 * the MIME content type of the resource, or NULL if unknown
@@ -100,8 +98,7 @@ struct input_stream {
  */
 MPD_MALLOC
 struct input_stream *
-input_stream_open(const char *uri,
-		  GMutex *mutex, GCond *cond);
+input_stream_open(const char *uri);
 
 /**
  * Close the input stream and free resources.
@@ -114,13 +111,13 @@ input_stream_close(struct input_stream *is);
 static inline void
 input_stream_lock(struct input_stream *is)
 {
-	g_mutex_lock(is->mutex);
+	mtx_lock(&is->mutex);
 }
 
 static inline void
 input_stream_unlock(struct input_stream *is)
 {
-	g_mutex_unlock(is->mutex);
+	mtx_unlock(&is->mutex);
 }
 
 /**
@@ -240,5 +237,3 @@ input_stream_read(struct input_stream *is, void *ptr, ssize_t size);
  */
 ssize_t
 input_stream_lock_read(struct input_stream *is, void *ptr, ssize_t size);
-
-#endif

@@ -29,10 +29,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct audio_format;
-struct music_buffer;
-struct music_chunk;
-struct player_control;
+#include "pipe.h"
+#include "chunk.h"
+#include "player_control.h"
+#include "audio_format.h"
 
 /**
  * Global initialization: load audio outputs from the configuration
@@ -78,13 +78,13 @@ audio_output_all_enable_disable(void);
  *
  * @param audio_format the preferred audio format, or NULL to reuse
  * the previous format
- * @param buffer the #music_buffer where consumed #music_chunk objects
+ * @param buffer the #music_buffer where consumed #audio_chunk objects
  * should be returned
  * @return true on success, false on failure
  */
 bool
 audio_output_all_open(const struct audio_format *audio_format,
-		      struct music_buffer *buffer);
+		      struct audio_pipe *);
 
 /**
  * Closes all audio outputs.
@@ -100,29 +100,18 @@ void
 audio_output_all_release(void);
 
 /**
- * Enqueue a #music_chunk object for playing, i.e. pushes it to a
- * #music_pipe.
- *
- * @param chunk the #music_chunk object to be played
- * @return true on success, false if no audio output was able to play
- * (all closed then)
- */
-bool
-audio_output_all_play(struct music_chunk *chunk);
-
-/**
  * Checks if the output devices have drained their music pipe, and
  * returns the consumed music chunks to the #music_buffer.
  *
- * @return the number of chunks to play left in the #music_pipe
+ * @return the number of chunks to play left in the #audio_pipe
  */
 unsigned
 audio_output_all_check(void);
 
 /**
- * Checks if the size of the #music_pipe is below the #threshold.  If
+ * Checks if the size of the #audio_pipe is below the #threshold.  If
  * not, it attempts to synchronize with all output threads, and waits
- * until another #music_chunk is finished.
+ * until another #audio_chunk is finished.
  *
  * @param threshold the maximum number of chunks in the pipe
  * @return true if there are less than #threshold chunks in the pipe

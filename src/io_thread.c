@@ -19,16 +19,17 @@
 
 #include "io_thread.h"
 #include "err.h"
+#include "c11thread.h"
 
 #include <assert.h>
 
 static struct {
-	GMutex *mutex;
-	GCond *cond;
+	mtx_t mutex;
+	cnd_t cond;
 
 	GMainContext *context;
 	GMainLoop *loop;
-	GThread *thread;
+	thrd_t thread;
 } io;
 
 void
@@ -41,16 +42,13 @@ io_thread_run(void)
 	g_main_loop_run(io.loop);
 }
 
-static gpointer
-io_thread_func(gpointer arg)
+static int
+io_thread_func(void *arg)
 {
 	/* lock+unlock to synchronize with io_thread_start(), to be
 	   sure that io.thread is set */
-	g_mutex_lock(io.mutex);
-	g_mutex_unlock(io.mutex);
-
 	io_thread_run();
-	return NULL;
+	return 0;
 }
 
 void
@@ -58,10 +56,9 @@ io_thread_init(void)
 {
 	assert(io.context == NULL);
 	assert(io.loop == NULL);
-	assert(io.thread == NULL);
 
-	io.mutex = g_mutex_new();
-	io.cond = g_cond_new();
+	mtx_init(&io.mutex, mtx_plain);
+	cnd_init(&io.cond);
 	io.context = g_main_context_new();
 	io.loop = g_main_loop_new(io.context, false);
 }
@@ -71,13 +68,9 @@ io_thread_start(void)
 {
 	assert(io.context != NULL);
 	assert(io.loop != NULL);
-	assert(io.thread == NULL);
 
-	GError *error;
-	g_mutex_lock(io.mutex);
-	io.thread = g_thread_create(io_thread_func, NULL, true, &error);
-	g_mutex_unlock(io.mutex);
-	if (io.thread == NULL)
+	int ret = thrd_create(&io.thread, io_thread_func, NULL);
+	if (ret != thrd_success)
 		return -MPD_UNKNOWN;
 
 	return MPD_SUCCESS;
@@ -94,11 +87,9 @@ io_thread_quit(void)
 void
 io_thread_deinit(void)
 {
-	if (io.thread != NULL) {
-		io_thread_quit();
+	io_thread_quit();
 
-		g_thread_join(io.thread);
-	}
+	thrd_join(io.thread, NULL);
 
 	if (io.loop != NULL)
 		g_main_loop_unref(io.loop);
@@ -106,8 +97,8 @@ io_thread_deinit(void)
 	if (io.context != NULL)
 		g_main_context_unref(io.context);
 
-	g_cond_free(io.cond);
-	g_mutex_free(io.mutex);
+	cnd_destroy(&io.cond);
+	mtx_destroy(&io.mutex);
 }
 
 GMainContext *
@@ -119,7 +110,7 @@ io_thread_context(void)
 bool
 io_thread_inside(void)
 {
-	return io.thread != NULL && g_thread_self() == io.thread;
+	return thrd_current() == io.thread;
 }
 
 guint
@@ -165,11 +156,9 @@ io_thread_call_func(gpointer _data)
 
 	gpointer result = data->function(data->data);
 
-	g_mutex_lock(io.mutex);
 	data->done = true;
 	data->result = result;
-	g_cond_broadcast(io.cond);
-	g_mutex_unlock(io.mutex);
+	cnd_broadcast(&io.cond);
 
 	return false;
 }
@@ -177,8 +166,6 @@ io_thread_call_func(gpointer _data)
 gpointer
 io_thread_call(GThreadFunc function, gpointer _data)
 {
-	assert(io.thread != NULL);
-
 	if (io_thread_inside())
 		/* we're already in the I/O thread - no
 		   synchronization needed */
@@ -192,10 +179,10 @@ io_thread_call(GThreadFunc function, gpointer _data)
 
 	io_thread_idle_add(io_thread_call_func, &data);
 
-	g_mutex_lock(io.mutex);
+	mtx_lock(&io.mutex);
 	while (!data.done)
-		g_cond_wait(io.cond, io.mutex);
-	g_mutex_unlock(io.mutex);
+		cnd_wait(&io.cond, &io.mutex);
+	mtx_unlock(&io.mutex);
 
 	return data.result;
 }

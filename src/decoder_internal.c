@@ -17,9 +17,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#define LOG_DOMAIN "dc_internal"
+
+#include "log.h"
+
 #include "config.h"
 #include "decoder_internal.h"
 #include "decoder_control.h"
+#include "player_control.h"
 #include "pipe.h"
 #include "input_stream.h"
 #include "buffer.h"
@@ -34,13 +39,14 @@
 static enum decoder_command
 need_chunks(struct decoder_control *dc, bool do_wait)
 {
+	log_info("need_chunk");
 	if (dc->command == DECODE_COMMAND_STOP ||
 	    dc->command == DECODE_COMMAND_SEEK)
 		return dc->command;
 
 	if (do_wait) {
-		decoder_wait(dc);
-		g_cond_signal(dc->client_cond);
+		decoder_wait_cmd(dc);
+		cnd_signal(&dc->client_cond);
 
 		return dc->command;
 	}
@@ -51,6 +57,7 @@ need_chunks(struct decoder_control *dc, bool do_wait)
 struct music_chunk *
 decoder_get_chunk(struct decoder *decoder)
 {
+	log_info("decoder_get_chunk");
 	struct decoder_control *dc = decoder->dc;
 	enum decoder_command cmd;
 
@@ -71,9 +78,7 @@ decoder_get_chunk(struct decoder *decoder)
 			return decoder->chunk;
 		}
 
-		decoder_lock(dc);
 		cmd = need_chunks(dc, true);
-		decoder_unlock(dc);
 	} while (cmd == DECODE_COMMAND_NONE);
 
 	return NULL;

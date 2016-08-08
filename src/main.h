@@ -20,13 +20,13 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "c11thread.h"
+
 #include <glib.h>
 
 extern GThread *main_task;
 
 extern GMainLoop *main_loop;
-
-extern GCond *main_cond;
 
 extern struct player_control *global_player_control;
 

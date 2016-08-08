@@ -26,7 +26,7 @@
 #include "playlist_state.h"
 #include "playlist.h"
 #include "player_control.h"
-#include "queue_save.h"
+#include "playqueue_save.h"
 #include "path.h"
 #include "text_file.h"
 #include "conf.h"

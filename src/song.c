@@ -23,10 +23,11 @@
 #include "directory.h"
 #include "tag.h"
 
+#include "file_utils.h"
+
 #include <glib.h>
 
 #include <assert.h>
-#include <utils.h>
 #include <stdlib.h>
 
 static struct song *

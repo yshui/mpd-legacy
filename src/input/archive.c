@@ -37,8 +37,7 @@
  * plugin and gzip fetches file from disk
  */
 static struct input_stream *
-input_archive_open(const char *pathname,
-		   GMutex *mutex, GCond *cond)
+input_archive_open(const char *pathname)
 {
 	const struct archive_plugin *arplug;
 	struct archive_file *file;
@@ -69,7 +68,7 @@ input_archive_open(const char *pathname,
 		return NULL;
 
 	//setup fileops
-	is = archive_file_open_stream(file, filename, mutex, cond);
+	is = archive_file_open_stream(file, filename);
 	archive_file_close(file);
 	g_free(pname);
 

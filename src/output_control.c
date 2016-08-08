@@ -132,7 +132,7 @@ audio_output_disable(struct audio_output *ao)
 static bool
 audio_output_open(struct audio_output *ao,
 		  const struct audio_format *audio_format,
-		  const struct music_pipe *mp)
+		  const struct audio_pipe *mp)
 {
 	bool open;
 
@@ -214,7 +214,7 @@ audio_output_close_locked(struct audio_output *ao)
 bool
 audio_output_update(struct audio_output *ao,
 		    const struct audio_format *audio_format,
-		    const struct music_pipe *mp)
+		    const struct audio_pipe *mp)
 {
 	assert(mp != NULL);
 

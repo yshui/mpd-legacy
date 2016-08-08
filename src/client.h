@@ -17,11 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_CLIENT_H
-#define MPD_CLIENT_H
+#pragma once
 
 #include "log.h"
-#include "macros.h"
+#include "compiler.h"
 
 #include <glib.h>
 #include <stdbool.h>
@@ -77,6 +76,4 @@ void client_vprintf(struct client *client, const char *fmt, va_list args);
 /**
  * Write a printf-like formatted string to the client.
  */
-G_GNUC_PRINTF(2, 3) void client_printf(struct client *client, const char *fmt, ...);
-
-#endif
+MPD_PRINTF(2, 3) void client_printf(struct client *client, const char *fmt, ...);

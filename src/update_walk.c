@@ -35,7 +35,7 @@
 #include "path.h"
 #include "playlist_list.h"
 #include "conf.h"
-#include "utils.h"
+#include "file_utils.h"
 #include "macros.h"
 
 #include <glib.h>

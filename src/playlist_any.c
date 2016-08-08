@@ -28,19 +28,18 @@
 #include <assert.h>
 
 static struct playlist_provider *
-playlist_open_remote(const char *uri, GMutex *mutex, GCond *cond,
-		     struct input_stream **is_r)
+playlist_open_remote(const char *uri, struct input_stream **is_r)
 {
 	assert(uri_has_scheme(uri));
 
 	struct playlist_provider *playlist =
-		playlist_list_open_uri(uri, mutex, cond);
+		playlist_list_open_uri(uri);
 	if (playlist != NULL) {
 		*is_r = NULL;
 		return playlist;
 	}
 
-	struct input_stream *is = input_stream_open(uri, mutex, cond);
+	struct input_stream *is = input_stream_open(uri);
 	if (IS_ERR(is)) {
 		log_warning("Failed to open %s", uri);
 
@@ -58,10 +57,9 @@ playlist_open_remote(const char *uri, GMutex *mutex, GCond *cond,
 }
 
 struct playlist_provider *
-playlist_open_any(const char *uri, GMutex *mutex, GCond *cond,
-		  struct input_stream **is_r)
+playlist_open_any(const char *uri, struct input_stream **is_r)
 {
 	return uri_has_scheme(uri)
-		? playlist_open_remote(uri, mutex, cond, is_r)
-		: playlist_mapper_open(uri, mutex, cond, is_r);
+		? playlist_open_remote(uri, is_r)
+		: playlist_mapper_open(uri, is_r);
 }

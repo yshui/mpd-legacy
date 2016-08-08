@@ -17,22 +17,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_RESOLVER_H
-#define MPD_RESOLVER_H
+#pragma once
 
-#include "macros.h"
+#include "compiler.h"
 
-#include <glib.h>
+#include <stdlib.h>
 
 struct sockaddr;
 struct addrinfo;
-
-MPD_CONST
-static inline GQuark
-resolver_quark(void)
-{
-	return g_quark_from_static_string("resolver");
-}
 
 /**
  * Converts the specified socket address into a string in the form
@@ -59,5 +51,3 @@ sockaddr_to_string(const struct sockaddr *sa, size_t length);
 struct addrinfo *
 resolve_host_port(const char *host_port, unsigned default_port,
 		  int flags, int socktype);
-
-#endif

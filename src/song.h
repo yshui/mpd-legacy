@@ -17,9 +17,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef MPD_SONG_H
-#define MPD_SONG_H
+#pragma once
 
+#undef LIST_HEAD
 #include "util/list.h"
 
 #include <stddef.h>
@@ -117,4 +117,4 @@ song_is_file(const struct song *song)
 	return song_in_database(song) || song->uri[0] == '/';
 }
 
-#endif
+#undef LIST_HEAD

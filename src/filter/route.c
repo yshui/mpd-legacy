@@ -188,7 +188,7 @@ route_filter_parse(const struct config_param *param,
 
 	// Allocate a map of "copy nothing to me"
 	filter->sources =
-		g_malloc(filter->min_output_channels * sizeof(signed char));
+		malloc(filter->min_output_channels * sizeof(signed char));
 
 	for (int i=0; i<filter->min_output_channels; ++i)
 		filter->sources[i] = -1;
@@ -227,7 +227,7 @@ route_filter_parse(const struct config_param *param,
 static struct filter *
 route_filter_init(const struct config_param *param)
 {
-	struct route_filter *filter = g_new(struct route_filter, 1);
+	struct route_filter *filter = tmalloc(struct route_filter, 1);
 	filter_init(&filter->base, &route_filter_plugin);
 
 	// Allocate and set the filter->sources[] array
@@ -243,8 +243,8 @@ route_filter_finish(struct filter *_filter)
 {
 	struct route_filter *filter = (struct route_filter *)_filter;
 
-	g_free(filter->sources);
-	g_free(filter);
+	free(filter->sources);
+	free(filter);
 }
 
 static const struct audio_format *
